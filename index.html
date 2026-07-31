@@ -96,6 +96,22 @@
     @media(max-width:760px){.topbar,.bottombar{border-radius:12px}.hint{display:none}.runes{flex-wrap:nowrap;overflow-x:auto;width:100%;padding-bottom:4px}.rune{width:132px;flex:0 0 auto}button{touch-action:manipulation}.rotateHint{display:block}.overlay{place-items:start center}.card{width:min(560px,96vw);padding:16px;margin:8px auto}.setupCard{width:min(1060px,96vw)}.setupGrid{grid-template-columns:1fr;gap:10px}.matrixPreview{height:250px;padding:8px}.equipmentPanel{grid-template-columns:1fr;gap:10px}.heroStatsPanel,.equipmentLoadout,.warehousePanel{height:auto;max-height:none;overflow:visible}.warehouseGrid{max-height:210px}.inventory{grid-template-columns:1fr}.runeChoice{min-height:56px}.loadoutSlot{width:26px;height:30px;font-size:7px}.startBattle{width:100%;padding:12px;font-size:15px}.saveControls button,.stageControls button{padding:8px 9px;font-size:12px}.footerTools{margin-left:0;flex-wrap:wrap}.audioControls label{display:none}.spellBox{width:100%;justify-content:space-between}.runeTooltip{width:min(320px,88vw)}.changelogCard,.masteryCard{width:94vw;max-height:86vh}}
     @media(max-width:760px) and (orientation:landscape){.rotateHint{display:none}}
     .setupCard.touchLandscapeFit{position:fixed!important;left:50%!important;top:50%!important;width:1060px!important;max-width:none!important;max-height:none!important;overflow:visible!important;margin:0!important;transform:translate(-50%,-50%) scale(var(--modal-scale,.68))!important;transform-origin:center center!important;z-index:82}
+    body.battle .stats{display:none}
+    .setupTools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center;margin:6px 0 2px;padding:6px 10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.035)}
+    .toolGroup{display:flex;gap:6px;align-items:center}
+    .toolBig{padding:8px 16px;font-size:13px;font-weight:800}
+    .setupTools .systemStatus{font-size:10px;color:var(--muted)}
+    .bottombar{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px}
+    .bottombar .runes{min-width:0}
+    .wallHpPanel{width:min(340px,32vw);text-align:left}
+    .wallHpTop{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px}
+    #wallHpText{color:#fff;font-weight:800}
+    .wallHpBar{position:relative;height:16px;border-radius:999px;background:rgba(0,0,0,.42);border:1px solid var(--border);overflow:hidden}
+    .wallHpFill{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,#ff5f64,#ff9b45);transition:width .15s}
+    .wallShieldFill{position:absolute;left:0;top:0;height:5px;width:0;background:#66d9ff;transition:width .15s}
+    .talismanDock{display:flex;gap:8px;justify-content:flex-end;min-width:0}
+    .talismanSlot{width:64px;height:40px;border:1.5px dashed rgba(255,255,255,.22);border-radius:10px;display:grid;place-items:center;font-size:10px;color:rgba(255,247,234,.35);flex:0 0 auto}
+    @media(max-width:760px){.wallHpPanel{width:200px}.talismanSlot{width:44px;height:32px;font-size:8px}.bottombar{gap:8px}.toolBig{padding:7px 12px;font-size:12px}}
     .fsPrompt{position:fixed;inset:0;z-index:200;display:none;place-items:center;background:rgba(8,7,10,.78);backdrop-filter:blur(5px);padding:18px;text-align:center}
     .fsPrompt.show{display:grid}
     .fsPromptCard{width:min(420px,92vw);padding:26px 22px;border:1px solid var(--border);border-radius:22px;background:rgba(28,25,33,.97);box-shadow:0 18px 60px rgba(0,0,0,.5)}
@@ -149,7 +165,7 @@
     <section class="topbar">
       <div class="brand">
         <div class="logo">爆</div>
-        <div><h1>爆战丨无限弹幕 Demo v0.25</h1><div class="subtitle">横屏弹窗完整适配 · HTTPS 在线试玩</div></div>
+        <div><h1>爆战丨无限弹幕 Demo v0.26</h1><div class="subtitle">界面布局重构 · 功能集中首页 · 底栏血条居中</div></div>
       </div>
       <div class="stats">
         <div class="pill">关卡 <strong id="stageText">1</strong></div>
@@ -159,8 +175,8 @@
         <div class="pill">攻击力 <strong id="attackText">100</strong></div>
         <div class="pill">击杀 <strong id="killText">0</strong></div>
         <div class="pill">用时 <strong id="timeText">0.0s</strong></div>
-        <button class="pill versionBtn" id="changelogBtn" title="查看版本记录">📜 v0.25</button><button class="pill fsBtn" id="fsBtn" title="全屏游玩：横屏铺满手机屏幕">📱 全屏</button>
       </div>
+      <button class="pill fsBtn" id="fsBtn" title="全屏游玩：横屏铺满手机屏幕">📱 全屏</button>
     </section>
     <div class="rotateHint">🔄 建议横屏游玩，战场视野更完整</div>
 
@@ -171,7 +187,8 @@
 
     <section class="bottombar">
       <div class="runes" id="battleRunes"></div>
-      <div class="footerTools"><div class="systemStatus"><span id="saveStatus">存档已就绪</span>　｜　R 重开 · 空格暂停</div><div class="saveControls"><button id="masteryBtn" title="查看符文专精">✦ 专精</button><button id="speedBtn">1×</button><button id="exportSaveBtn">导出</button><button id="importSaveBtn">导入</button><button id="resetSaveBtn">重置</button><input id="importSaveInput" type="file" accept="application/json" hidden></div><div class="audioControls"><button id="muteBtn" title="静音">🔊</button><label>总<input id="masterVolume" type="range" min="0" max="100" value="70"></label><label>音乐<input id="musicVolume" type="range" min="0" max="100" value="42"></label><label>音效<input id="sfxVolume" type="range" min="0" max="100" value="72"></label></div></div>
+      <div class="wallHpPanel"><div class="wallHpTop"><span>🛡 城墙</span><span id="wallHpText">1000 / 1000</span></div><div class="wallHpBar"><div class="wallHpFill" id="wallHpFill"></div><div class="wallShieldFill" id="wallShieldFill"></div></div></div>
+      <div class="talismanDock"><span class="talismanSlot">符咒槽</span><span class="talismanSlot">符咒槽</span><span class="talismanSlot">符咒槽</span></div>
     </section>
   </main></div>
 <div class="overlay show" id="overlay">
@@ -179,6 +196,12 @@
           <h2>战前装配</h2>
           <div class="setupTabs" role="tablist"><button class="setupTab active" id="runeTab">符文装配</button><button class="setupTab" id="equipmentTab">装备穿配</button></div>
           <div class="progressStrip"><div><strong>关卡推进</strong><span id="stageProgressText">第 1 关 / 已解锁 1</span></div><div class="stageControls"><button id="stagePrev">−</button><span id="stageSelectText">第 1 关</span><button id="stageNext">＋</button></div><div><strong>资源</strong><span id="setupGoldText">金币 0</span></div></div>
+          <div class="setupTools">
+            <div class="toolGroup"><button class="toolBig" id="masteryBtn" title="查看符文专精">✦ 专精</button><button class="toolBig" id="changelogBtn" title="查看版本记录">📜 版本</button><button class="toolBig" id="speedBtn" title="切换游戏速度">⏩ 1×</button></div>
+            <div class="toolGroup saveControls"><button id="exportSaveBtn">导出</button><button id="importSaveBtn">导入</button><button id="resetSaveBtn">重置</button><input id="importSaveInput" type="file" accept="application/json" hidden></div>
+            <div class="toolGroup audioControls"><button id="muteBtn" title="静音">🔊</button><label>总<input id="masterVolume" type="range" min="0" max="100" value="70"></label><label>音乐<input id="musicVolume" type="range" min="0" max="100" value="42"></label><label>音效<input id="sfxVolume" type="range" min="0" max="100" value="72"></label></div>
+            <div class="systemStatus"><span id="saveStatus">存档已就绪</span>　｜　R 重开 · 空格暂停</div>
+          </div>
           <p class="big" id="setupHint">上下各 8 个六边形槽位，共 16 槽。可装配 0～5 个不同符文，空槽允许直接进入战斗。</p>
           <div class="setupGrid setupPanel active" id="runePanel">
             <div class="matrixPreview">
@@ -219,14 +242,15 @@
   <div class="changelogModal" id="changelogModal">
     <div class="changelogCard">
       <div class="changelogHead"><h2>📜 版本记录</h2><button id="changelogClose">✕</button></div>
-      <div class="changelogCurrent"><h3>当前版本 · v0.25</h3>
+      <div class="changelogCurrent"><h3>当前版本 · v0.26</h3>
         <ol>
-          <li><b>修复手机横屏弹窗裁切：</b>触屏横屏设备会依据实际可用宽高自动缩放整张战前装配卡。</li>
-          <li><b>全屏与旋转自动重算：</b>进入或退出全屏、旋转屏幕以及切换符文/装备页签时，都会重新计算比例并居中。</li>
-          <li><b>保持战斗舞台稳定：</b>仅调整装配弹窗，不改动 v0.24 的战斗画布、宽屏舞台与本地存档逻辑。</li>
+          <li><b>功能大标签集中到首页：</b>版本记录、符文专精、速度切换、存档管理与音频控制统一移入战前装配页功能区。</li>
+          <li><b>战斗界面精简：</b>进入战斗后顶栏不再显示关卡/金币/波次等预览栏目，仅保留标题与全屏按钮。</li>
+          <li><b>底部栏目更新：</b>城墙血条从画布移至底部栏目中心并保留护盾显示，右侧预留符咒卡牌槽位。</li>
         </ol>
       </div>
-      <details class="changelogOld"><summary>历史版本（v0.24 及更早，点击展开）</summary>
+      <details class="changelogOld"><summary>历史版本（v0.25 及更早，点击展开）</summary>
+        <div class="oldGroup"><h4>v0.25</h4><ul><li>修复手机横屏弹窗裁切：触屏横屏设备按实际可用宽高自动缩放整张战前装配卡；全屏与旋转自动重算；图标拆分为仓库资源文件。</li></ul></div>
         <div class="oldGroup"><h4>v0.24</h4><ul><li>切换为 HTTPS 标准网页运行，撤回实验性视口补丁，恢复已验证稳定的舞台缩放与宽屏铺满。</li></ul></div>
         <div class="oldGroup"><h4>v0.20</h4><ul><li>手机优先舞台缩放架构：1280×720 固定舞台整体等比缩放；面板脱离缩放层原生可读；修复桌面端悬浮提示溢出。</li></ul></div>
         <div class="oldGroup"><h4>v0.19</h4><ul><li>��� App 全屏打包：全屏模式锁定横屏铺满手机；内置 PWA 清单与 iOS/安卓元信息支持添加到主屏幕；刘海屏安全区与防误触适配。</li></ul></div>
@@ -456,9 +480,10 @@
     addMastery(n){for(const k of Object.keys(runeMastery))runeMastery[k]+=n;},masteryInfo(){return{...runeMastery};},
     damageValues(){return {attack:hero.attackPower,fire:runeDamage(runeDefs.fire.coef),ice:runeDamage(runeDefs.ice.coef),lightning:runeDamage(runeDefs.lightning.coef),poison:runeDamage(runeDefs.poison.coef),splash:runeDamage(.24),dot:runeDamage(.12)}},snapshot(){return {monsters:monsters.map(m=>({x:m.x,y:m.y,hp:m.hp,invulnerable:m.invulnerable})),progress:{...progress},equipment:{...equippedItems},inventoryCount:equipmentItems.length,heroStats:{...currentHeroStats},active:activeRunes.map(r=>({type:r.type,slot:r.slot,energy:r.energy,origin:runeOrigin(r),flash:r.flash})),projectiles:projectiles.map(p=>({kind:p.kind,x:p.x,y:p.y})),lastProjectile:window.__lastProjectileSpawn||null}}
   };
+  function updateWallUI(){const f=document.getElementById('wallHpFill'),s=document.getElementById('wallShieldFill'),t=document.getElementById('wallHpText');if(!f)return;const hp=Math.max(0,Math.round(wall.hp));f.style.width=(Math.max(0,wall.hp/wall.maxHp)*100).toFixed(1)+'%';s.style.width=(Math.min(1,wall.shield/wall.maxShield)*100).toFixed(1)+'%';t.textContent='城墙 '+hp+' / '+wall.maxHp+(wall.shield>0?' · 护盾 '+Math.round(wall.shield):'');}
   function update(dt){
     if(!state.running || state.paused || state.result) return;
-    state.time+=dt; state.shake=Math.max(0,state.shake-dt*18); wall.flash=Math.max(0,wall.flash-dt); activeRunes.forEach(r=>{r.energy=Math.min(r.max,r.energy+dt*hero.chargeEfficiency);r.flash=Math.max(0,r.flash-dt)});
+    updateWallUI(); state.time+=dt; state.shake=Math.max(0,state.shake-dt*18); wall.flash=Math.max(0,wall.flash-dt); activeRunes.forEach(r=>{r.energy=Math.min(r.max,r.energy+dt*hero.chargeEfficiency);r.flash=Math.max(0,r.flash-dt)});
     if(state.waveIndex<waves.length){
       const wave=waves[state.waveIndex];
       if(!state.waveStarted){ state.waveTimer-=dt; if(state.waveTimer<=0){state.waveStarted=true; state.spawnTimer=0;} }
@@ -509,7 +534,7 @@
     ctx.fillStyle=wall.flash>0?'#ffce8a':'#8c6b52'; ctx.fillRect(wall.x,wall.y,wall.w,wall.h); ctx.fillStyle='rgba(0,0,0,.25)'; for(let y=wall.y+8;y<wall.y+wall.h;y+=34) ctx.fillRect(wall.x,y,wall.w,3);
     if(wall.shield>0){ ctx.strokeStyle='rgba(102,218,255,.82)'; ctx.lineWidth=5; ctx.beginPath(); ctx.roundRect(wall.x-11,wall.y-8,wall.w+22,wall.h+16,18); ctx.stroke(); }
     // wall hp
-    const hpY=28,hpX=330,hpW=210; ctx.fillStyle='rgba(0,0,0,.34)'; ctx.roundRect(hpX,hpY,hpW,16,8); ctx.fill(); ctx.fillStyle='#ff6067'; ctx.roundRect(hpX,hpY,hpW*Math.max(0,wall.hp/wall.maxHp),16,8); ctx.fill(); if(wall.shield>0){ctx.fillStyle='#66d9ff';ctx.roundRect(hpX,hpY,hpW*Math.min(1,wall.shield/wall.maxShield),5,3);ctx.fill();} ctx.fillStyle='#fff';ctx.font='12px sans-serif';ctx.fillText(`围墙 ${Math.max(0,Math.round(wall.hp))}/${wall.maxHp}  护盾 ${Math.round(wall.shield)}`,hpX+8,hpY+12);
+    /* hp bar moved to bottom bar */
     // monsters
     for(const m of monsters){
       ctx.fillStyle=m.slow>0?'rgba(113,218,255,.28)':'rgba(255,255,255,.0)'; if(m.slow>0){ctx.beginPath();ctx.arc(m.x,m.y,m.r+8,0,Math.PI*2);ctx.fill();}
@@ -549,7 +574,7 @@
   }
   function renderInventory(){const box=document.getElementById('runeInventory');box.innerHTML='';Object.entries(runeDefs).forEach(([key,d])=>{const used=equipped.includes(key),b=document.createElement('button');b.className='runeChoice'+(key===selectedRune?' selected':'')+(used?' locked':'');const mlv=masteryLevel(runeMastery[key]).lv;b.innerHTML=`<div class="runeChoiceHead"><strong>${d.icon} ${d.name}</strong><span class="energyCost">⚡ ${d.max}</span></div><small class="damageCoef">${used?'已装配 · 不可重复':(d.coef?`伤害 ${d.coef} × 攻击力`:'防御型符文')}</small>${mlv?`<small class="runeMastery">✦ 专精 Lv.${mlv}</small>`:''}`;bindRuneHover(b,d,key);if(!used)b.onclick=()=>{selectedRune=key;renderInventory();};box.appendChild(b);});}
   function renderBattleRunes(){battleRunesEl.innerHTML='';if(!activeRunes.length){battleRunesEl.innerHTML='<div class="systemStatus">当前未装配符文：仅英雄自动普攻</div>';battleRuneEls=[];return;}battleRuneEls=activeRunes.map((r,i)=>{const d=runeDefs[r.type],card=document.createElement('div');card.className='rune';const mlv=masteryLevel(runeMastery[r.type]).lv;card.innerHTML=`<div class="runeTop"><span>${i+1}. ${d.icon} ${d.name}${d.coef?` ${d.coef}×`:''}${mlv?` <span class="runeMastery">✦${mlv}</span>`:''}</span><span>0/${r.max}</span></div><div class="bar"><div class="fill ${d.fill}"></div></div>`;bindRuneHover(card,d,r.type);battleRunesEl.appendChild(card);return{card,value:card.querySelector('.runeTop span:last-child'),fill:card.querySelector('.fill')};});}
-  function showLoadout(){AudioEngine.setMode('loadout');state.running=false;runeTooltip.classList.remove('show');equipmentTooltip.classList.remove('show');overlay.classList.add('show');setupCard.style.display='block';resultCard.style.display='none';setSetupTab('rune');renderEquipment();renderLoadout();renderInventory();updateProgressUI();requestAnimationFrame(fitSetupCard);}
+  function showLoadout(){document.body.classList.remove('battle');AudioEngine.setMode('loadout');state.running=false;runeTooltip.classList.remove('show');equipmentTooltip.classList.remove('show');overlay.classList.add('show');setupCard.style.display='block';resultCard.style.display='none';setSetupTab('rune');renderEquipment();renderLoadout();renderInventory();updateProgressUI();requestAnimationFrame(fitSetupCard);}
   function loop(now){ const dt=Math.min(.033,(now-state.last)/1000); state.last=now; update(dt*state.speed); draw(); requestAnimationFrame(loop); }
   const changelogModal=document.getElementById('changelogModal'),masteryModal=document.getElementById('masteryModal');
   const fsBtn=document.getElementById('fsBtn');
@@ -572,7 +597,7 @@
   document.getElementById('masteryClose').onclick=()=>masteryModal.classList.remove('show');
   masteryModal.addEventListener('click',e=>{if(e.target===masteryModal)masteryModal.classList.remove('show');});
   function renderMasteryPanel(){const box=document.getElementById('masteryList');box.innerHTML=Object.entries(runeDefs).map(([k,d])=>{const xp=runeMastery[k],m=masteryLevel(xp),pct=Math.min(100,m.into/m.need*100),bonus=(m.lv*1.5).toFixed(1);const perks=(d.mastery||[]).map(p=>{const on=m.lv>=p.lv;return `<span class="${on?'on':'off'}">${on?'✔':'◈'} Lv.${p.lv} ${p.text}</span>`;}).join('<br>');return `<div class="masteryRow" style="--rune-color:${d.tipColor}"><div class="mIcon">${d.icon}</div><div><span class="mName">${d.name}</span><span class="mLevel">Lv.${m.lv}</span><div class="mBar"><div class="mFill" style="width:${pct}%"></div></div><div class="mXp">${m.into} / ${m.need} 经验（累计 ${xp}）· 每级 +1.5% 伤害</div><div class="mPerks">${perks}</div></div><div class="mBonus">当前加成<br>伤害 +${bonus}%</div></div>`;}).join('');}
-  startBtn.addEventListener('click',()=>{runeTooltip.classList.remove('show');equipmentTooltip.classList.remove('show');reset();});resultBtn.addEventListener('click',showLoadout);nextStageBtn.addEventListener('click',()=>{progress.currentStage=Math.min(progress.maxUnlockedStage,progress.currentStage+1);saveProgress();reset();});
+  startBtn.addEventListener('click',()=>{runeTooltip.classList.remove('show');equipmentTooltip.classList.remove('show');reset();document.body.classList.add('battle');updateWallUI();});resultBtn.addEventListener('click',showLoadout);nextStageBtn.addEventListener('click',()=>{progress.currentStage=Math.min(progress.maxUnlockedStage,progress.currentStage+1);saveProgress();reset();document.body.classList.add('battle');updateWallUI();});
   window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'&&state.running)reset();if(e.code==='Space'&&state.running){state.paused=!state.paused;e.preventDefault();}});
   renderInventory();renderLoadout();requestAnimationFrame(loop);
 })();
