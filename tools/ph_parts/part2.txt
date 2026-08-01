@@ -1,0 +1,51 @@
+  G.hud.gold=this.add.text(W-24,44,'',{fontFamily:'serif',fontSize:'16px',color:'#ffd23f'}).setOrigin(1,0);
+  G.hud.kills=this.add.text(24,18,'',{fontFamily:'serif',fontSize:'16px',color:'#9a8ab8'});
+  // 开始面板（暗黑）
+  showMenu(this);
+}
+function darkPanel(scene,cx,cy,w,h){const g=scene.add.graphics();g.fillStyle(0x120a1c,.92);g.fillRoundedRect(cx-w/2,cy-h/2,w,h,18);g.lineStyle(2,0x6a3fd0,.8);g.strokeRoundedRect(cx-w/2,cy-h/2,w,h,18);g.lineStyle(1,0xffd23f,.35);g.strokeRoundedRect(cx-w/2+5,cy-h/2+5,w-10,h-10,14);return g;}
+function showMenu(scene){
+  G.state='menu';
+  const cx=W/2,cy=H/2;
+  G.menu=[];
+  G.menu.push(darkPanel(scene,cx,cy,520,340));
+  G.menu.push(scene.add.text(cx,cy-110,'爆 战',{fontFamily:'serif',fontSize:'56px',color:'#e8dcff',fontStyle:'bold'}).setOrigin(.5).setShadow(0,0,'#8a3fff',18));
+  G.menu.push(scene.add.text(cx,cy-58,'无 限 弹 幕 · 暗 黑 魔 幻',{fontFamily:'serif',fontSize:'18px',color:'#9a7ad0',letterSpacing:4}).setOrigin(.5));
+  G.menu.push(scene.add.text(cx,cy-8,'坚守石墙，抵御恶魔狂潮',{fontFamily:'serif',fontSize:'16px',color:'#7a6a94'}).setOrigin(.5));
+  const btn=scene.add.text(cx,cy+78,'⚔  进 入 战 斗',{fontFamily:'serif',fontSize:'26px',color:'#1a0f24',backgroundColor:'#c9a6ff',padding:{x:34,y:14}}).setOrigin(.5).setInteractive({useHandCursor:true});
+  btn.setShadow(0,0,'#8a3fff',22);
+  btn.on('pointerover',()=>btn.setStyle({backgroundColor:'#e0ccff'}));
+  btn.on('pointerout',()=>btn.setStyle({backgroundColor:'#c9a6ff'}));
+  btn.on('pointerdown',()=>startBattle(scene));
+  G.menu.push(btn);
+  G.menu.push(scene.add.text(cx,cy+138,'符文技能自动充能释放 · 第 3 波领主降临',{fontFamily:'serif',fontSize:'13px',color:'#5a4a74'}).setOrigin(.5));
+}
+function clearMenu(){if(G.menu)G.menu.forEach(o=>o.destroy());G.menu=null;}
+function startBattle(scene){clearMenu();G.state='battle';G.wave=0;G.time=0;G.kills=0;G.wall.hp=G.wall.max;G.charge={fire:0,ice:0,bolt:0};nextWave(scene);}
+function nextWave(scene){G.wave++;G.spawnQueue=buildWave(G.wave);G.spawnT=0;}
+function buildWave(n){
+  const q=[];const boss=(n===G.waveTotal);
+  const base=n===1?6:n===2?9:12;
+  for(let i=0;i<base;i++){q.push({type:i%4===2?'demon':'skel',at:i*Math.max(.7,1.3-n*.15)});}
+  if(boss){q.push({type:'boss',at:base*.7+3});}
+  return q.sort((a,b)=>a.at-b.at);
+}
+function spawnMonster(scene,type){
+  const scale=1+(G.wave-1)*.15;
+  const x=W+60,y=90+Math.random()*(H-180);
+  const m=scene.add.image(x,y,type).setScale(type==='boss'?1.6:1);
+  m.type=type;m.hp=m.maxHp=Math.round((type==='boss'?900:type==='demon'?180:80)*scale);
+  m.speed=(type==='boss'?18:type==='demon'?30:52)*(1+ (G.wave-1)*.05);
+  m.atk=type==='boss'?60:type==='demon'?30:16;m.atkT=0;m.r=type==='boss'?40:type==='demon'?20:16;m.slow=0;m.hit=0;
+  m.hpBar=scene.add.graphics();
+  scene.tweens.add({targets:m,y:y+(Math.random()<.5?-10:10),duration:1400+Math.random()*800,yoyo:true,repeat:-1,ease:'sine.inout'});
+  m.barUpdate=()=>{m.hpBar.clear();if(m.hp<m.maxHp){m.hpBar.fillStyle(0x000000,.6).fillRect(m.x-m.r,m.y-m.r-12,m.r*2,5);m.hpBar.fillStyle(0x70e19b,1).fillRect(m.x-m.r,m.y-m.r-12,m.r*2*Math.max(0,m.hp/m.maxHp),5);}};
+  if(type==='boss'){scene.cameras.main.shake(400,.012);scene.add.particles(x,y,'fire',{speed:{min:-120,max:120},lifespan:700,scale:{start:1.4,end:0},tint:[0xff3b30,0x8a1f6e],blendMode:'ADD',quantity:24,emitting:false}).explode(24,x,y);}
+  G.monsters.add(m);
+}
+function nearest(){let best=null,sc=-1e9;G.monsters.getChildren().forEach(m=>{if(m.hp<=0)return;const s=W-m.x;if(s>sc){sc=s;best=m;}});return best;}
+function heroAttack(scene){const t=nearest();if(!t)return;const sp=760,dx=t.x-G.hero.x,dy=t.y-G.hero.y,d=Math.hypot(dx,dy)||1;fireBolt(scene,'arrow',G.hero.x+18,G.hero.y,dx/d*sp,dy/d*sp,'arrow',34);}
+function fireBolt(scene,tex,x,y,vx,vy,kind,dmg,pierce){const b=scene.add.image(x,y,tex);b.vx=vx;b.vy=vy;b.kind=kind;b.dmg=dmg;b.pierce=pierce||1;b.hit=new Set();b.rotation=Math.atan2(vy,vx);G.bolts.add(b);return b;}
+function burst(scene,x,y,tex,tint,n,sp){scene.add.particles(x,y,tex,{speed:{min:-(sp||160),max:sp||160},lifespan:{min:300,max:650},scale:{start:1,end:0},tint:tint,blendMode:'ADD',quantity:n||12,emitting:false}).explode(n||12,x,y);}
+function castFire(scene){const t=nearest();if(!t)return;burst(scene,G.hero.x,G.hero.y,'fire',0xff7a2a,6,120);const sp=420,dx=t.x-G.hero.x,dy=t.y-G.hero.y,d=Math.hypot(dx,dy)||1;const b=fireBolt(scene,'fire',G.hero.x,G.hero.y,dx/d*sp,dy/d*sp,'fireball',120);b.tx=t.x;b.ty=t.y;}
+function castIce(scene){const sp=860;let shots=0;G.monsters.getChildren().forEach(m=>{if(shots<1&&m.hp>0){fireBolt(scene,'ice',G.hero.x,G.hero.y,sp,0,'ice',80,3);shots++;}});}
