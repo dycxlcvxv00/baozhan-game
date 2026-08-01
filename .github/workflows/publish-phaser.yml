@@ -1,0 +1,31 @@
+name: Publish Phaser demo
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble phaser.html from parts
+        run: |
+          cat tools/ph_parts/part1.txt > phaser.html
+          printf '\n' >> phaser.html
+          cat tools/ph_parts/part2.txt >> phaser.html
+          printf '\n' >> phaser.html
+          cat tools/ph_parts/part3.txt >> phaser.html
+          echo "assembled bytes: $(wc -c < phaser.html)"
+      - name: Commit phaser.html
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add phaser.html
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "Publish Phaser dark-fantasy rebuild demo (phaser.html)"
+            git push
+          fi
