@@ -36,8 +36,8 @@ rep("calculateHeroStats();equipmentGrid.innerHTML='';warehouseGrid.innerHTML='';
     "calculateHeroStats();equipColLeft.innerHTML='';equipColRight.innerHTML='';warehouseGrid.innerHTML='';", 'J3b')
 rep('slotOrder.forEach(slot=>{const item=itemById(equippedItems[slot]),b=document.createElement(\'button\');',
     'slotOrder.forEach((slot,si)=>{const item=itemById(equippedItems[slot]),b=document.createElement(\'button\');', 'J3c')
-rep(';equipmentGrid.appendChild(b);});equipmentItems.forEach(item=>{',
-    ';(si<5?equipColLeft:equipColRight).appendChild(b);});equipmentItems.forEach(item=>{', 'J3d')
+rep('}equipmentGrid.appendChild(b);});equipmentItems.forEach(item=>{',
+    '}(si<5?equipColLeft:equipColRight).appendChild(b);});equipmentItems.forEach(item=>{', 'J3d')
 
 # ---- J4: remove obsolete stage prev/next bindings ----
 rep("document.getElementById('stagePrev').onclick=()=>changeStage(-1);document.getElementById('stageNext').onclick=()=>changeStage(1);",
