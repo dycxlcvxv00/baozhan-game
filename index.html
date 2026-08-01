@@ -165,7 +165,7 @@
     <section class="topbar">
       <div class="brand">
         <div class="logo">爆</div>
-        <div><h1>爆战丨无限弹幕 Demo v0.31</h1><div class="subtitle">重写底层渲染管线 · 修复移动端卡死</div></div>
+        <div><h1>爆战丨无限弹幕 Demo v0.32</h1><div class="subtitle">修复领主特效负半径 · 彻底根治卡死</div></div>
       </div>
       <div class="stats">
         <div class="pill">关卡 <strong id="stageText">1</strong></div>
@@ -242,13 +242,14 @@
   <div class="changelogModal" id="changelogModal">
     <div class="changelogCard">
       <div class="changelogHead"><h2>📜 版本记录</h2><button id="changelogClose">✕</button></div>
-      <div class="changelogCurrent"><h3>当前版本 · v0.31</h3>
+      <div class="changelogCurrent"><h3>当前版本 · v0.32</h3>
         <ol>
-          <li><b>重写底层渲染管线：</b>静态背景一次性预渲染；移除全部逐帧阴影模糊（移动端 Canvas2D 最大开销）；渲染降为 30 帧、逻辑保持 60 帧。</li>
-          <li><b>节流与兜底：</b>城墙血条等 DOM 写入仅在数值变化时更新；粒子/特效/伤害数字设硬上限；战斗循环加错误捕获，异常时在页面直接显示错误而非静默卡死。</li>
+          <li><b>根治战斗卡死（真凶）：</b>领主登场特效设了 life 却漏设 maxLife，导致光环半径衰减公式算出负值，ctx.arc() 每帧抛异常、渲染循环被杀——每 5 关领主波必现卡死。已为该特效补上 maxLife。</li>
+          <li><b>防御加固：</b>特效绘制统一对半径做非负钳制，任何后续特效即使漏设 maxLife 也不会再因负半径崩溃。</li>
         </ol>
       </div>
-      <details class="changelogOld"><summary>历史版本（v0.30 及更早，点击展开）</summary>
+      <details class="changelogOld"><summary>历史版本（v0.31 及更早，点击展开）</summary>
+        <div class="oldGroup"><h4>v0.31</h4><ul><li>重写底层渲染管线（背景预渲染、去逐帧阴影模糊、渲染降 30 帧、DOM 节流、对象上限、错误兜底）——错误兜底直接暴露了卡死真凶。</li></ul></div>
         <div class="oldGroup"><h4>v0.30</h4><ul><li>地面区域渲染改预渲染精灵缓存、移除逐帧虚线描边、同屏区域上限 12，首次尝试修复战斗卡死。</li></ul></div>
         <div class="oldGroup"><h4>v0.29</h4><ul><li>新增极寒冰场符文与地面区域系统；火球燃烧地面、冰锥冻结、护盾震退三项进阶实装；领主登场提示、波次倒计时、胜利金色闪光。</li></ul></div>
         <div class="oldGroup"><h4>v0.28</h4><ul><li>属性面板改为可滚动修复截断；15 项属性新增作用说明提示框（桌面悬浮 / 触屏点击）。</li></ul></div>
@@ -432,7 +433,7 @@
   function spawn(type){
     const tank=type==='tank',fast=type==='fast',boss=type==='boss',scale=1+(progress.currentStage-1)*.16,atkScale=1+(progress.currentStage-1)*.09;
     const spawnCol=Math.floor(Math.random()*3),spawnX=W-120+spawnCol*48+(Math.random()-.5)*18,baseHp=boss?1500:tank?300:fast?70:100,baseAtk=boss?70:tank?35:fast?16:20;
-    if(type==='boss'){state.shake=Math.max(state.shake,12);effects.push({x:W-140,y:H/2,r:40,max:320,color:'rgba(255,189,63,.4)',life:.8});dmgTexts.push({x:W-240,y:80,text:'领主来袭！',color:'#ffbd3f',life:1.6,vy:-10});}
+    if(type==='boss'){state.shake=Math.max(state.shake,12);effects.push({x:W-140,y:H/2,r:40,max:320,color:'rgba(255,189,63,.4)',life:.8,maxLife:.8});dmgTexts.push({x:W-240,y:80,text:'领主来袭！',color:'#ffbd3f',life:1.6,vy:-10});}
     monsters.push({x:spawnX,y:74+Math.random()*(H-148),r:boss?28:tank?18:fast?10:13,maxHp:Math.round(baseHp*scale),hp:Math.round(baseHp*scale),speed:boss?26:tank?34:fast?82:52,atk:Math.round(baseAtk*atkScale),atkInterval:boss?1.35:tank?1.8:fast?1.1:1.5,atkTimer:0,slow:0,poisonTime:0,poisonTimer:0,invulnerable:1,dead:false,type,flash:0,id:Math.random()});
   }
   function addEnergy(kind,n){ const t=kind==='all'?null:kind; activeRunes.forEach(r=>{if(!t||r.type===t)r.energy=Math.min(r.max,r.energy+n*(t?masteryMult(t):1));}); }
@@ -572,7 +573,7 @@
     // projectiles
     for(const p of projectiles){ ctx.save(); ctx.translate(p.x,p.y); const a=Math.atan2(p.vy,p.vx); ctx.rotate(a); if(p.kind==='fireball'){ ctx.fillStyle='#ff9b45';ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,200,100,.35)';ctx.fillRect(-30,-4,28,8); } else if(p.kind==='ice'){ctx.fillStyle='#9beaff';ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-10,-8);ctx.lineTo(-4,0);ctx.lineTo(-10,8);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(130,220,255,.28)';ctx.fillRect(-34,-3,28,6);} else if(p.kind==='poison'){ctx.fillStyle='#84e779';ctx.fillRect(-12,-3,24,6);ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(5,-7);ctx.lineTo(5,7);ctx.closePath();ctx.fill();} else { ctx.fillStyle='#ffe9b0';ctx.fillRect(-10,-2,22,4);ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(4,-6);ctx.lineTo(4,6);ctx.closePath();ctx.fill(); } ctx.restore(); }
     // effects
-    for(const e of effects){ const t=e.life/(e.maxLife||.55);ctx.strokeStyle=e.color;ctx.fillStyle=e.color;ctx.lineWidth=e.noFill?3:4;if(e.wall){ctx.beginPath();ctx.roundRect(wall.x-18,wall.y-14,wall.w+36,wall.h+28,22);ctx.stroke();}else if(e.chain){ctx.save();ctx.beginPath();e.points.forEach((p,i)=>{const jx=i?((Math.random()-.5)*8):0,jy=i?((Math.random()-.5)*8):0;i?ctx.lineTo(p.x+jx,p.y+jy):ctx.moveTo(p.x,p.y);});ctx.stroke();ctx.restore();}else if(e.cloud){ctx.globalAlpha=Math.min(1,t);ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}else{const pr=Math.max(0,t);ctx.globalAlpha=Math.min(1,pr*1.4);ctx.beginPath();ctx.arc(e.x,e.y,e.max*(1-pr)+e.r,0,Math.PI*2);e.fill?ctx.fill():ctx.stroke();ctx.globalAlpha=1;}}
+    for(const e of effects){ const t=e.life/(e.maxLife||.55);ctx.strokeStyle=e.color;ctx.fillStyle=e.color;ctx.lineWidth=e.noFill?3:4;if(e.wall){ctx.beginPath();ctx.roundRect(wall.x-18,wall.y-14,wall.w+36,wall.h+28,22);ctx.stroke();}else if(e.chain){ctx.save();ctx.beginPath();e.points.forEach((p,i)=>{const jx=i?((Math.random()-.5)*8):0,jy=i?((Math.random()-.5)*8):0;i?ctx.lineTo(p.x+jx,p.y+jy):ctx.moveTo(p.x,p.y);});ctx.stroke();ctx.restore();}else if(e.cloud){ctx.globalAlpha=Math.min(1,t);ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}else{const pr=Math.max(0,Math.min(1,t));ctx.globalAlpha=Math.min(1,pr*1.4);ctx.beginPath();ctx.arc(e.x,e.y,Math.max(0,e.max*(1-pr)+e.r),0,Math.PI*2);e.fill?ctx.fill():ctx.stroke();ctx.globalAlpha=1;}}
     for(const q of particles){ctx.save();ctx.globalAlpha=Math.min(1,q.life*2);ctx.translate(q.x,q.y);ctx.rotate(q.rot);ctx.fillStyle=q.color;ctx.fillRect(-q.size/2,-q.size/2,q.size,q.size*.65);ctx.restore();}ctx.globalAlpha=1;
     for(const f of state.flashes){ ctx.fillStyle=`rgba(${f.color},${(f.life/f.maxLife)*f.alpha})`; ctx.fillRect(0,0,W,H); }
     // damage texts
