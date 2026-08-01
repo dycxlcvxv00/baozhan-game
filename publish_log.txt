@@ -5,8 +5,8 @@ css_exit=0
 v033 html done
 html_exit=0
 === js ===
-J3d anchor count=0
-js_exit=1
+v033 js done
+js_exit=0
 === ver ===
 published v0.33
 ver_exit=0
