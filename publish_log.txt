@@ -1,0 +1,12 @@
+=== css ===
+v033 css done
+css_exit=0
+=== html ===
+v033 html done
+html_exit=0
+=== js ===
+J3d anchor count=0
+js_exit=1
+=== ver ===
+published v0.33
+ver_exit=0
