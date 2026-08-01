@@ -165,7 +165,7 @@
     <section class="topbar">
       <div class="brand">
         <div class="logo">爆</div>
-        <div><h1>爆战丨无限弹幕 Demo v0.29</h1><div class="subtitle">极寒冰场新符文 · 地面区域系统 · 战斗流程强化</div></div>
+        <div><h1>爆战丨无限弹幕 Demo v0.30</h1><div class="subtitle">修复战斗卡死 · 地面区域渲染优化</div></div>
       </div>
       <div class="stats">
         <div class="pill">关卡 <strong id="stageText">1</strong></div>
@@ -242,14 +242,14 @@
   <div class="changelogModal" id="changelogModal">
     <div class="changelogCard">
       <div class="changelogHead"><h2>📜 版本记录</h2><button id="changelogClose">✕</button></div>
-      <div class="changelogCurrent"><h3>当前版本 · v0.29</h3>
+      <div class="changelogCurrent"><h3>当前版本 · v0.30</h3>
         <ol>
-          <li><b>新符文「极寒冰场」：</b>第 6 个可选符文，在城墙前生成持续 4 秒的冰场，每秒造成攻击力 50% 冰霜伤害并减速；专精 Lv.5 持续 +2 秒、Lv.10 伤害 +25%。</li>
-          <li><b>符文进阶实装：</b>爆裂火球爆炸后留下燃烧地面 2 秒；寒冰锥刺命中已减速目标时追加短冻结；坚壁符文护盾被击破时震退并短暂冻结城墙前怪物。</li>
-          <li><b>战斗流程强化：</b>领主登场震屏与「领主来袭」提示；波次与下一波倒计时直接绘制在战场内；怪物冻结表现；胜利时全屏金色闪光。</li>
+          <li><b>修复战斗中卡死：</b>地面区域（燃烧地面 / 极寒冰场）每帧实时计算径向渐变与虚线描边，在移动端浏览器开销过大导致页面卡死。</li>
+          <li><b>区域渲染优化：</b>区域改为预渲染精灵缓存，每帧仅绘制图片；移除逐帧虚线描边；同屏区域数量上限 12 个，超出的旧区域自动移除。</li>
         </ol>
       </div>
-      <details class="changelogOld"><summary>历史版本（v0.28 及更早，点击展开）</summary>
+      <details class="changelogOld"><summary>历史版本（v0.29 及更早，点击展开）</summary>
+        <div class="oldGroup"><h4>v0.29</h4><ul><li>新增极寒冰场符文与地面区域系统；火球燃烧地面、冰锥冻结、护盾震退三项进阶实装；领主登场提示、波次倒计时、胜利金色闪光。</li></ul></div>
         <div class="oldGroup"><h4>v0.28</h4><ul><li>属性面板改为可滚动修复截断；15 项属性新增作用说明提示框（桌面悬浮 / 触屏点击）。</li></ul></div>
         <div class="oldGroup"><h4>v0.27</h4><ul><li>属性体系实装：最终属性 = 英雄基础 + 装备汇入 + 符文独立属性；五个符文获得独立暴击/元素/技能伤害面板；属性面板扩至 15 项。</li></ul></div>
         <div class="oldGroup"><h4>v0.26</h4><ul><li>界面布局重构：功能大标签集中到首页，战斗中顶栏精简，城墙血条移至底部栏目中心并预留符咒卡牌槽位。</li></ul></div>
@@ -307,6 +307,8 @@
   function runeOrigin(r){return runeSlotPositions[r.slot]||hero;}
   const wall = {x:360,y:0,w:34,h:H,hp:1000,maxHp:1000,shield:0,maxShield:420,flash:0};
   const monsters=[], projectiles=[], effects=[], particles=[], dmgTexts=[], zones=[];
+  const zoneSpriteCache={};
+  function makeZoneSprite(type,r){const key=type+':'+Math.round(r);if(zoneSpriteCache[key])return zoneSpriteCache[key];const c=document.createElement('canvas');c.width=c.height=Math.ceil(r*2);const x=c.getContext('2d');const col=type==='burn'?'255,140,60':'120,205,255';const g=x.createRadialGradient(r,r,r*.08,r,r,r);g.addColorStop(0,`rgba(${col},.30)`);g.addColorStop(1,`rgba(${col},0)`);x.fillStyle=g;x.beginPath();x.arc(r,r,r-1,0,Math.PI*2);x.fill();x.strokeStyle=`rgba(${col},.4)`;x.lineWidth=2;x.beginPath();x.arc(r,r,r-2,0,Math.PI*2);x.stroke();zoneSpriteCache[key]=c;return c;}
   const runeDefs = {
     fire:{name:'爆裂火球',icon:'🔥',max:35,coef:1.2,attrs:{crit:.05,critDmg:.25,elem:.20,skill:.10},perk:'范围 +15% · 伤害 +15%',color:'rgba(255,151,70,.38)',tipColor:'#ff9746',fill:'',tags:['火焰','投射物','范围','爆发'],mastery:[{lv:5,text:'爆炸范围 +15%'},{lv:10,text:'爆炸伤害 +15%'}],description:'从所在符文槽发射一枚火球，锁定怪物最密集区域。命中后爆炸，对范围内所有敌人造成英雄攻击力 120% 的火焰伤害；范围伤害不随距离衰减。'},
     ice:{name:'寒冰锥刺',icon:'❄️',max:45,coef:.8,attrs:{crit:.05,critDmg:.15,elem:.20,skill:.10},perk:'穿透 +1 · 减速 45%',color:'rgba(93,205,255,.34)',tipColor:'#65d7ff',fill:'ice',tags:['冰霜','投射物','穿透','减速'],mastery:[{lv:5,text:'穿透次数 +1'},{lv:10,text:'减速提升至 45%'}],description:'从所在符文槽向距离围墙最近的敌人发射寒冰锥投射物。冰锥可连续穿透 3 个敌人，每次造成英雄攻击力 80% 的冰霜伤害，并使目标减速 30%，持续 3 秒。'},
@@ -521,6 +523,7 @@
     for(let i=particles.length-1;i>=0;i--){const q=particles[i];q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.97;q.vy=q.vy*.97+120*dt;q.rot+=q.vr*dt;if(q.life<=0)particles.splice(i,1);}
     for(let i=dmgTexts.length-1;i>=0;i--){ const t=dmgTexts[i]; t.life-=dt; t.y+=t.vy*dt; if(t.life<=0) dmgTexts.splice(i,1); }
     for(let i=state.flashes.length-1;i>=0;i--){ state.flashes[i].life-=dt; if(state.flashes[i].life<=0) state.flashes.splice(i,1); }
+    if(zones.length>12)zones.splice(0,zones.length-12);
     for(let i=zones.length-1;i>=0;i--){const z=zones[i];z.duration-=dt;z.tick-=dt;if(z.tick<=0){z.tick=z.type==='burn'?.5:1;for(const m of monsters){if(m.dead||m.invulnerable>0)continue;if(Math.hypot(m.x-z.x,m.y-z.y)<z.r+m.r){damageMonster(m,z.dps,z.type==='burn'?'fire':'ice');m.slow=Math.max(m.slow,.8);}}}
       if(z.duration<=0)zones.splice(i,1);}
   }
@@ -539,7 +542,7 @@
     const grd=ctx.createLinearGradient(0,0,W,0); grd.addColorStop(0,'#20172a'); grd.addColorStop(.32,'#191521'); grd.addColorStop(.35,'#352315'); grd.addColorStop(1,'#161821'); ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='rgba(255,255,255,.035)'; for(let x=0;x<W;x+=48){ctx.fillRect(x,0,1,H)} for(let y=0;y<H;y+=48){ctx.fillRect(0,y,W,1)}
     ctx.fillStyle='rgba(255,180,80,.08)'; ctx.fillRect(0,0,wall.x,H); ctx.fillStyle='rgba(120,170,255,.06)'; ctx.fillRect(wall.x+wall.w,0,W-wall.x-wall.w,H);
-    for(const z of zones){const g=ctx.createRadialGradient(z.x,z.y,10,z.x,z.y,z.r);const col=z.type==='burn'?'255,140,60':'120,205,255';g.addColorStop(0,`rgba(${col},.30)`);g.addColorStop(1,`rgba(${col},0)`);ctx.fillStyle=g;ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle=`rgba(${col},.35)`;ctx.lineWidth=1.5;ctx.setLineDash([6,6]);ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
+    for(const z of zones){const sp=makeZoneSprite(z.type,z.r);ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,z.duration*1.5));ctx.drawImage(sp,z.x-z.r,z.y-z.r,z.r*2,z.r*2);ctx.restore();}
     const wv=waves[state.waveIndex];if(wv&&!state.result){ctx.fillStyle='rgba(255,255,255,.78)';ctx.font='bold 14px "Segoe UI",sans-serif';ctx.textAlign='left';let txt='⚔ '+wv.label+' / 共 '+waves.length+' 波';if(!state.waveStarted&&state.waveTimer>0)txt+=' · 倒计时 '+state.waveTimer.toFixed(1)+'s';ctx.fillText(txt,wall.x+18,28);}
     ctx.fillStyle='rgba(255,255,255,.25)'; ctx.font='700 13px sans-serif'; ctx.fillText('玩家区域',34,32); ctx.fillText('怪物出生区域',W-160,32);
     // rune saw array
