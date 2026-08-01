@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0a0710"/>
+<title>爆战丨无限弹幕 · Phaser 重构 Demo（暗黑魔幻）</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  html,body{margin:0;height:100%;background:#060409;overflow:hidden;font-family:"Segoe UI","Noto Sans SC",serif}
+  #gameWrap{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(1200px 600px at 50% 30%,#1a0f24 0%,#0a0710 55%,#050308 100%)}
+  canvas{display:block;box-shadow:0 0 80px rgba(120,40,180,.25),0 0 30px rgba(255,60,60,.08)}
+  #tip{position:fixed;left:0;right:0;bottom:8px;text-align:center;color:#8a7aa0;font-size:11px;letter-spacing:2px;pointer-events:none;z-index:5}
+</style>
+</head>
+<body>
+<div id="gameWrap"></div>
+<div id="tip">爆战 · Phaser 重构 Demo · 暗黑魔幻</div>
+<script>
+const W=1280,H=720;
+const CFG={type:Phaser.AUTO,parent:'gameWrap',width:W,height:H,backgroundColor:'#0a0710',
+  scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
+  render:{antialias:true},scene:{create:create,update:update}};
+const G={wall:null,hero:null,monsters:null,bolts:null,state:'menu',wave:0,waveTotal:3,gold:0,kills:0,time:0,spawnQueue:[],spawnT:0,charge:{fire:0,ice:0,bolt:0},shakeT:0};
+const COST={fire:35,ice:45,bolt:55};
+
+function makeTex(scene,key,w,h,draw){const g=scene.make.graphics({x:0,y:0,add:false});draw(g,w,h);g.generateTexture(key,w,h);g.destroy();}
+function glowCircle(g,cx,cy,r,color,a1){for(let i=3;i>=1;i--){g.fillStyle(color,(a1/i)*0.5);g.fillCircle(cx,cy,r*i/1.6);}g.fillStyle(color,a1);g.fillCircle(cx,cy,r*0.55);}
+
+function buildTextures(scene){
+  // 哥特巫师（英雄）
+  makeTex(scene,'hero',64,64,(g)=>{glowCircle(g,32,34,20,0x7a4fd0,.9);g.fillStyle(0x2a1a3f,1);g.fillTriangle(32,4,12,40,52,40);g.fillStyle(0x0c0716,1);g.fillCircle(32,34,13);glowCircle(g,26,32,4,0xb98cff,1);glowCircle(g,38,32,4,0xb98cff,1);});
+  // 骷髅兵
+  makeTex(scene,'skel',48,48,(g)=>{glowCircle(g,24,22,15,0xcfc8bb,.85);g.fillStyle(0x0c0716,1);g.fillCircle(18,20,4);g.fillCircle(30,20,4);g.fillStyle(0xcfc8bb,1);g.fillRect(16,30,16,5);g.fillStyle(0x0c0716,1);for(let i=0;i<4;i++)g.fillRect(17+i*4,30,2,5);});
+  // 恶魔战鬼
+  makeTex(scene,'demon',56,56,(g)=>{glowCircle(g,28,30,18,0xc03048,.9);g.fillStyle(0x30101a,1);g.fillTriangle(14,16,6,2,22,14);g.fillTriangle(42,16,50,2,34,14);glowCircle(g,22,28,4,0xffd23f,1);glowCircle(g,34,28,4,0xffd23f,1);});
+  // 领主
+  makeTex(scene,'boss',96,96,(g)=>{glowCircle(g,48,52,34,0x8a1f6e,.95);g.fillStyle(0x1c0a1a,1);g.fillTriangle(28,30,14,4,40,26);g.fillTriangle(68,30,82,4,56,26);glowCircle(g,38,48,6,0xff3b30,1);glowCircle(g,58,48,6,0xff3b30,1);g.lineStyle(3,0xffd23f,.8);g.strokeCircle(48,52,40);});
+  // 英雄箭矢（金）
+  makeTex(scene,'arrow',22,8,(g)=>{glowCircle(g,16,4,4,0xffd76a,1);g.fillStyle(0xffe9b0,.9);g.fillRect(0,3,16,2);});
+  // 火球
+  makeTex(scene,'fire',26,26,(g)=>{glowCircle(g,13,13,11,0xff7a2a,1);glowCircle(g,13,13,6,0xffe08a,1);});
+  // 冰枪
+  makeTex(scene,'ice',30,12,(g)=>{glowCircle(g,22,6,6,0x9beaff,1);g.fillStyle(0xcfefff,.9);g.fillTriangle(28,6,6,1,6,11);});
+  // 雷球
+  makeTex(scene,'bolt',22,22,(g)=>{glowCircle(g,11,11,9,0xfff36b,1);glowCircle(g,11,11,5,0xffffff,1);});
+  // 符文底
+  makeTex(scene,'runeBg',40,40,(g)=>{g.fillStyle(0x1c1228,.9);g.fillCircle(20,20,18);g.lineStyle(2,0x8a5cff,.9);g.strokeCircle(20,20,17);});
+  // 石墙
+  makeTex(scene,'stone',40,40,(g)=>{g.fillStyle(0x241a2e,1);g.fillRect(0,0,40,40);g.lineStyle(2,0x0c0716,1);g.strokeRect(1,1,38,38);g.fillStyle(0x3a2a48,.6);g.fillRect(4,4,14,10);g.fillRect(22,20,14,10);});
+}
+
+function create(){
+  buildTextures(this);
+  // 暗黑氛围背景
+  this.add.graphics().fillGradientStyle(0x14081f,0x14081f,0x050308,0x050308,1).fillRect(0,0,W,H);
+  this.add.particles(0,0,'fire',{x:{min:0,max:W},y:{min:H,max:H+40},speedY:{min:-30,max:-70},speedX:{min:-10,max:10},scale:{min:.4,max:1},alpha:{start:.6,end:0},lifespan:4000,frequency:180,tint:[0xff5a2a,0xb03a8a,0x6a3fd0],blendMode:'ADD',quantity:2});
+  this.add.particles(0,0,'ice',{x:{min:0,max:W},y:{min:-40,max:H},speedY:{min:8,max:22},scale:{min:.2,max:.5},alpha:{start:.25,end:0},lifespan:6000,frequency:400,tint:[0x6a5f9a,0x4a3f7a],blendMode:'ADD',quantity:1});
+  // 石墙
+  for(let y=0;y<H;y+=40)for(let x=0;x<64;x+=40)this.add.image(x+20,y+20,'stone').setTint(0x8a7aa0);
+  G.wall={hp:1000,max:1000,x:64};
+  G.wallBar=this.add.graphics();
+  // 英雄
+  G.hero=this.add.image(180,H/2,'hero').setScale(1.1);
+  this.tweens.add({targets:G.hero,y:H/2-8,duration:1600,yoyo:true,repeat:-1,ease:'sine.inout'});
+  // 组
+  G.monsters=this.add.group();
+  G.bolts=this.add.group();
+  // HUD（暗黑哥特风）
+  G.hud={};
+  G.hud.wave=this.add.text(W-24,18,'',{fontFamily:'serif',fontSize:'20px',color:'#d8c8ff'}).setOrigin(1,0);
+  G.hud.gold=this.add.text(W-24,44,'',{fontFamily:'serif',fontSize:'16px',color:'#ffd23f'}).setOrigin(1,0);
+  G.hud.kills=this.add.text(24,18,'',{fontFamily:'serif',fontSize:'16px',color:'#9a8ab8'});
+  // 开始面板（暗黑）
+  showMenu(this);
+}
+function darkPanel(scene,cx,cy,w,h){const g=scene.add.graphics();g.fillStyle(0x120a1c,.92);g.fillRoundedRect(cx-w/2,cy-h/2,w,h,18);g.lineStyle(2,0x6a3fd0,.8);g.strokeRoundedRect(cx-w/2,cy-h/2,w,h,18);g.lineStyle(1,0xffd23f,.35);g.strokeRoundedRect(cx-w/2+5,cy-h/2+5,w-10,h-10,14);return g;}
+function showMenu(scene){
+  G.state='menu';
+  const cx=W/2,cy=H/2;
+  G.menu=[];
+  G.menu.push(darkPanel(scene,cx,cy,520,340));
+  G.menu.push(scene.add.text(cx,cy-110,'爆 战',{fontFamily:'serif',fontSize:'56px',color:'#e8dcff',fontStyle:'bold'}).setOrigin(.5).setShadow(0,0,'#8a3fff',18));
+  G.menu.push(scene.add.text(cx,cy-58,'无 限 弹 幕 · 暗 黑 魔 幻',{fontFamily:'serif',fontSize:'18px',color:'#9a7ad0',letterSpacing:4}).setOrigin(.5));
+  G.menu.push(scene.add.text(cx,cy-8,'坚守石墙，抵御恶魔狂潮',{fontFamily:'serif',fontSize:'16px',color:'#7a6a94'}).setOrigin(.5));
+  const btn=scene.add.text(cx,cy+78,'⚔  进 入 战 斗',{fontFamily:'serif',fontSize:'26px',color:'#1a0f24',backgroundColor:'#c9a6ff',padding:{x:34,y:14}}).setOrigin(.5).setInteractive({useHandCursor:true});
+  btn.setShadow(0,0,'#8a3fff',22);
+  btn.on('pointerover',()=>btn.setStyle({backgroundColor:'#e0ccff'}));
+  btn.on('pointerout',()=>btn.setStyle({backgroundColor:'#c9a6ff'}));
+  btn.on('pointerdown',()=>startBattle(scene));
+  G.menu.push(btn);
+  G.menu.push(scene.add.text(cx,cy+138,'符文技能自动充能释放 · 第 3 波领主降临',{fontFamily:'serif',fontSize:'13px',color:'#5a4a74'}).setOrigin(.5));
+}
+function clearMenu(){if(G.menu)G.menu.forEach(o=>o.destroy());G.menu=null;}
+function startBattle(scene){clearMenu();G.state='battle';G.wave=0;G.time=0;G.kills=0;G.wall.hp=G.wall.max;G.charge={fire:0,ice:0,bolt:0};nextWave(scene);}
+function nextWave(scene){G.wave++;G.spawnQueue=buildWave(G.wave);G.spawnT=0;}
+function buildWave(n){
+  const q=[];const boss=(n===G.waveTotal);
+  const base=n===1?6:n===2?9:12;
+  for(let i=0;i<base;i++){q.push({type:i%4===2?'demon':'skel',at:i*Math.max(.7,1.3-n*.15)});}
+  if(boss){q.push({type:'boss',at:base*.7+3});}
+  return q.sort((a,b)=>a.at-b.at);
+}
+function spawnMonster(scene,type){
+  const scale=1+(G.wave-1)*.15;
+  const x=W+60,y=90+Math.random()*(H-180);
+  const m=scene.add.image(x,y,type).setScale(type==='boss'?1.6:1);
+  m.type=type;m.hp=m.maxHp=Math.round((type==='boss'?900:type==='demon'?180:80)*scale);
+  m.speed=(type==='boss'?18:type==='demon'?30:52)*(1+ (G.wave-1)*.05);
+  m.atk=type==='boss'?60:type==='demon'?30:16;m.atkT=0;m.r=type==='boss'?40:type==='demon'?20:16;m.slow=0;m.hit=0;
+  m.hpBar=scene.add.graphics();
+  scene.tweens.add({targets:m,y:y+(Math.random()<.5?-10:10),duration:1400+Math.random()*800,yoyo:true,repeat:-1,ease:'sine.inout'});
+  m.barUpdate=()=>{m.hpBar.clear();if(m.hp<m.maxHp){m.hpBar.fillStyle(0x000000,.6).fillRect(m.x-m.r,m.y-m.r-12,m.r*2,5);m.hpBar.fillStyle(0x70e19b,1).fillRect(m.x-m.r,m.y-m.r-12,m.r*2*Math.max(0,m.hp/m.maxHp),5);}};
+  if(type==='boss'){scene.cameras.main.shake(400,.012);scene.add.particles(x,y,'fire',{speed:{min:-120,max:120},lifespan:700,scale:{start:1.4,end:0},tint:[0xff3b30,0x8a1f6e],blendMode:'ADD',quantity:24,emitting:false}).explode(24,x,y);}
+  G.monsters.add(m);
+}
+function nearest(){let best=null,sc=-1e9;G.monsters.getChildren().forEach(m=>{if(m.hp<=0)return;const s=W-m.x;if(s>sc){sc=s;best=m;}});return best;}
+function heroAttack(scene){const t=nearest();if(!t)return;const sp=760,dx=t.x-G.hero.x,dy=t.y-G.hero.y,d=Math.hypot(dx,dy)||1;fireBolt(scene,'arrow',G.hero.x+18,G.hero.y,dx/d*sp,dy/d*sp,'arrow',34);}
+function fireBolt(scene,tex,x,y,vx,vy,kind,dmg,pierce){const b=scene.add.image(x,y,tex);b.vx=vx;b.vy=vy;b.kind=kind;b.dmg=dmg;b.pierce=pierce||1;b.hit=new Set();b.rotation=Math.atan2(vy,vx);G.bolts.add(b);return b;}
+function burst(scene,x,y,tex,tint,n,sp){scene.add.particles(x,y,tex,{speed:{min:-(sp||160),max:sp||160},lifespan:{min:300,max:650},scale:{start:1,end:0},tint:tint,blendMode:'ADD',quantity:n||12,emitting:false}).explode(n||12,x,y);}
+function castFire(scene){const t=nearest();if(!t)return;burst(scene,G.hero.x,G.hero.y,'fire',0xff7a2a,6,120);const sp=420,dx=t.x-G.hero.x,dy=t.y-G.hero.y,d=Math.hypot(dx,dy)||1;const b=fireBolt(scene,'fire',G.hero.x,G.hero.y,dx/d*sp,dy/d*sp,'fireball',120);b.tx=t.x;b.ty=t.y;}
+function castIce(scene){const sp=860;let shots=0;G.monsters.getChildren().forEach(m=>{if(shots<1&&m.hp>0){fireBolt(scene,'ice',G.hero.x,G.hero.y,sp,0,'ice',80,3);shots++;}});}
+function castBolt(scene){const t=nearest();if(!t)return;burst(scene,t.x,t.y,'bolt',0xfff36b,14,200);let dmg=90;let cur=t,hitN=0;const hitSet=new Set();while(cur&&hitN<5){damageMonster(scene,cur,dmg,'lightning');hitSet.add(cur);dmg*=.85;hitN++;let nxt=null,bd=1e9;G.monsters.getChildren().forEach(m=>{if(m.hp>0&&!hitSet.has(m)){const d=Math.hypot(m.x-cur.x,m.y-cur.y);if(d<bd){bd=d;nxt=m;}}});if(nxt&&bd<260){burst(scene,nxt.x,nxt.y,'bolt',0xfff36b,8,160);cur=nxt;}else break;}scene.cameras.main.flash(60,255,240,150);}
+function damageMonster(scene,m,dmg,elem){if(m.hp<=0)return;m.hp-=dmg;m.hit=.12;m.setTint(0xffffff);burst(scene,m.x,m.y,elem==='fire'?'fire':elem==='ice'?'ice':'arrow',elem==='lightning'?0xfff36b:0xffffff,4,100);if(m.hp<=0)killMonster(scene,m);}
+function killMonster(scene,m){G.kills++;G.gold+=m.type==='boss'?200:m.type==='demon'?15:8;burst(scene,m.x,m.y,m.type==='boss'?'fire':'skel',m.type==='boss'?0xff3b30:0xcfc8bb,m.type==='boss'?30:10,m.type==='boss'?260:160);if(m.type==='boss')scene.cameras.main.shake(300,.01);if(m.hpBar)m.hpBar.destroy();m.destroy();}
+function endBattle(scene,win){G.state=win?'win':'lose';const cx=W/2,cy=H/2;darkPanel(scene,cx,cy,440,240);scene.add.text(cx,cy-60,win?'胜  利':'石墙告破',{fontFamily:'serif',fontSize:'40px',color:win?'#ffd23f':'#ff5f64'}).setOrigin(.5).setShadow(0,0,win?'#ffd23f':'#ff3b30',18);scene.add.text(cx,cy+2,win?`恶魔狂潮已被击退\n金币 +${G.gold}`:'恶魔踏破了城墙',{fontFamily:'serif',fontSize:'16px',color:'#9a8ab8',align:'center'}).setOrigin(.5);const btn=scene.add.text(cx,cy+78,'再 战 一 场',{fontFamily:'serif',fontSize:'22px',color:'#1a0f24',backgroundColor:'#c9a6ff',padding:{x:28,y:12}}).setOrigin(.5).setInteractive({useHandCursor:true});btn.on('pointerdown',()=>{scene.scene.restart();});}
+
+function update(time,delta){
+  const dt=Math.min(.05,delta/1000);
+  // 石墙血条
+  G.wallBar.clear();G.wallBar.fillStyle(0x000000,.6).fillRect(8,H-26,220,14);G.wallBar.fillStyle(0xb03040,1).fillRect(8,H-26,220*Math.max(0,G.wall.hp/G.wall.max),14);G.wallBar.lineStyle(1,0xffd23f,.5).strokeRect(8,H-26,220,14);
+  G.hud.wave.setText(G.state==='battle'?`第 ${G.wave} 波 / 共 ${G.waveTotal} 波`:'');
+  G.hud.gold.setText(`金币 ${G.gold}`);G.hud.kills.setText(`击杀 ${G.kills}`);
+  if(G.state!=='battle')return;
+  G.time+=dt;
+  // 出怪
+  G.spawnT+=dt;
+  for(const it of G.spawnQueue){if(!it.done&&G.spawnT>=it.at){spawnMonster(this,it.type);it.done=true;}}
+  // 英雄自动普攻
+  G.atkT=(G.atkT||0)-dt;if(G.atkT<=0){G.atkT=1.0;heroAttack(this);}
+  // 技能充能自动释放
+  G.charge.fire+=dt*8;G.charge.ice+=dt*8;G.charge.bolt+=dt*8;
+  if(G.charge.fire>=COST.fire){G.charge.fire=0;castFire(this);}
+  if(G.charge.ice>=COST.ice){G.charge.ice=0;castIce(this);}
+  if(G.charge.bolt>=COST.bolt){G.charge.bolt=0;castBolt(this);}
+  // 怪物推进与攻城
+  G.monsters.getChildren().forEach(m=>{
+    m.hit=Math.max(0,(m.hit||0)-dt);if(m.hit<=0)m.clearTint();
+    m.slow=Math.max(0,(m.slow||0)-dt);
+    if(m.x-m.r>G.wall.x){m.x-=m.speed*(m.slow>0?.5:1)*dt;}
+    else{m.atkT-=dt;if(m.atkT<=0){m.atkT=1.4;G.wall.hp-=m.atk;this.cameras.main.shake(80,.004);burst(this,m.x,m.y,'fire',0xff5f64,4,90);if(G.wall.hp<=0)endBattle(this,false);}}
+    if(m.barUpdate)m.barUpdate();
+  });
+  // 投射物
+  G.bolts.getChildren().forEach(b=>{
+    b.x+=b.vx*dt;b.y+=b.vy*dt;
+    if(b.kind==='fireball'&&b.tx&&Math.hypot(b.x-b.tx,b.y-b.ty)<26){burst(this,b.x,b.y,'fire',[0xff7a2a,0xffd23f],20,240);G.monsters.getChildren().forEach(m=>{if(m.hp>0&&Math.hypot(m.x-b.x,m.y-b.y)<90)damageMonster(this,m,b.dmg,'fire');});b.destroy();return;}
+    let dead=b.x>W+60||b.x<-60||b.y<-60||b.y>H+60;
+    if(!dead){for(const m of G.monsters.getChildren()){if(m.hp>0&&!b.hit.has(m)&&Math.hypot(m.x-b.x,m.y-b.y)<m.r+8){b.hit.add(m);if(b.kind==='arrow')damageMonster(this,m,b.dmg,'arrow');else if(b.kind==='ice'){damageMonster(this,m,b.dmg,'ice');m.slow=3;}b.pierce--;if(b.pierce<=0){dead=true;break;}}}}
+    if(dead)b.destroy();
+  });
+  // 胜负判定
+  const allSpawned=G.spawnQueue.every(i=>i.done);
+  if(allSpawned&&G.monsters.getChildren().length===0){if(G.wave>=G.waveTotal)endBattle(this,true);else nextWave(this);}
+}
+const game=new Phaser.Game(CFG);
+</script>
+</body>
+</html>
