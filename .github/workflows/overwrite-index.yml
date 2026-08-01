@@ -1,0 +1,22 @@
+name: Overwrite index with Phaser demo
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Overwrite index.html with phaser.html
+        run: |
+          cp phaser.html index.html
+          echo "index.html bytes: $(wc -c < index.html)"
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then echo "no changes"; else git commit -m "Overwrite index.html with Phaser dark-fantasy demo"; git push; fi
