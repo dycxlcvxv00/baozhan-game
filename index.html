@@ -165,7 +165,7 @@
     <section class="topbar">
       <div class="brand">
         <div class="logo">爆</div>
-        <div><h1>爆战丨无限弹幕 Demo v0.30</h1><div class="subtitle">修复战斗卡死 · 地面区域渲染优化</div></div>
+        <div><h1>爆战丨无限弹幕 Demo v0.31</h1><div class="subtitle">重写底层渲染管线 · 修复移动端卡死</div></div>
       </div>
       <div class="stats">
         <div class="pill">关卡 <strong id="stageText">1</strong></div>
@@ -242,13 +242,14 @@
   <div class="changelogModal" id="changelogModal">
     <div class="changelogCard">
       <div class="changelogHead"><h2>📜 版本记录</h2><button id="changelogClose">✕</button></div>
-      <div class="changelogCurrent"><h3>当前版本 · v0.30</h3>
+      <div class="changelogCurrent"><h3>当前版本 · v0.31</h3>
         <ol>
-          <li><b>修复战斗中卡死：</b>地面区域（燃烧地面 / 极寒冰场）每帧实时计算径向渐变与虚线描边，在移动端浏览器开销过大导致页面卡死。</li>
-          <li><b>区域渲染优化：</b>区域改为预渲染精灵缓存，每帧仅绘制图片；移除逐帧虚线描边；同屏区域数量上限 12 个，超出的旧区域自动移除。</li>
+          <li><b>重写底层渲染管线：</b>静态背景一次性预渲染；移除全部逐帧阴影模糊（移动端 Canvas2D 最大开销）；渲染降为 30 帧、逻辑保持 60 帧。</li>
+          <li><b>节流与兜底：</b>城墙血条等 DOM 写入仅在数值变化时更新；粒子/特效/伤害数字设硬上限；战斗循环加错误捕获，异常时在页面直接显示错误而非静默卡死。</li>
         </ol>
       </div>
-      <details class="changelogOld"><summary>历史版本（v0.29 及更早，点击展开）</summary>
+      <details class="changelogOld"><summary>历史版本（v0.30 及更早，点击展开）</summary>
+        <div class="oldGroup"><h4>v0.30</h4><ul><li>地面区域渲染改预渲染精灵缓存、移除逐帧虚线描边、同屏区域上限 12，首次尝试修复战斗卡死。</li></ul></div>
         <div class="oldGroup"><h4>v0.29</h4><ul><li>新增极寒冰场符文与地面区域系统；火球燃烧地面、冰锥冻结、护盾震退三项进阶实装；领主登场提示、波次倒计时、胜利金色闪光。</li></ul></div>
         <div class="oldGroup"><h4>v0.28</h4><ul><li>属性面板改为可滚动修复截断；15 项属性新增作用说明提示框（桌面悬浮 / 触屏点击）。</li></ul></div>
         <div class="oldGroup"><h4>v0.27</h4><ul><li>属性体系实装：最终属性 = 英雄基础 + 装备汇入 + 符文独立属性；五个符文获得独立暴击/元素/技能伤害面板；属性面板扩至 15 项。</li></ul></div>
@@ -306,6 +307,8 @@
   ];
   function runeOrigin(r){return runeSlotPositions[r.slot]||hero;}
   const wall = {x:360,y:0,w:34,h:H,hp:1000,maxHp:1000,shield:0,maxShield:420,flash:0};
+  const bgCanvas=document.createElement('canvas');bgCanvas.width=W;bgCanvas.height=H;
+  (function(){const b=bgCanvas.getContext('2d');const grd=b.createLinearGradient(0,0,W,0);grd.addColorStop(0,'#20172a');grd.addColorStop(.32,'#191521');grd.addColorStop(.35,'#352315');grd.addColorStop(1,'#161821');b.fillStyle=grd;b.fillRect(0,0,W,H);b.fillStyle='rgba(255,255,255,.035)';for(let x=0;x<W;x+=48){b.fillRect(x,0,1,H)}for(let y=0;y<H;y+=48){b.fillRect(0,y,W,1)}b.fillStyle='rgba(255,180,80,.08)';b.fillRect(0,0,wall.x,H);b.fillStyle='rgba(120,170,255,.06)';b.fillRect(wall.x+wall.w,0,W-wall.x-wall.w,H);})();
   const monsters=[], projectiles=[], effects=[], particles=[], dmgTexts=[], zones=[];
   const zoneSpriteCache={};
   function makeZoneSprite(type,r){const key=type+':'+Math.round(r);if(zoneSpriteCache[key])return zoneSpriteCache[key];const c=document.createElement('canvas');c.width=c.height=Math.ceil(r*2);const x=c.getContext('2d');const col=type==='burn'?'255,140,60':'120,205,255';const g=x.createRadialGradient(r,r,r*.08,r,r,r);g.addColorStop(0,`rgba(${col},.30)`);g.addColorStop(1,`rgba(${col},0)`);x.fillStyle=g;x.beginPath();x.arc(r,r,r-1,0,Math.PI*2);x.fill();x.strokeStyle=`rgba(${col},.4)`;x.lineWidth=2;x.beginPath();x.arc(r,r,r-2,0,Math.PI*2);x.stroke();zoneSpriteCache[key]=c;return c;}
@@ -495,7 +498,8 @@
     addMastery(n){for(const k of Object.keys(runeMastery))runeMastery[k]+=n;},masteryInfo(){return{...runeMastery};},
     damageValues(){return {attack:hero.attackPower,fire:runeDamage(runeDefs.fire.coef),ice:runeDamage(runeDefs.ice.coef),lightning:runeDamage(runeDefs.lightning.coef),poison:runeDamage(runeDefs.poison.coef),splash:runeDamage(.24),dot:runeDamage(.12)}},snapshot(){return {monsters:monsters.map(m=>({x:m.x,y:m.y,hp:m.hp,invulnerable:m.invulnerable})),progress:{...progress},equipment:{...equippedItems},inventoryCount:equipmentItems.length,heroStats:{...currentHeroStats},active:activeRunes.map(r=>({type:r.type,slot:r.slot,energy:r.energy,origin:runeOrigin(r),flash:r.flash})),projectiles:projectiles.map(p=>({kind:p.kind,x:p.x,y:p.y})),lastProjectile:window.__lastProjectileSpawn||null}}
   };
-  function updateWallUI(){const f=document.getElementById('wallHpFill'),s=document.getElementById('wallShieldFill'),t=document.getElementById('wallHpText');if(!f)return;const hp=Math.max(0,Math.round(wall.hp));f.style.width=(Math.max(0,wall.hp/wall.maxHp)*100).toFixed(1)+'%';s.style.width=(Math.min(1,wall.shield/wall.maxShield)*100).toFixed(1)+'%';t.textContent='城墙 '+hp+' / '+wall.maxHp+(wall.shield>0?' · 护盾 '+Math.round(wall.shield):'');}
+  let _lastWallHp=-1,_lastWallShield=-1;
+  function updateWallUI(){const f=document.getElementById('wallHpFill'),s=document.getElementById('wallShieldFill'),t=document.getElementById('wallHpText');if(!f)return;const hp=Math.max(0,Math.round(wall.hp)),sh=Math.round(wall.shield);if(hp===_lastWallHp&&sh===_lastWallShield)return;_lastWallHp=hp;_lastWallShield=sh;f.style.width=(Math.max(0,wall.hp/wall.maxHp)*100).toFixed(1)+'%';s.style.width=(Math.min(1,wall.shield/wall.maxShield)*100).toFixed(1)+'%';t.textContent='城墙 '+hp+' / '+wall.maxHp+(wall.shield>0?' · 护盾 '+Math.round(wall.shield):'');}
   function update(dt){
     if(!state.running || state.paused || state.result) return;
     updateWallUI(); state.time+=dt; state.shake=Math.max(0,state.shake-dt*18); wall.flash=Math.max(0,wall.flash-dt); activeRunes.forEach(r=>{r.energy=Math.min(r.max,r.energy+dt*hero.chargeEfficiency);r.flash=Math.max(0,r.flash-dt)});
@@ -519,8 +523,11 @@
     }
     activeRunes.forEach(r=>{if(r.energy>=r.max)releaseRune(r);});
     for(let i=monsters.length-1;i>=0;i--) if(monsters[i].dead) monsters.splice(i,1);
+    if(effects.length>90)effects.splice(0,effects.length-90);
     for(let i=effects.length-1;i>=0;i--){ effects[i].life-=dt; if(effects[i].life<=0) effects.splice(i,1); }
+    if(particles.length>260)particles.splice(0,particles.length-260);
     for(let i=particles.length-1;i>=0;i--){const q=particles[i];q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.97;q.vy=q.vy*.97+120*dt;q.rot+=q.vr*dt;if(q.life<=0)particles.splice(i,1);}
+    if(dmgTexts.length>80)dmgTexts.splice(0,dmgTexts.length-80);
     for(let i=dmgTexts.length-1;i>=0;i--){ const t=dmgTexts[i]; t.life-=dt; t.y+=t.vy*dt; if(t.life<=0) dmgTexts.splice(i,1); }
     for(let i=state.flashes.length-1;i>=0;i--){ state.flashes[i].life-=dt; if(state.flashes[i].life<=0) state.flashes.splice(i,1); }
     if(zones.length>12)zones.splice(0,zones.length-12);
@@ -539,15 +546,13 @@
   }
   function draw(){
     ctx.save(); ctx.clearRect(0,0,W,H); if(state.shake>0) ctx.translate((Math.random()-.5)*state.shake,(Math.random()-.5)*state.shake);
-    const grd=ctx.createLinearGradient(0,0,W,0); grd.addColorStop(0,'#20172a'); grd.addColorStop(.32,'#191521'); grd.addColorStop(.35,'#352315'); grd.addColorStop(1,'#161821'); ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='rgba(255,255,255,.035)'; for(let x=0;x<W;x+=48){ctx.fillRect(x,0,1,H)} for(let y=0;y<H;y+=48){ctx.fillRect(0,y,W,1)}
-    ctx.fillStyle='rgba(255,180,80,.08)'; ctx.fillRect(0,0,wall.x,H); ctx.fillStyle='rgba(120,170,255,.06)'; ctx.fillRect(wall.x+wall.w,0,W-wall.x-wall.w,H);
+    ctx.drawImage(bgCanvas,0,0);
     for(const z of zones){const sp=makeZoneSprite(z.type,z.r);ctx.save();ctx.globalAlpha=Math.min(1,Math.max(0,z.duration*1.5));ctx.drawImage(sp,z.x-z.r,z.y-z.r,z.r*2,z.r*2);ctx.restore();}
     const wv=waves[state.waveIndex];if(wv&&!state.result){ctx.fillStyle='rgba(255,255,255,.78)';ctx.font='bold 14px "Segoe UI",sans-serif';ctx.textAlign='left';let txt='⚔ '+wv.label+' / 共 '+waves.length+' 波';if(!state.waveStarted&&state.waveTimer>0)txt+=' · 倒计时 '+state.waveTimer.toFixed(1)+'s';ctx.fillText(txt,wall.x+18,28);}
     ctx.fillStyle='rgba(255,255,255,.25)'; ctx.font='700 13px sans-serif'; ctx.fillText('玩家区域',34,32); ctx.fillText('怪物出生区域',W-160,32);
     // rune saw array
     const slotPos=runeSlotPositions;
-    slotPos.forEach((pos,i)=>{const type=equipped[i],d=type?runeDefs[type]:null,inst=activeRunes.find(r=>r.slot===i),flashing=!!(inst&&inst.flash>0);if(flashing){ctx.save();ctx.shadowColor='#fff6a8';ctx.shadowBlur=28;drawHex(pos.x,pos.y,26,'rgba(255,251,205,.72)',true);ctx.restore();}drawHex(pos.x,pos.y,24,d?d.color:'rgba(255,255,255,.055)',!!d||flashing);if(d){const parts=[d.name.slice(0,2),d.name.slice(2)];ctx.fillStyle=flashing?'#fffbd2':'#fff';ctx.font='800 9px sans-serif';ctx.textAlign='center';ctx.fillText(parts[0],pos.x,pos.y-2);ctx.fillText(parts[1],pos.x,pos.y+9);ctx.textAlign='left';}});
+    slotPos.forEach((pos,i)=>{const type=equipped[i],d=type?runeDefs[type]:null,inst=activeRunes.find(r=>r.slot===i),flashing=!!(inst&&inst.flash>0);if(flashing){drawHex(pos.x,pos.y,27,'rgba(255,240,140,.55)',true);drawHex(pos.x,pos.y,26,'rgba(255,251,205,.72)',true);}drawHex(pos.x,pos.y,24,d?d.color:'rgba(255,255,255,.055)',!!d||flashing);if(d){const parts=[d.name.slice(0,2),d.name.slice(2)];ctx.fillStyle=flashing?'#fffbd2':'#fff';ctx.font='800 9px sans-serif';ctx.textAlign='center';ctx.fillText(parts[0],pos.x,pos.y-2);ctx.fillText(parts[1],pos.x,pos.y+9);ctx.textAlign='left';}});
     // hero
     drawHex(hero.x,hero.y,42,'rgba(255,206,102,.25)',true); ctx.fillStyle='#ffd46d'; ctx.beginPath(); ctx.arc(hero.x,hero.y,18,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#2b1608'; ctx.font='900 18px sans-serif'; ctx.textAlign='center'; ctx.fillText('英',hero.x,hero.y+7); ctx.textAlign='left';
     // wall
@@ -565,9 +570,9 @@
     // projectile trails
     for(const p of projectiles){ if(!p.trail||p.trail.length<2)continue; const tc={fireball:'255,150,60',ice:'130,220,255',poison:'110,225,120'}[p.kind]; if(!tc)continue; p.trail.forEach((q,i)=>{const a=(1-i/p.trail.length)*.34;ctx.fillStyle=`rgba(${tc},${a})`;ctx.beginPath();ctx.arc(q.x,q.y,6*(1-i/p.trail.length)+2,0,Math.PI*2);ctx.fill();});}
     // projectiles
-    for(const p of projectiles){ ctx.save(); ctx.translate(p.x,p.y); const a=Math.atan2(p.vy,p.vx); ctx.rotate(a); if(p.kind==='fireball'){ ctx.fillStyle='#ff9b45';ctx.shadowColor='#ff6b2c';ctx.shadowBlur=18;ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,200,100,.35)';ctx.fillRect(-30,-4,28,8); } else if(p.kind==='ice'){ctx.fillStyle='#9beaff';ctx.shadowColor='#52bfff';ctx.shadowBlur=14;ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-10,-8);ctx.lineTo(-4,0);ctx.lineTo(-10,8);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(130,220,255,.28)';ctx.fillRect(-34,-3,28,6);} else if(p.kind==='poison'){ctx.fillStyle='#84e779';ctx.shadowColor='#36c563';ctx.shadowBlur=12;ctx.fillRect(-12,-3,24,6);ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(5,-7);ctx.lineTo(5,7);ctx.closePath();ctx.fill();} else { ctx.fillStyle='#ffe9b0';ctx.fillRect(-10,-2,22,4);ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(4,-6);ctx.lineTo(4,6);ctx.closePath();ctx.fill(); } ctx.restore(); }
+    for(const p of projectiles){ ctx.save(); ctx.translate(p.x,p.y); const a=Math.atan2(p.vy,p.vx); ctx.rotate(a); if(p.kind==='fireball'){ ctx.fillStyle='#ff9b45';ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,200,100,.35)';ctx.fillRect(-30,-4,28,8); } else if(p.kind==='ice'){ctx.fillStyle='#9beaff';ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-10,-8);ctx.lineTo(-4,0);ctx.lineTo(-10,8);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(130,220,255,.28)';ctx.fillRect(-34,-3,28,6);} else if(p.kind==='poison'){ctx.fillStyle='#84e779';ctx.fillRect(-12,-3,24,6);ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(5,-7);ctx.lineTo(5,7);ctx.closePath();ctx.fill();} else { ctx.fillStyle='#ffe9b0';ctx.fillRect(-10,-2,22,4);ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(4,-6);ctx.lineTo(4,6);ctx.closePath();ctx.fill(); } ctx.restore(); }
     // effects
-    for(const e of effects){ const t=e.life/(e.maxLife||.55);ctx.strokeStyle=e.color;ctx.fillStyle=e.color;ctx.lineWidth=e.noFill?3:4;if(e.wall){ctx.beginPath();ctx.roundRect(wall.x-18,wall.y-14,wall.w+36,wall.h+28,22);ctx.stroke();}else if(e.chain){ctx.save();ctx.shadowColor='#fff36b';ctx.shadowBlur=12;ctx.beginPath();e.points.forEach((p,i)=>{const jx=i?((Math.random()-.5)*8):0,jy=i?((Math.random()-.5)*8):0;i?ctx.lineTo(p.x+jx,p.y+jy):ctx.moveTo(p.x,p.y);});ctx.stroke();ctx.restore();}else if(e.cloud){ctx.globalAlpha=Math.min(1,t);ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}else{const pr=Math.max(0,t);ctx.globalAlpha=Math.min(1,pr*1.4);ctx.beginPath();ctx.arc(e.x,e.y,e.max*(1-pr)+e.r,0,Math.PI*2);e.fill?ctx.fill():ctx.stroke();ctx.globalAlpha=1;}}
+    for(const e of effects){ const t=e.life/(e.maxLife||.55);ctx.strokeStyle=e.color;ctx.fillStyle=e.color;ctx.lineWidth=e.noFill?3:4;if(e.wall){ctx.beginPath();ctx.roundRect(wall.x-18,wall.y-14,wall.w+36,wall.h+28,22);ctx.stroke();}else if(e.chain){ctx.save();ctx.beginPath();e.points.forEach((p,i)=>{const jx=i?((Math.random()-.5)*8):0,jy=i?((Math.random()-.5)*8):0;i?ctx.lineTo(p.x+jx,p.y+jy):ctx.moveTo(p.x,p.y);});ctx.stroke();ctx.restore();}else if(e.cloud){ctx.globalAlpha=Math.min(1,t);ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}else{const pr=Math.max(0,t);ctx.globalAlpha=Math.min(1,pr*1.4);ctx.beginPath();ctx.arc(e.x,e.y,e.max*(1-pr)+e.r,0,Math.PI*2);e.fill?ctx.fill():ctx.stroke();ctx.globalAlpha=1;}}
     for(const q of particles){ctx.save();ctx.globalAlpha=Math.min(1,q.life*2);ctx.translate(q.x,q.y);ctx.rotate(q.rot);ctx.fillStyle=q.color;ctx.fillRect(-q.size/2,-q.size/2,q.size,q.size*.65);ctx.restore();}ctx.globalAlpha=1;
     for(const f of state.flashes){ ctx.fillStyle=`rgba(${f.color},${(f.life/f.maxLife)*f.alpha})`; ctx.fillRect(0,0,W,H); }
     // damage texts
@@ -596,7 +601,9 @@
   function renderInventory(){const box=document.getElementById('runeInventory');box.innerHTML='';Object.entries(runeDefs).forEach(([key,d])=>{const used=equipped.includes(key),b=document.createElement('button');b.className='runeChoice'+(key===selectedRune?' selected':'')+(used?' locked':'');const mlv=masteryLevel(runeMastery[key]).lv;b.innerHTML=`<div class="runeChoiceHead"><strong>${d.icon} ${d.name}</strong><span class="energyCost">⚡ ${d.max}</span></div><small class="damageCoef">${used?'已装配 · 不可重复':(d.coef?`伤害 ${d.coef} × 攻击力`:'防御型符文')}</small>${mlv?`<small class="runeMastery">✦ 专精 Lv.${mlv}</small>`:''}`;bindRuneHover(b,d,key);if(!used)b.onclick=()=>{selectedRune=key;renderInventory();};box.appendChild(b);});}
   function renderBattleRunes(){battleRunesEl.innerHTML='';if(!activeRunes.length){battleRunesEl.innerHTML='<div class="systemStatus">当前未装配符文：仅英雄自动普攻</div>';battleRuneEls=[];return;}battleRuneEls=activeRunes.map((r,i)=>{const d=runeDefs[r.type],card=document.createElement('div');card.className='rune';const mlv=masteryLevel(runeMastery[r.type]).lv;card.innerHTML=`<div class="runeTop"><span>${i+1}. ${d.icon} ${d.name}${d.coef?` ${d.coef}×`:''}${mlv?` <span class="runeMastery">✦${mlv}</span>`:''}</span><span>0/${r.max}</span></div><div class="bar"><div class="fill ${d.fill}"></div></div>`;bindRuneHover(card,d,r.type);battleRunesEl.appendChild(card);return{card,value:card.querySelector('.runeTop span:last-child'),fill:card.querySelector('.fill')};});}
   function showLoadout(){document.body.classList.remove('battle');AudioEngine.setMode('loadout');state.running=false;runeTooltip.classList.remove('show');equipmentTooltip.classList.remove('show');overlay.classList.add('show');setupCard.style.display='block';resultCard.style.display='none';setSetupTab('rune');renderEquipment();renderLoadout();renderInventory();updateProgressUI();requestAnimationFrame(fitSetupCard);}
-  function loop(now){ const dt=Math.min(.033,(now-state.last)/1000); state.last=now; update(dt*state.speed); draw(); requestAnimationFrame(loop); }
+  const RENDER_EVERY=isTouchUI?2:1; let _frameN=0;
+  function showBattleError(msg){let e=document.getElementById('battleError');if(!e){e=document.createElement('div');e.id='battleError';e.style.cssText='position:fixed;left:8px;bottom:8px;z-index:300;max-width:70vw;padding:6px 9px;border-radius:8px;background:rgba(120,10,10,.92);color:#fff;font-size:11px;z-index:300';document.body.appendChild(e);}e.textContent='战斗错误：'+msg;}
+  function loop(now){ requestAnimationFrame(loop); const dt=Math.min(.033,(now-state.last)/1000); state.last=now; try{ update(dt*state.speed); _frameN++; if(_frameN%RENDER_EVERY===0)draw(); }catch(err){ state.running=false; showBattleError(err&&err.message||err); console.error(err); } }
   const changelogModal=document.getElementById('changelogModal'),masteryModal=document.getElementById('masteryModal');
   const fsBtn=document.getElementById('fsBtn');
   function isFullscreen(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
