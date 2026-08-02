@@ -1,0 +1,24 @@
+name: assemble-v2
+on:
+  push:
+    paths:
+      - '_parts/go-v13'
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 合并并提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p js
+          cat _parts/main.js.1 _parts/main.js.2 > js/main.js
+          wc -c js/main.js
+          git rm -r --cached _parts || true
+          rm -rf _parts
+          git add js/
+          git commit -m "v1.3: main.js 合并入库 [skip ci]" || echo "无变化"
+          git push
