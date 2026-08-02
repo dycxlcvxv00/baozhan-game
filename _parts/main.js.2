@@ -1,0 +1,160 @@
+      this.hex(g, r.x, r.y, 18, def.color, pct >= 1 ? 0.9 : 0.45);
+      if (r.flash > 0) this.hex(g, r.x, r.y, 22 + r.flash * 10, def.color, Math.max(0, r.flash), 3);
+      g.fillStyle(0x0f172a, 1).fillRect(r.x - 16, r.y + 22, 32, 4);
+      g.fillStyle(def.color, 1).fillRect(r.x - 16, r.y + 22, 32 * pct, 4);
+    }
+
+    for (i = 0; i < S.monsters.length; i++) {
+      var m = S.monsters[i];
+      var alpha = m.inv > 0 ? 0.45 : 1;
+      g.fillStyle(m.flash > 0 ? 0xffffff : m.color, alpha).fillCircle(m.x, m.y, m.radius);
+      if (m.inv > 0) g.lineStyle(2, 0x7dd3fc, 0.8).strokeCircle(m.x, m.y, m.radius + 4);
+      if (m.slowPct > 0) g.lineStyle(2, 0x38bdf8, 0.9).strokeCircle(m.x, m.y, m.radius + 2);
+      if (m.poisonT > 0) g.lineStyle(2, 0x4ade80, 0.9).strokeCircle(m.x, m.y, m.radius + 5);
+      var hpct = Math.max(0, m.hp / m.maxHp);
+      g.fillStyle(0x1f2937, 1).fillRect(m.x - 16, m.y - m.radius - 10, 32, 4);
+      g.fillStyle(0xef4444, 1).fillRect(m.x - 16, m.y - m.radius - 10, 32 * hpct, 4);
+    }
+
+    for (i = 0; i < S.projectiles.length; i++) {
+      var pr = S.projectiles[i];
+      g.fillStyle(pr.color, 1).fillCircle(pr.x, pr.y, pr.radius);
+    }
+
+    for (i = 0; i < S.effects.length; i++) {
+      var e = S.effects[i];
+      var prog = 1 - e.life / e.maxLife, ea = Math.max(0, e.life / e.maxLife);
+      if (e.kind === 'ring' || e.kind === 'burst') {
+        g.lineStyle(4, e.color, ea).strokeCircle(e.x, e.y, (14 + prog * 60) * e.scale);
+      } else if (e.kind === 'shield') {
+        g.lineStyle(5, e.color, ea).strokeRect(cfg.wallX - 14 - prog * 6, 8, 28 + prog * 12, H - 16);
+      } else if (e.kind === 'bolt' && e.hops) {
+        g.lineStyle(3, e.color, ea);
+        g.beginPath(); g.moveTo(e.x, e.y);
+        for (var h = 0; h < e.hops.length; h++) g.lineTo(e.hops[h].x, e.hops[h].y);
+        g.strokePath();
+      }
+    }
+
+    var seen = [];
+    for (i = 0; i < S.texts.length; i++) {
+      var t = S.texts[i]; seen.push(t);
+      var v = t._view;
+      if (!v) { v = this.getText(t.str, t.color); t._view = v; v._src = t; }
+      v.setPosition(t.x, t.y).setAlpha(Math.max(0, t.life / t.maxLife));
+    }
+    this.recycleTexts(seen);
+
+    this.hudWave.setText(BZ.waveLabel(S));
+    this.hudWall.setText('围墙 ' + Math.ceil(S.wallHp) + ' / ' + S.wallMaxHp + (S.shield > 0 ? ' · 护盾 ' + Math.ceil(S.shield) : ''));
+  };
+
+  // ================= 全屏 / 横屏适配 v1.2 =================
+  // 策略：尝试浏览器全屏 + 锁定横屏；不支持的浏览器用 CSS 旋转兜底（竖屏也能横着玩）
+  function isPortrait() { return window.innerHeight > window.innerWidth; }
+  function applyRotateFix() {
+    var g = document.getElementById('game');
+    if (!g) return;
+    var portrait = isPortrait();
+    var inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (portrait && !inFs) {
+      var vw = window.innerWidth, vh = window.innerHeight;
+      g.style.transform = 'rotate(90deg)';
+      g.style.transformOrigin = 'center center';
+      g.style.width = vh + 'px';
+      g.style.height = vw + 'px';
+      g.style.position = 'fixed';
+      g.style.left = ((vw - vh) / 2) + 'px';
+      g.style.top = ((vh - vw) / 2) + 'px';
+    } else {
+      g.style.transform = '';
+      g.style.width = '';
+      g.style.height = '';
+      g.style.position = '';
+      g.style.left = '';
+      g.style.top = '';
+    }
+    if (game && game.scale && game.scale.refresh) game.scale.refresh();
+  }
+  function enterFullscreen() {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) { applyRotateFix(); return false; }
+    try {
+      var p = req.call(el);
+      if (p && p.then) {
+        p.then(function () {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(function () { applyRotateFix(); });
+          }
+          setTimeout(applyRotateFix, 200);
+          setTimeout(applyRotateFix, 700);
+        }).catch(function () { applyRotateFix(); });
+      }
+      return true;
+    } catch (e) { applyRotateFix(); return false; }
+  }
+  function setupFullscreen() {
+    var btn = document.getElementById('btnFullscreen');
+    var mini = document.getElementById('btnFsMini');
+    if (btn) btn.onclick = function () { if (!enterFullscreen()) applyRotateFix(); };
+    if (mini) mini.onclick = function () {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        var exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
+      } else { if (!enterFullscreen()) applyRotateFix(); }
+    };
+    var refresh = function () { setTimeout(applyRotateFix, 120); };
+    document.addEventListener('fullscreenchange', function () {
+      applyRotateFix();
+      if (mini) mini.textContent = document.fullscreenElement ? '✕' : '⛶';
+    });
+    window.addEventListener('resize', refresh);
+    window.addEventListener('orientationchange', refresh);
+    if (screen.orientation && screen.orientation.addEventListener) {
+      screen.orientation.addEventListener('change', refresh);
+    }
+  }
+
+  // ================= 结算与启动 =================
+  var resultPanel = document.getElementById('result');
+  function showResult(r) {
+    var title = document.getElementById('resultTitle');
+    title.textContent = r.win ? '胜利' : '失败';
+    title.style.color = r.win ? '#4ade80' : '#f87171';
+    document.getElementById('resultStats').textContent =
+      '用时 ' + r.time.toFixed(1) + ' 秒 · 击杀 ' + r.kills;
+    resultPanel.style.display = 'flex';
+  }
+  document.getElementById('btnAgain').onclick = function () {
+    resultPanel.style.display = 'none';
+    startBattle();
+  };
+  document.getElementById('btnLoadout').onclick = function () {
+    resultPanel.style.display = 'none';
+    overlay.style.display = 'flex';
+  };
+
+  var game = null;
+  function startBattle() {
+    var runes = selected.slice();
+    if (!game) {
+      game = new Phaser.Game({
+        type: Phaser.AUTO,
+        parent: 'game',
+        width: W, height: H,
+        backgroundColor: '#0b1020',
+        scale: { mode: Phaser.Scale.EXPAND, autoCenter: Phaser.Scale.CENTER_BOTH },
+        scene: [BattleScene]
+      });
+    }
+    var s = game.scene.getScene('battle');
+    if (s) s.scene.restart({ runes: runes });
+    else game.scene.start('battle', { runes: runes });
+    setTimeout(applyRotateFix, 100);
+    setTimeout(applyRotateFix, 500);
+  }
+
+  setupFullscreen();
+  renderLoadout();
+})();
