@@ -1,4 +1,4 @@
-/* 爆战丨无限弹幕 v2.0.2 · DOM UI App（只通过 GameState/GameBridge 通信） */
+/* 爆战丨无限弹幕 v2.0.4 · DOM UI App（只通过 GameState/GameBridge 通信） */
 'use strict';
 var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (window.innerWidth <= 860 && 'ontouchstart' in window);
 var homeEl = document.getElementById('home');
@@ -22,7 +22,7 @@ function enterFullscreen() {
 }
 function enterHome() { document.getElementById('guide').style.display = 'none'; homeEl.style.display = 'flex'; }
 
-function loadoutUiBox() { return { centerX: 110, centerY: 250, scale: 0.56 }; }
+function loadoutUiBox() { return { centerX: 110, centerY: 215, scale: 0.56 }; }
 function renderLoadout() {
   var i, box = loadoutUiBox(), slots = GameState.getLoadoutSlotView(box), selected = GameState.getSelectedRunes();
   slotBox.innerHTML = '';
@@ -37,9 +37,8 @@ function renderLoadout() {
       inEl.textContent = s.def.name.replace('符文', '');
       inEl.style.color = '#f8fafc';
     } else {
-      hex.style.background = '#1f2937';
-      inEl.textContent = '空';
-      inEl.style.color = '#475569';
+      hex.style.background = 'rgba(203,213,225,.45)';
+      inEl.textContent = '';
     }
     hex.appendChild(inEl); slotBox.appendChild(hex);
   }
