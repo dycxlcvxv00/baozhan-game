@@ -1,0 +1,25 @@
+name: vendor-phaser
+on:
+  push:
+    paths:
+      - '.github/workflows/vendor-phaser.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 下载 Phaser 3.90 到仓库本地
+        run: |
+          mkdir -p lib
+          curl -fsSL -o lib/phaser.min.js https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js
+          ls -la lib/
+      - name: 提交入库
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/phaser.min.js
+          git commit -m "chore: vendor phaser 3.90.0 into lib/ [skip ci]" || echo "无变化"
+          git push
