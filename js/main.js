@@ -1,9 +1,9 @@
-/* 爆战丨无限弹幕 v2.0.2 · 架构层：GameState + GameBridge + BattleScene */
+/* 爆战丨无限弹幕 v2.0.3 · 架构层：GameState + GameBridge + BattleScene */
 'use strict';
 var W = 1280, H = 720;
 
 var GameState = (function () {
-  var VERSION = 'v2.0.2';
+  var VERSION = 'v2.0.3';
   var SAVE_KEY = 'baozhan_save_v1';
   var SLOT_FILL_ORDER = [12, 11, 13, 10, 14, 9, 15, 8, 3, 4, 2, 5, 1, 6, 0, 7];
   var state = { currentTab: 'runes', selectedRunes: [] };
@@ -30,26 +30,27 @@ var GameState = (function () {
   }
   function resetSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
   function buildHoneycombUiSlots(box) {
-    // 战前 UI 专用紧密蜂窝矩阵：英雄六边形在正中线；上 8 / 下 8 均以英雄中线对齐。
-    // 六边形之间保留 2~4px 视觉缝隙，避免完全粘连；槽位身份仍按 SLOT_FILL_ORDER 对应战斗 slotOrder。
+    // 蜂窝规则：从英雄向上/向下数，第 1、3 排不动；第 2、4 排整体向右偏移，形成交错蜂窝。
+    // 每排 2 个符文槽；上方 4 排共 8 个，下方 4 排共 8 个；槽位身份仍按 SLOT_FILL_ORDER 对应战斗 slotOrder。
     var cx = box.centerX, cy = box.centerY;
     var colGap = 50;      // slot-hex 宽 47，中心距 50，保留约 3px 横向间隙
     var rowGap = 56;      // slot-hex 高 54，中心距 56，保留约 2px 纵向间隙
     var innerGap = 74;    // 靠近英雄的一行与英雄外框保留小间隔
+    var shift = 25;       // 第 2 / 4 排向右偏移半个横向中心距
     var rows = [
-      cy - innerGap - rowGap * 3,
-      cy - innerGap - rowGap * 2,
-      cy - innerGap - rowGap,
-      cy - innerGap,
-      cy + innerGap,
-      cy + innerGap + rowGap,
-      cy + innerGap + rowGap * 2,
-      cy + innerGap + rowGap * 3
+      { y: cy - innerGap - rowGap * 3, shift: shift }, // 上 4 排：向右
+      { y: cy - innerGap - rowGap * 2, shift: 0 },     // 上 3 排：不动
+      { y: cy - innerGap - rowGap,     shift: shift }, // 上 2 排：向右
+      { y: cy - innerGap,              shift: 0 },     // 上 1 排：不动
+      { y: cy + innerGap,              shift: 0 },     // 下 1 排：不动
+      { y: cy + innerGap + rowGap,     shift: shift }, // 下 2 排：向右
+      { y: cy + innerGap + rowGap * 2, shift: 0 },     // 下 3 排：不动
+      { y: cy + innerGap + rowGap * 3, shift: shift }  // 下 4 排：向右
     ];
     var slots = [];
     for (var r = 0; r < rows.length; r++) {
-      slots.push({ x: cx - colGap / 2, y: rows[r] });
-      slots.push({ x: cx + colGap / 2, y: rows[r] });
+      slots.push({ x: cx - colGap / 2 + rows[r].shift, y: rows[r].y });
+      slots.push({ x: cx + colGap / 2 + rows[r].shift, y: rows[r].y });
     }
     return slots;
   }
