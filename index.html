@@ -33,6 +33,10 @@
     .rune-card { min-height:120px; }
     h1 { font-size:22px; }
   }
+  #fsBox { display:flex; flex-direction:column; align-items:center; gap:14px; }
+  #btnFullscreen { background:#f59e0b; color:#1f2937; font-weight:bold; }
+  #btnFsMini { position:fixed; top:10px; right:10px; z-index:50; width:44px; height:44px;
+    border-radius:10px; border:1px solid #475569; background:rgba(15,23,42,.7); color:#e5e7eb; font-size:20px; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -52,9 +56,15 @@
     <button id="btnLoadout" class="btn">重新装配</button>
   </div>
 </div>
-<div id="rotateHint">📱 请横屏游玩</div>
-<script src="lib/phaser.min.js?v=1.0"></script>
-<script src="js/sim.js?v=1.0"></script>
-<script src="js/main.js?v=1.0"></script>
+<div id="rotateHint">
+  <div id="fsBox">
+    <button id="btnFullscreen" class="btn">⛶ 全屏游戏（横屏）</button>
+    <div id="fsHint" class="sub">点上方按钮进入全屏并自动横屏；若无效请手动旋转手机</div>
+  </div>
+</div>
+<button id="btnFsMini" title="全屏">⛶</button>
+<script src="lib/phaser.min.js?v=1.1"></script>
+<script src="js/sim.js?v=1.1"></script>
+<script src="js/main.js?v=1.1"></script>
 </body>
 </html>
