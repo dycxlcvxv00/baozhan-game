@@ -1,4 +1,4 @@
-/* 爆战丨无限弹幕 v2.1 · DOM UI App（只通过 GameState/GameBridge 通信） */
+/* 爆战丨无限弹幕 v2.2 · DOM UI App（只通过 GameState/GameBridge 通信） */
 'use strict';
 var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (window.innerWidth <= 860 && 'ontouchstart' in window);
 var homeEl = document.getElementById('home'), slotBox = document.getElementById('slotBox'), listEl = document.getElementById('runeList'), resultPanel = document.getElementById('result');
@@ -9,7 +9,7 @@ function enterHome(){ document.getElementById('guide').style.display='none'; hom
 function loadoutUiBox(){ return {centerX:110,centerY:190,scale:.56}; }
 function shortRuneName(def){ return def.name.replace('符文','').replace('爆裂','爆').replace('寒冰','冰').replace('连锁','雷').replace('腐蚀','毒').replace('坚壁','盾'); }
 function renderLoadout(){
-  var box=loadoutUiBox(), slots=GameState.getLoadoutSlotView(box), selected=GameState.getSelectedRunes();
+  var box=loadoutUiBox(), slots=GameState.getLoadoutSlotView(box);
   slotBox.innerHTML='';
   for(var i=0;i<slots.length;i++)(function(s){
     var hex=document.createElement('button'); hex.type='button'; hex.className='hex slot-hex'+(s.def?' filled':' empty')+(pendingRune?' target':'');
@@ -20,7 +20,7 @@ function renderLoadout(){
     hex.onclick=function(){ if(pendingRune){ GameState.placeRuneAt(s.orderIndex,pendingRune); pendingRune=null; renderLoadout(); } else if(s.runeId){ GameState.clearRuneAt(s.orderIndex); renderLoadout(); } };
     hex.appendChild(inEl); slotBox.appendChild(hex);
   })(slots[i]);
-  var hp=GameState.getHeroUiPoint(box), hero=document.createElement('div'); hero.className='hex hero-hex'; hero.style.left=(Math.round(hp.x)-39)+'px'; hero.style.top=(Math.round(hp.y)-45)+'px';
+  var hp=GameState.getHeroUiPoint(box), hero=document.createElement('div'); hero.className='hex hero-hex'; hero.style.left=(Math.round(hp.x)-28)+'px'; hero.style.top=(Math.round(hp.y)-32)+'px';
   var heroIn=document.createElement('div'); heroIn.className='hex-in'; heroIn.textContent='英雄'; heroIn.style.color='#dbeafe'; hero.appendChild(heroIn); slotBox.appendChild(hero);
   listEl.innerHTML='';
   BZ.RUNE_ORDER.forEach(function(id){ var def=BZ.RUNE_DEFS[id], slot=GameState.getRuneSlot(id), on=slot>=0, row=document.createElement('button'); row.className='rune-row'+(on?' on':'')+(pendingRune===id?' pick':''); row.innerHTML='<span class="ri">'+def.icon+'</span><span class="rt"><span class="rn">'+def.name+(on?' · 已装配':'')+'</span><span class="rd">'+def.desc+'</span></span><span class="re">⚡'+def.energyMax+'</span>'; row.onclick=function(){ pendingRune=(pendingRune===id?null:id); renderLoadout(); }; listEl.appendChild(row); });
