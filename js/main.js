@@ -1,9 +1,9 @@
-/* 爆战丨无限弹幕 v2.0 · 架构层：GameState + GameBridge + BattleScene */
+/* 爆战丨无限弹幕 v2.0.1 · 架构层：GameState + GameBridge + BattleScene */
 'use strict';
 var W = 1280, H = 720;
 
 var GameState = (function () {
-  var VERSION = 'v2.0';
+  var VERSION = 'v2.0.1';
   var SAVE_KEY = 'baozhan_save_v1';
   var SLOT_FILL_ORDER = [12, 11, 13, 10, 14, 9, 15, 8, 3, 4, 2, 5, 1, 6, 0, 7];
   var state = { currentTab: 'runes', selectedRunes: [] };
@@ -32,15 +32,38 @@ var GameState = (function () {
   function battleToUiPoint(p, box) {
     return { x: box.centerX + (p.x - BZ.CONFIG.hero.x) * box.scale, y: box.centerY + (p.y - BZ.CONFIG.hero.y) * box.scale };
   }
+  function buildHoneycombUiSlots(box) {
+    // 战前 UI 专用紧密蜂窝矩阵：英雄六边形在正中间；符文六边形上 8 个、下 8 个。
+    // 槽位身份仍按 SLOT_FILL_ORDER 与战斗 slotOrder 对应，避免装配顺序与进战斗站位脱节。
+    var cx = box.centerX, cy = box.centerY;
+    var rowGap = 41, colGap = 48, nearGap = 84;
+    var rows = [
+      { y: cy - nearGap - rowGap * 3, shift: -12 },
+      { y: cy - nearGap - rowGap * 2, shift:  12 },
+      { y: cy - nearGap - rowGap,     shift: -12 },
+      { y: cy - nearGap,              shift:  12 },
+      { y: cy + nearGap,              shift:  12 },
+      { y: cy + nearGap + rowGap,     shift: -12 },
+      { y: cy + nearGap + rowGap * 2, shift:  12 },
+      { y: cy + nearGap + rowGap * 3, shift: -12 }
+    ];
+    var slots = [];
+    for (var r = 0; r < rows.length; r++) {
+      slots.push({ x: cx - colGap / 2 + rows[r].shift, y: rows[r].y });
+      slots.push({ x: cx + colGap / 2 + rows[r].shift, y: rows[r].y });
+    }
+    return slots;
+  }
   function getLoadoutSlotView(box) {
     var selected = getSelectedRunes();
-    return BZ.SLOT_POS.map(function (p, slotIndex) {
-      var fillIndex = SLOT_FILL_ORDER.indexOf(slotIndex);
-      var runeId = fillIndex >= 0 && fillIndex < selected.length ? selected[fillIndex] : null;
-      return { slot: slotIndex, point: battleToUiPoint(p, box), runeId: runeId, def: runeId ? BZ.RUNE_DEFS[runeId] : null };
+    var uiSlots = buildHoneycombUiSlots(box);
+    return uiSlots.map(function (point, orderIndex) {
+      var slotIndex = SLOT_FILL_ORDER[orderIndex];
+      var runeId = orderIndex < selected.length ? selected[orderIndex] : null;
+      return { slot: slotIndex, point: point, runeId: runeId, def: runeId ? BZ.RUNE_DEFS[runeId] : null };
     });
   }
-  function getHeroUiPoint(box) { return battleToUiPoint(BZ.CONFIG.hero, box); }
+  function getHeroUiPoint(box) { return { x: box.centerX, y: box.centerY }; }
   function createBattleConfig() {
     return { version: VERSION, runes: getSelectedRunes(), slotOrder: SLOT_FILL_ORDER.slice(), saveKey: SAVE_KEY };
   }
