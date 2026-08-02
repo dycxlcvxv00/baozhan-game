@@ -1,6 +1,5 @@
-/* 爆战丨无限弹幕 v1.4 · Phaser 表现层 3/3：全屏引导 + 结算启动 */
-  // ================= 全屏 / 横屏适配 v1.4 =================
-  // 与旧引擎一致的机制：requestFullscreen + orientation.lock；不再使用 CSS 旋转
+/* 爆战丨无限弹幕 v1.5 · Phaser 表现层 3/3：全屏引导 + 结算启动 */
+  // ================= 全屏 / 横屏适配 v1.5 =================
   var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
     (window.innerWidth <= 860 && 'ontouchstart' in window);
 
@@ -8,6 +7,7 @@
     if (game && game.scale && game.scale.refresh) game.scale.refresh();
   }
   function enterFullscreen() {
+    // 三层兼容：标准全屏（安卓 Chrome）→ webkit 全屏（旧 iOS/国产浏览器）→ 手动横屏提示（iPhone Safari）
     var el = document.documentElement;
     var req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (!req) return false;
@@ -37,18 +37,18 @@
     if (isMobile && guide) guide.style.display = 'flex';
 
     if (gStart) gStart.onclick = function () {
-      var ok = enterFullscreen();
-      if (ok) {
+      if (enterFullscreen()) {
         guide.style.display = 'none';
         overlay.style.display = 'flex';
       } else {
-        gHint.textContent = '当前浏览器不支持全屏横屏，请旋转手机后点「继续」（或将游戏添加到主屏幕获得全屏体验）';
+        gHint.textContent = '你的浏览器不支持网页全屏（iPhone 浏览器限制），请手动横屏后点「继续」；将游戏添加到主屏幕可获得全屏体验';
         gSkip.style.display = 'block';
       }
     };
     if (gSkip) gSkip.onclick = function () {
       guide.style.display = 'none';
       overlay.style.display = 'flex';
+      alert('请手动旋转手机至横屏进行游戏');
     };
     if (btn) btn.onclick = function () { enterFullscreen(); };
     if (mini) mini.onclick = function () {
