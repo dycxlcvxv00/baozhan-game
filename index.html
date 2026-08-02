@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.json?v=2.0.1">
+<link rel="manifest" href="manifest.json?v=2.0.2">
 <title>爆战丨无限弹幕</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -33,10 +33,13 @@
   .panel { display:flex; align-items:center; gap:28px; width:100%; max-width:1000px; border:2px solid #263451; border-radius:18px; padding:22px 26px; background:rgba(13,20,38,.55); }
   #slotBox { position:relative; width:220px; height:500px; flex:0 0 auto; margin:0 auto; }
   .hex { position:absolute; display:flex; align-items:center; justify-content:center; background:#64748b; clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); }
-  .hex-in { width:84%; height:88%; display:flex; align-items:center; justify-content:center; font-size:18px; background:linear-gradient(160deg,#334155,#1e293b); clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); }
+  .hex-in { width:84%; height:88%; display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.05; font-weight:700; background:linear-gradient(160deg,#334155,#1e293b); clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); }
   .slot-hex { width:47px; height:54px; }
+  .slot-hex .hex-in { font-size:11px; padding:0 6px; }
+  .slot-hex.empty { opacity:.72; }
+  .slot-hex.empty .hex-in { background:linear-gradient(160deg,#1f2937,#0f172a); }
   .hero-hex { width:78px; height:90px; background:#60a5fa; }
-  .hero-hex .hex-in { background:linear-gradient(160deg,#3b82f6,#1d4ed8); }
+  .hero-hex .hex-in { background:linear-gradient(160deg,#3b82f6,#1d4ed8); font-size:16px; }
   .listCol { flex:1; min-width:0; width:100%; display:flex; flex-direction:column; align-items:center; }
   .listTitle { color:#cbd5e1; font-size:17px; font-weight:bold; margin-bottom:14px; }
   #runeList { display:flex; flex-direction:column; gap:10px; width:100%; max-width:460px; margin-bottom:14px; }
@@ -67,15 +70,15 @@
 </head>
 <body>
 <div id="game"></div>
-<div id="guide" class="overlay"><h1>爆战丨无限弹幕</h1><div class="ver-cur">当前版本 v2.0.1</div><button id="btnGuideStart" class="btn" style="background:#f59e0b;color:#1f2937;font-weight:bold">⛶ 全屏游戏</button><div id="guideHint" class="sub" style="margin-top:16px"></div><button id="btnGuideSkip" class="btn" style="display:none;background:#1f2937;color:#e5e7eb;border:1px solid #475569">继续</button></div>
-<div id="home" class="overlay" style="display:none"><div class="homeHead"><div class="brand"><h1>爆战丨无限弹幕</h1><div class="ver-cur">v2.0.1</div></div><div class="tabbar"><button class="tab-btn on" data-tab="runes">符文</button><button class="tab-btn" data-tab="mastery">专精</button><button class="tab-btn" data-tab="equip">装备</button><button class="tab-btn" data-tab="settings">设置</button></div></div><div id="pageRunes" class="page on"><div class="panel"><div id="slotBox"></div><div class="listCol"><div class="listTitle">符文列表</div><div id="runeList"></div><div id="selCount" class="sub"></div><div class="btnRow"><button id="btnStart" class="btn">进入战斗</button></div></div></div></div><div id="pageMastery" class="page"><div class="placeholder">专精系统将在后续版本实装：<br>装配符文参战获得专精经验，升级提升符文伤害，每 5 级解锁专属强化。</div></div><div id="pageEquip" class="page"><div class="placeholder">装备系统将在后续版本实装：<br>关卡掉落装备，穿戴属性汇入英雄，仓库与对比面板逐步回归。</div></div><div id="pageSettings" class="page"><div id="verInfo"><div class="ver-cur">当前版本 v2.0.1</div><div class="ver-desc">本次更新：修复符文装配页蜂窝矩阵——英雄六边形固定正中间并略大，符文六边形按紧密蜂窝规则分布在英雄上方 8 个、下方 8 个。</div><details class="ver-his"><summary>历史更新（v2.0 ～ v1.0）</summary><div class="ver-his-list"><div><b>v2.0</b> 架构重构：DOM UI / Phaser Battle Scene 强制解耦</div><div><b>v1.9</b> 符文装配页按 UI 设计稿改版：左侧锯阵 + 右侧符文列表</div><div><b>v1.8</b> 基础 UI 布局改版：引导页 + 主页四模块导航</div><div><b>v1.7</b> 主页版本信息区</div><div><b>v1.6</b> PWA 横屏全屏方案</div><div><b>v1.5</b> 横屏装配显示修复</div><div><b>v1.4</b> 手机引导页</div><div><b>v1.3</b> FIT 完整可见</div><div><b>v1.2</b> 横屏适配修复</div><div><b>v1.1</b> 竖屏全屏按钮</div><div><b>v1.0</b> Phaser 3 引擎重构</div></div></details></div><div class="sub" style="max-width:480px">iPhone 浏览器不支持网页全屏：点浏览器菜单「添加到主屏幕」，从主屏幕图标打开即全屏横屏（与视频 App 一致）。</div><button id="btnResetSave" class="btn">重置本地存档</button></div></div>
+<div id="guide" class="overlay"><h1>爆战丨无限弹幕</h1><div class="ver-cur">当前版本 v2.0.2</div><button id="btnGuideStart" class="btn" style="background:#f59e0b;color:#1f2937;font-weight:bold">⛶ 全屏游戏</button><div id="guideHint" class="sub" style="margin-top:16px"></div><button id="btnGuideSkip" class="btn" style="display:none;background:#1f2937;color:#e5e7eb;border:1px solid #475569">继续</button></div>
+<div id="home" class="overlay" style="display:none"><div class="homeHead"><div class="brand"><h1>爆战丨无限弹幕</h1><div class="ver-cur">v2.0.2</div></div><div class="tabbar"><button class="tab-btn on" data-tab="runes">符文</button><button class="tab-btn" data-tab="mastery">专精</button><button class="tab-btn" data-tab="equip">装备</button><button class="tab-btn" data-tab="settings">设置</button></div></div><div id="pageRunes" class="page on"><div class="panel"><div id="slotBox"></div><div class="listCol"><div class="listTitle">符文列表</div><div id="runeList"></div><div id="selCount" class="sub"></div><div class="btnRow"><button id="btnStart" class="btn">进入战斗</button></div></div></div></div><div id="pageMastery" class="page"><div class="placeholder">专精系统将在后续版本实装：<br>装配符文参战获得专精经验，升级提升符文伤害，每 5 级解锁专属强化。</div></div><div id="pageEquip" class="page"><div class="placeholder">装备系统将在后续版本实装：<br>关卡掉落装备，穿戴属性汇入英雄，仓库与对比面板逐步回归。</div></div><div id="pageSettings" class="page"><div id="verInfo"><div class="ver-cur">当前版本 v2.0.2</div><div class="ver-desc">本次更新：符文矩阵细节调整——矩阵与英雄中线对齐，六边形之间保留极小间隙；已装配槽显示符文名字，空槽整体变暗并显示“空”。</div><details class="ver-his"><summary>历史更新（v2.0.1 ～ v1.0）</summary><div class="ver-his-list"><div><b>v2.0.1</b> 修复符文装配页蜂窝矩阵：英雄居中，上下各 8 个符文槽</div><div><b>v2.0</b> 架构重构：DOM UI / Phaser Battle Scene 强制解耦</div><div><b>v1.9</b> 符文装配页按 UI 设计稿改版</div><div><b>v1.8</b> 基础 UI 布局改版</div><div><b>v1.7</b> 主页版本信息区</div><div><b>v1.6</b> PWA 横屏全屏方案</div><div><b>v1.5</b> 横屏装配显示修复</div><div><b>v1.4</b> 手机引导页</div><div><b>v1.3</b> FIT 完整可见</div><div><b>v1.2</b> 横屏适配修复</div><div><b>v1.1</b> 竖屏全屏按钮</div><div><b>v1.0</b> Phaser 3 引擎重构</div></div></details></div><div class="sub" style="max-width:480px">iPhone 浏览器不支持网页全屏：点浏览器菜单「添加到主屏幕」，从主屏幕图标打开即全屏横屏（与视频 App 一致）。</div><button id="btnResetSave" class="btn">重置本地存档</button></div></div>
 <div id="result" class="overlay"><h1 id="resultTitle"></h1><div id="resultStats" class="sub"></div><div><button id="btnAgain" class="btn">再来一局</button><button id="btnLoadout" class="btn">返回主页</button></div></div>
 <button id="btnFsMini" title="全屏">⛶</button>
-<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=2.0.1').catch(function () {}); }</script>
-<script src="lib/phaser.min.js?v=2.0.1"></script>
-<script src="js/sim.js?v=2.0.1"></script>
-<script src="js/main.js?v=2.0.1"></script>
-<script src="js/main2.js?v=2.0.1"></script>
-<script src="js/main3.js?v=2.0.1"></script>
+<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=2.0.2').catch(function () {}); }</script>
+<script src="lib/phaser.min.js?v=2.0.2"></script>
+<script src="js/sim.js?v=2.0.2"></script>
+<script src="js/main.js?v=2.0.2"></script>
+<script src="js/main2.js?v=2.0.2"></script>
+<script src="js/main3.js?v=2.0.2"></script>
 </body>
 </html>
