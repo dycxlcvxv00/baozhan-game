@@ -1,8 +1,8 @@
-/* 爆战丨无限弹幕 v2.9 · 架构层：GameState + GameBridge + BattleScene */
+/* 爆战丨无限弹幕 v3.0 · 架构层：GameState + GameBridge + BattleScene */
 'use strict';
 var W = 1280, H = 720;
 var GameState = (function () {
-  var VERSION = 'v2.9';
+  var VERSION = 'v3.0';
   var SAVE_KEY = 'baozhan_save_v1';
   var SLOT_FILL_ORDER = BZ.SLOT_ORDER || [12,11,13,10,14,9,15,8,3,4,2,5,1,6,0,7];
   var state = { selectedRunes: [] };
@@ -16,7 +16,7 @@ var GameState = (function () {
   function clearRuneAt(orderIndex){ if(orderIndex>=0&&orderIndex<16){ state.selectedRunes[orderIndex]=null; writeSave(); } }
   function resetSave(){ try{localStorage.removeItem(SAVE_KEY);}catch(e){} }
   function buildHoneycombUiSlots(box){
-    // v2.9：左右中心距略增；保持整体边界内，修复下排点按区域。
+    // v3.0：保持 v2.9 横向间距，点击命中区由 DOM 方形按钮负责。
     var cx=box.matrixX || box.centerX, cy=box.centerY, colGap=46, rowGap=39, innerGap=31, shift=23;
     var rows=[
       {y:cy-innerGap-rowGap*3,shift:shift},{y:cy-innerGap-rowGap*2,shift:0},{y:cy-innerGap-rowGap,shift:shift},{y:cy-innerGap,shift:0},
