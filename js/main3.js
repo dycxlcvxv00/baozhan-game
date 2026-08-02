@@ -1,68 +1,68 @@
-/* 爆战丨无限弹幕 v1.3 · Phaser 表现层 3/3：全屏适配 + 结算启动 */
-  // ================= 全屏 / 横屏适配 v1.3 =================
-  // 策略：尝试浏览器全屏 + 锁定横屏；不支持的浏览器用 CSS 旋转兜底（竖屏也能横着玩）
-  function isPortrait() { return window.innerHeight > window.innerWidth; }
-  function applyRotateFix() {
-    var g = document.getElementById('game');
-    if (!g) return;
-    if (isPortrait()) {
-      // 竖屏时把舞台整体旋转 90°：任何浏览器都能横着玩（页面加载即生效）
-      var vw = window.innerWidth, vh = window.innerHeight;
-      g.style.position = 'fixed';
-      g.style.transformOrigin = 'bottom left';
-      g.style.transform = 'rotate(90deg)';
-      g.style.width = vh + 'px';
-      g.style.height = vw + 'px';
-      g.style.left = '0px';
-      g.style.top = (-vw) + 'px';
-    } else {
-      g.style.position = '';
-      g.style.transform = '';
-      g.style.width = '';
-      g.style.height = '';
-      g.style.left = '';
-      g.style.top = '';
-    }
+/* 爆战丨无限弹幕 v1.4 · Phaser 表现层 3/3：全屏引导 + 结算启动 */
+  // ================= 全屏 / 横屏适配 v1.4 =================
+  // 与旧引擎一致的机制：requestFullscreen + orientation.lock；不再使用 CSS 旋转
+  var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    (window.innerWidth <= 860 && 'ontouchstart' in window);
+
+  function refreshScale() {
     if (game && game.scale && game.scale.refresh) game.scale.refresh();
   }
   function enterFullscreen() {
     var el = document.documentElement;
     var req = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (!req) { applyRotateFix(); return false; }
+    if (!req) return false;
     try {
       var p = req.call(el);
       if (p && p.then) {
         p.then(function () {
           if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(function () { applyRotateFix(); });
+            screen.orientation.lock('landscape').catch(function () { refreshScale(); });
           }
-          setTimeout(applyRotateFix, 200);
-          setTimeout(applyRotateFix, 700);
-        }).catch(function () { applyRotateFix(); });
+          setTimeout(refreshScale, 200);
+          setTimeout(refreshScale, 700);
+        }).catch(function () { refreshScale(); });
       }
       return true;
-    } catch (e) { applyRotateFix(); return false; }
+    } catch (e) { refreshScale(); return false; }
   }
+
   function setupFullscreen() {
-    var btn = document.getElementById('btnFullscreen');
+    var guide = document.getElementById('guide');
+    var gStart = document.getElementById('btnGuideStart');
+    var gSkip = document.getElementById('btnGuideSkip');
+    var gHint = document.getElementById('guideHint');
     var mini = document.getElementById('btnFsMini');
-    if (btn) btn.onclick = function () { if (!enterFullscreen()) applyRotateFix(); };
+    var btn = document.getElementById('btnFullscreen');
+
+    if (isMobile && guide) guide.style.display = 'flex';
+
+    if (gStart) gStart.onclick = function () {
+      var ok = enterFullscreen();
+      if (ok) {
+        guide.style.display = 'none';
+        overlay.style.display = 'flex';
+      } else {
+        gHint.textContent = '当前浏览器不支持全屏横屏，请旋转手机后点「继续」（或将游戏添加到主屏幕获得全屏体验）';
+        gSkip.style.display = 'block';
+      }
+    };
+    if (gSkip) gSkip.onclick = function () {
+      guide.style.display = 'none';
+      overlay.style.display = 'flex';
+    };
+    if (btn) btn.onclick = function () { enterFullscreen(); };
     if (mini) mini.onclick = function () {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         var exit = document.exitFullscreen || document.webkitExitFullscreen;
         if (exit) exit.call(document);
-      } else { if (!enterFullscreen()) applyRotateFix(); }
+      } else { enterFullscreen(); }
     };
-    var refresh = function () { setTimeout(applyRotateFix, 120); };
     document.addEventListener('fullscreenchange', function () {
-      applyRotateFix();
+      refreshScale();
       if (mini) mini.textContent = document.fullscreenElement ? '✕' : '⛶';
     });
-    window.addEventListener('resize', refresh);
-    window.addEventListener('orientationchange', refresh);
-    if (screen.orientation && screen.orientation.addEventListener) {
-      screen.orientation.addEventListener('change', refresh);
-    }
+    window.addEventListener('resize', function () { setTimeout(refreshScale, 120); });
+    window.addEventListener('orientationchange', function () { setTimeout(refreshScale, 120); });
   }
 
   // ================= 结算与启动 =================
@@ -100,12 +100,10 @@
     var s = game.scene.getScene('battle');
     if (s) s.scene.restart({ runes: runes });
     else game.scene.start('battle', { runes: runes });
-    setTimeout(applyRotateFix, 100);
-    setTimeout(applyRotateFix, 500);
+    setTimeout(refreshScale, 100);
+    setTimeout(refreshScale, 500);
   }
 
   setupFullscreen();
   renderLoadout();
-  applyRotateFix();
-  setTimeout(applyRotateFix, 300);
-  setTimeout(applyRotateFix, 1000);
+  setTimeout(refreshScale, 300);
