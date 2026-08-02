@@ -3,13 +3,13 @@
 横向防守 + 符文构筑的 HTML5 弹幕塔防游戏。
 
 - 试玩地址：https://dycxlcvxv00.github.io/baozhan-game/
-- 当前版本：v1.0（Phaser 3 引擎重构版）
+- 当前版本：v1.3（Phaser 3 引擎重构版 · 横屏适配修复）
 
 ## 技术架构
 
 - 引擎：Phaser 3（3.90，`lib/phaser.min.js` 仓库本地引用，无 CDN / 无构建工具，纯静态部署）
-- 分层：`js/sim.js` 纯逻辑（数值 / 判定 / 波次 / 符文充能，无引擎依赖，node 可直接仿真测试）；`js/main.js` Phaser 表现层（Scene 只负责输入、渲染、动画与事件桥接）
-- 适配：1280×720 固定舞台，Scale Manager FIT 等比缩放居中；竖屏显示横屏提示
+- 分层：`js/sim.js` 纯逻辑（数值 / 判定 / 波次 / 符文充能，无引擎依赖，node 可直接仿真测试）；表现层为顶层作用域三文件，按 script 顺序加载：`js/main.js`（装配界面 + 战斗场景）、`js/main2.js`（渲染同步）、`js/main3.js`（全屏横屏适配 + 结算启动）
+- 适配：1280×720 固定舞台，Scale Manager FIT 等比缩放（战场永远完整可见）；竖屏时 CSS 旋转舞台 90° 兜底（页面加载即生效）；全屏按钮尝试 requestFullscreen + orientation.lock，失败自动回退 CSS 旋转；viewport 防浏览器自动缩放
 - 存档：localStorage 键 `baozhan_save_v1`（旧版存档已作废）
 
 ## 核心玩法规则
