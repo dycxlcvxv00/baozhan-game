@@ -1,9 +1,9 @@
-/* 爆战丨无限弹幕 v2.0.4 · 架构层：GameState + GameBridge + BattleScene */
+/* 爆战丨无限弹幕 v2.0.5 · 架构层：GameState + GameBridge + BattleScene */
 'use strict';
 var W = 1280, H = 720;
 
 var GameState = (function () {
-  var VERSION = 'v2.0.4';
+  var VERSION = 'v2.0.5';
   var SAVE_KEY = 'baozhan_save_v1';
   var SLOT_FILL_ORDER = [12, 11, 13, 10, 14, 9, 15, 8, 3, 4, 2, 5, 1, 6, 0, 7];
   var state = { currentTab: 'runes', selectedRunes: [] };
@@ -30,12 +30,12 @@ var GameState = (function () {
   }
   function resetSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
   function buildHoneycombUiSlots(box) {
-    // 蜂窝规则：从英雄向上/向下数，第 1、3 排不动；第 2、4 排整体向右偏移。
-    // 横向间隙已合适；纵向中心距压到 43，让上下间隙接近左右间隙的观感。
+    // 手机横屏优先：整个 16 槽蜂窝必须在 slotBox 内完整显示，不再依赖浏览器手动缩放。
+    // 从英雄向上/下数第 1、3 排不动，第 2、4 排右移；纵向排距压缩到贴近左右间隙观感。
     var cx = box.centerX, cy = box.centerY;
     var colGap = 50;
-    var rowGap = 43;
-    var innerGap = 72;
+    var rowGap = 35;
+    var innerGap = 76;
     var shift = 25;
     var rows = [
       { y: cy - innerGap - rowGap * 3, shift: shift },
