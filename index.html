@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.json?v=1.7">
+<link rel="manifest" href="manifest.json?v=1.8">
 <title>爆战丨无限弹幕</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -17,6 +17,17 @@
   .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(7,11,24,.93); z-index:10; padding:16px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   h1 { color:#e5e7eb; font-size:28px; margin-bottom:6px; }
   .sub { color:#64748b; font-size:14px; margin-bottom:18px; text-align:center; }
+  /* 引导页（落地页）：游戏名 → 当前版本号 → 全屏游戏按钮 */
+  #guide h1 { font-size:34px; margin-bottom:16px; }
+  #guide .ver-cur { margin-bottom:26px; font-size:15px; padding:6px 20px; }
+  /* 游戏主页：顶部模块导航 + 下方模块内容区 */
+  #home { justify-content:flex-start; padding-top:20px; }
+  .tabbar { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; }
+  .tab-btn { min-width:96px; min-height:44px; font-size:16px; border-radius:10px; border:1px solid #475569; background:#1f2937; color:#e5e7eb; cursor:pointer; padding:0 18px; }
+  .tab-btn.on { background:#3b82f6; border-color:#60a5fa; color:#fff; font-weight:bold; }
+  .page { display:none; width:100%; flex-direction:column; align-items:center; }
+  .page.on { display:flex; }
+  .placeholder { color:#64748b; font-size:14px; line-height:1.8; text-align:center; padding:40px 16px; max-width:520px; }
   #runeGrid { display:grid; grid-template-columns:repeat(5,150px); gap:12px; margin-bottom:18px; }
   .rune-card { display:flex; flex-direction:column; align-items:center; gap:5px; min-height:148px; padding:12px 10px;
     background:#111a30; border:2px solid #263451; border-radius:12px; cursor:pointer; color:#cbd5e1; text-align:center; }
@@ -28,10 +39,10 @@
   .btn { min-width:170px; min-height:48px; font-size:18px; border-radius:10px; border:none; cursor:pointer; padding:0 22px; }
   #btnStart,#btnAgain { background:#3b82f6; color:#fff; }
   #btnLoadout { background:#1f2937; color:#e5e7eb; border:1px solid #475569; margin-left:12px; }
+  #btnResetSave { background:#7f1d1d; color:#fecaca; border:1px solid #b91c1c; margin-top:16px; }
   #result { display:none; }
   #resultTitle { font-size:44px; }
   .btnRow { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
-  #btnFullscreen { background:#f59e0b; color:#1f2937; font-weight:bold; }
   #btnFsMini { position:fixed; top:10px; right:10px; z-index:50; width:44px; height:44px;
     border-radius:10px; border:1px solid #475569; background:rgba(15,23,42,.7); color:#e5e7eb; font-size:20px; cursor:pointer; }
   #verInfo { margin-bottom:16px; text-align:center; }
@@ -44,11 +55,19 @@
     #runeGrid { grid-template-columns:repeat(2,minmax(140px,1fr)); width:100%; max-width:400px; gap:10px; }
     .rune-card { min-height:120px; }
     h1 { font-size:22px; }
+    #guide h1 { font-size:26px; }
+    .tab-btn { min-width:82px; font-size:15px; padding:0 12px; }
   }
   @media (max-height: 540px) {
     .overlay { justify-content:flex-start; }
+    #home { padding-top:10px; }
     h1 { font-size:18px; margin-bottom:2px; }
+    #guide h1 { font-size:22px; margin-bottom:8px; }
+    #guide .ver-cur { margin-bottom:14px; }
     .sub { margin-bottom:8px; font-size:12px; }
+    .tabbar { margin-bottom:8px; gap:8px; }
+    .tab-btn { min-height:38px; font-size:14px; min-width:78px; }
+    .placeholder { padding:14px 12px; }
     #runeGrid { grid-template-columns:repeat(5,minmax(96px,1fr)); max-width:100%; gap:8px; margin-bottom:8px; }
     .rune-card { min-height:100px; padding:6px 4px; gap:2px; }
     .rune-card .ri { font-size:22px; }
@@ -61,30 +80,52 @@
 </head>
 <body>
 <div id="game"></div>
-<div id="loadout" class="overlay">
+<div id="guide" class="overlay">
   <h1>爆战丨无限弹幕</h1>
-  <div class="sub">Phaser 3 引擎重构版 · 符文装配（0～5 个，每种最多一次）</div>
-  <div id="runeGrid"></div>
-  <div id="selCount" class="sub"></div>
-  <div id="verInfo">
-    <div class="ver-cur">当前版本 v1.7</div>
-    <div class="ver-desc">本次更新：主页显示当前版本号与更新内容，历史更新折叠收纳；上一版本 PWA 横屏全屏上线（从主屏幕图标打开即全屏横屏）。</div>
-    <details class="ver-his">
-      <summary>历史更新（v1.6 ～ v1.0）</summary>
-      <div class="ver-his-list">
-        <div><b>v1.6</b> PWA 横屏全屏方案，主屏幕打开即横屏</div>
-        <div><b>v1.5</b> 横屏装配显示修复 + iOS 全屏三层兜底</div>
-        <div><b>v1.4</b> 手机引导页一键全屏横屏</div>
-        <div><b>v1.3</b> 加载即旋转 + FIT 完整可见</div>
-        <div><b>v1.2</b> 横屏适配双保险修复</div>
-        <div><b>v1.1</b> 竖屏全屏按钮</div>
-        <div><b>v1.0</b> Phaser 3 引擎完全重构（屏幕适配 + 战斗闭环）</div>
-      </div>
-    </details>
+  <div class="ver-cur">当前版本 v1.8</div>
+  <button id="btnGuideStart" class="btn" style="background:#f59e0b;color:#1f2937;font-weight:bold">⛶ 全屏游戏</button>
+  <div id="guideHint" class="sub" style="margin-top:16px"></div>
+  <button id="btnGuideSkip" class="btn" style="display:none;background:#1f2937;color:#e5e7eb;border:1px solid #475569">继续</button>
+</div>
+<div id="home" class="overlay" style="display:none">
+  <div class="tabbar">
+    <button class="tab-btn on" data-tab="runes">符文</button>
+    <button class="tab-btn" data-tab="mastery">专精</button>
+    <button class="tab-btn" data-tab="equip">装备</button>
+    <button class="tab-btn" data-tab="settings">设置</button>
   </div>
-  <div class="btnRow">
-    <button id="btnStart" class="btn">进入战斗</button>
-    <button id="btnFullscreen" class="btn">⛶ 全屏游戏（横屏）</button>
+  <div id="pageRunes" class="page on">
+    <div class="sub">符文装配（0～5 个，每种最多一次）</div>
+    <div id="runeGrid"></div>
+    <div id="selCount" class="sub"></div>
+    <div class="btnRow"><button id="btnStart" class="btn">进入战斗</button></div>
+  </div>
+  <div id="pageMastery" class="page">
+    <div class="placeholder">专精系统将在后续版本实装：<br>装配符文参战获得专精经验，升级提升符文伤害，每 5 级解锁专属强化。</div>
+  </div>
+  <div id="pageEquip" class="page">
+    <div class="placeholder">装备系统将在后续版本实装：<br>关卡掉落装备，穿戴属性汇入英雄，仓库与对比面板逐步回归。</div>
+  </div>
+  <div id="pageSettings" class="page">
+    <div id="verInfo">
+      <div class="ver-cur">当前版本 v1.8</div>
+      <div class="ver-desc">本次更新：基础 UI 布局改版——打开游戏先进入引导页（游戏名 + 当前版本号 + 全屏游戏按钮）；点击进入游戏主页，顶部为符文 / 专精 / 装备 / 设置四个模块入口，下方为模块内容区。</div>
+      <details class="ver-his">
+        <summary>历史更新（v1.7 ～ v1.0）</summary>
+        <div class="ver-his-list">
+          <div><b>v1.7</b> 主页版本信息区（当前版本 + 历史折叠）</div>
+          <div><b>v1.6</b> PWA 横屏全屏方案，主屏幕打开即横屏</div>
+          <div><b>v1.5</b> 横屏装配显示修复 + iOS 全屏三层兜底</div>
+          <div><b>v1.4</b> 手机引导页一键全屏横屏</div>
+          <div><b>v1.3</b> 加载即旋转 + FIT 完整可见</div>
+          <div><b>v1.2</b> 横屏适配双保险修复</div>
+          <div><b>v1.1</b> 竖屏全屏按钮</div>
+          <div><b>v1.0</b> Phaser 3 引擎完全重构（屏幕适配 + 战斗闭环）</div>
+        </div>
+      </details>
+    </div>
+    <div class="sub" style="max-width:480px">iPhone 浏览器不支持网页全屏：点浏览器菜单「添加到主屏幕」，从主屏幕图标打开即全屏横屏（与视频 App 一致）。</div>
+    <button id="btnResetSave" class="btn">重置本地存档</button>
   </div>
 </div>
 <div id="result" class="overlay">
@@ -92,22 +133,15 @@
   <div id="resultStats" class="sub"></div>
   <div>
     <button id="btnAgain" class="btn">再来一局</button>
-    <button id="btnLoadout" class="btn">重新装配</button>
+    <button id="btnLoadout" class="btn">返回主页</button>
   </div>
 </div>
-<div id="guide" class="overlay" style="display:none">
-  <h1>爆战丨无限弹幕</h1>
-  <div class="sub">横屏体验最佳 · 一键进入全屏自动横屏</div>
-  <button id="btnGuideStart" class="btn" style="background:#f59e0b;color:#1f2937;font-weight:bold">⛶ 进入全屏游戏</button>
-  <div id="guideHint" class="sub" style="margin-top:16px"></div>
-  <button id="btnGuideSkip" class="btn" style="display:none;background:#1f2937;color:#e5e7eb;border:1px solid #475569">继续</button>
-</div>
 <button id="btnFsMini" title="全屏">⛶</button>
-<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=1.7').catch(function () {}); }</script>
-<script src="lib/phaser.min.js?v=1.7"></script>
-<script src="js/sim.js?v=1.7"></script>
-<script src="js/main.js?v=1.7"></script>
-<script src="js/main2.js?v=1.7"></script>
-<script src="js/main3.js?v=1.7"></script>
+<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=1.8').catch(function () {}); }</script>
+<script src="lib/phaser.min.js?v=1.8"></script>
+<script src="js/sim.js?v=1.8"></script>
+<script src="js/main.js?v=1.8"></script>
+<script src="js/main2.js?v=1.8"></script>
+<script src="js/main3.js?v=1.8"></script>
 </body>
 </html>
