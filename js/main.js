@@ -1,4 +1,4 @@
-/* 爆战丨无限弹幕 v1.8 · Phaser 表现层 1/3：符文模块（主页页签内）+ 战斗场景 */
+/* 爆战丨无限弹幕 v1.9 · Phaser 表现层 1/3：符文页锯阵装配 + 战斗场景 */
 'use strict';
   var W = 1280, H = 720;
   var SAVE_KEY = 'baozhan_save_v1';
@@ -10,32 +10,72 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(o)); } catch (e) {}
   }
 
-  // ================= 符文模块（主页「符文」页签，DOM 覆盖画布，手机点按交互） =================
+  function cssColor(c) { return '#' + ('000000' + c.toString(16)).slice(-6); }
+
+  // ================= 符文页（左：16 槽六边形锯阵，右：符文列表，手机点按交互） =================
   var save = loadSave();
   var selected = Array.isArray(save.runes) ? save.runes.slice(0, 5) : ['fireball', 'icespike'];
   var homeEl = document.getElementById('home');
-  var grid = document.getElementById('runeGrid');
+  var slotBox = document.getElementById('slotBox');
+  var listEl = document.getElementById('runeList');
+
+  // 锯阵布局与战场 BZ.SLOT_POS 一致（200,360 原点，dx 48 dy 34，缩放 0.56，整体居中于 220×500 槽位盒）
+  var UI_SCALE = 0.56, UI_OX = -2, UI_OY = 49;
+  var UI_SLOTS = BZ.SLOT_POS.map(function (p) {
+    return { x: Math.round(p.x * UI_SCALE + UI_OX), y: Math.round(p.y * UI_SCALE + UI_OY) };
+  });
+  // 填充顺序与 sim 的 slotOrder 一致：第 1 个符文填最内圈，依次外扩
+  var SLOT_FILL_ORDER = [12, 11, 13, 10, 14, 9, 15, 8, 3, 4, 2, 5, 1, 6, 0, 7];
 
   function renderLoadout() {
-    grid.innerHTML = '';
+    var i;
+    slotBox.innerHTML = '';
+    for (i = 0; i < UI_SLOTS.length; i++) {
+      var hex = document.createElement('div');
+      hex.className = 'hex slot-hex';
+      hex.style.left = (UI_SLOTS[i].x - 23.5) + 'px';
+      hex.style.top = (UI_SLOTS[i].y - 27) + 'px';
+      var inEl = document.createElement('div');
+      inEl.className = 'hex-in';
+      var fi = SLOT_FILL_ORDER.indexOf(i);
+      if (fi >= 0 && fi < selected.length) {
+        var def = BZ.RUNE_DEFS[selected[fi]];
+        hex.style.background = cssColor(def.color);
+        inEl.textContent = def.icon;
+      }
+      hex.appendChild(inEl);
+      slotBox.appendChild(hex);
+    }
+    var hero = document.createElement('div');
+    hero.className = 'hex hero-hex';
+    hero.style.left = (Math.round(BZ.CONFIG.hero.x * UI_SCALE + UI_OX) - 39) + 'px';
+    hero.style.top = (Math.round(BZ.CONFIG.hero.y * UI_SCALE + UI_OY) - 45) + 'px';
+    var heroIn = document.createElement('div');
+    heroIn.className = 'hex-in';
+    hero.appendChild(heroIn);
+    slotBox.appendChild(hero);
+
+    listEl.innerHTML = '';
     BZ.RUNE_ORDER.forEach(function (id) {
       var def = BZ.RUNE_DEFS[id];
       var on = selected.indexOf(id) >= 0;
-      var card = document.createElement('button');
-      card.className = 'rune-card' + (on ? ' on' : '');
-      card.innerHTML =
+      var row = document.createElement('button');
+      row.className = 'rune-row' + (on ? ' on' : '');
+      row.innerHTML =
         '<span class="ri">' + def.icon + '</span>' +
-        '<span class="rn">' + def.name + '</span>' +
-        '<span class="re">⚡' + def.energyMax + '</span>' +
-        '<span class="rd">' + def.desc + '</span>';
-      card.onclick = function () {
+        '<span class="rt">' +
+          '<span class="rn">' + def.name + '</span>' +
+          '<span class="rd">' + def.desc + '</span>' +
+        '</span>' +
+        '<span class="re">⚡' + def.energyMax + '</span>';
+      row.onclick = function () {
         var i = selected.indexOf(id);
         if (i >= 0) selected.splice(i, 1);
         else if (selected.length < 5) selected.push(id);
         writeSave({ runes: selected });
         renderLoadout();
       };
-      grid.appendChild(card);
+      listEl.appendChild(row);
     });
     document.getElementById('selCount').textContent = '已装配 ' + selected.length + ' / 5（0 个也可开战）';
   }
