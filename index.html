@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.json?v=1.6">
+<link rel="manifest" href="manifest.json?v=1.7">
 <title>爆战丨无限弹幕</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -34,6 +34,12 @@
   #btnFullscreen { background:#f59e0b; color:#1f2937; font-weight:bold; }
   #btnFsMini { position:fixed; top:10px; right:10px; z-index:50; width:44px; height:44px;
     border-radius:10px; border:1px solid #475569; background:rgba(15,23,42,.7); color:#e5e7eb; font-size:20px; cursor:pointer; }
+  #verInfo { margin-bottom:16px; text-align:center; }
+  .ver-cur { display:inline-block; background:#16264a; border:1px solid #3b82f6; color:#60a5fa; font-size:14px; font-weight:bold; padding:4px 14px; border-radius:20px; margin-bottom:8px; }
+  .ver-desc { color:#94a3b8; font-size:13px; line-height:1.5; max-width:540px; margin:0 auto 8px; }
+  .ver-his { color:#64748b; font-size:12px; }
+  .ver-his summary { cursor:pointer; padding:4px 0; }
+  .ver-his-list { text-align:left; max-width:480px; margin:6px auto 0; line-height:1.8; }
   @media (max-width: 860px) {
     #runeGrid { grid-template-columns:repeat(2,minmax(140px,1fr)); width:100%; max-width:400px; gap:10px; }
     .rune-card { min-height:120px; }
@@ -49,6 +55,7 @@
     .rune-card .rn { font-size:13px; }
     .rune-card .rd { display:none; }
     .btn { min-height:44px; font-size:16px; min-width:140px; }
+    .ver-desc { display:none; }
   }
 </style>
 </head>
@@ -56,9 +63,25 @@
 <div id="game"></div>
 <div id="loadout" class="overlay">
   <h1>爆战丨无限弹幕</h1>
-  <div class="sub">v1.0 · Phaser 3 引擎重构版 · 符文装配（0～5 个，每种最多一次）</div>
+  <div class="sub">Phaser 3 引擎重构版 · 符文装配（0～5 个，每种最多一次）</div>
   <div id="runeGrid"></div>
   <div id="selCount" class="sub"></div>
+  <div id="verInfo">
+    <div class="ver-cur">当前版本 v1.7</div>
+    <div class="ver-desc">本次更新：主页显示当前版本号与更新内容，历史更新折叠收纳；上一版本 PWA 横屏全屏上线（从主屏幕图标打开即全屏横屏）。</div>
+    <details class="ver-his">
+      <summary>历史更新（v1.6 ～ v1.0）</summary>
+      <div class="ver-his-list">
+        <div><b>v1.6</b> PWA 横屏全屏方案，主屏幕打开即横屏</div>
+        <div><b>v1.5</b> 横屏装配显示修复 + iOS 全屏三层兜底</div>
+        <div><b>v1.4</b> 手机引导页一键全屏横屏</div>
+        <div><b>v1.3</b> 加载即旋转 + FIT 完整可见</div>
+        <div><b>v1.2</b> 横屏适配双保险修复</div>
+        <div><b>v1.1</b> 竖屏全屏按钮</div>
+        <div><b>v1.0</b> Phaser 3 引擎完全重构（屏幕适配 + 战斗闭环）</div>
+      </div>
+    </details>
+  </div>
   <div class="btnRow">
     <button id="btnStart" class="btn">进入战斗</button>
     <button id="btnFullscreen" class="btn">⛶ 全屏游戏（横屏）</button>
@@ -80,11 +103,11 @@
   <button id="btnGuideSkip" class="btn" style="display:none;background:#1f2937;color:#e5e7eb;border:1px solid #475569">继续</button>
 </div>
 <button id="btnFsMini" title="全屏">⛶</button>
-<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=1.6').catch(function () {}); }</script>
-<script src="lib/phaser.min.js?v=1.6"></script>
-<script src="js/sim.js?v=1.6"></script>
-<script src="js/main.js?v=1.6"></script>
-<script src="js/main2.js?v=1.6"></script>
-<script src="js/main3.js?v=1.6"></script>
+<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=1.7').catch(function () {}); }</script>
+<script src="lib/phaser.min.js?v=1.7"></script>
+<script src="js/sim.js?v=1.7"></script>
+<script src="js/main.js?v=1.7"></script>
+<script src="js/main2.js?v=1.7"></script>
+<script src="js/main3.js?v=1.7"></script>
 </body>
 </html>
