@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.json?v=1.8">
+<link rel="manifest" href="manifest.json?v=1.9">
 <title>爆战丨无限弹幕</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -20,22 +20,39 @@
   /* 引导页（落地页）：游戏名 → 当前版本号 → 全屏游戏按钮 */
   #guide h1 { font-size:34px; margin-bottom:16px; }
   #guide .ver-cur { margin-bottom:26px; font-size:15px; padding:6px 20px; }
-  /* 游戏主页：顶部模块导航 + 下方模块内容区 */
-  #home { justify-content:flex-start; padding-top:20px; }
-  .tabbar { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; }
+  /* 游戏主页：顶栏（游戏名+版本号 ｜ 模块导航）+ 下方模块内容区 */
+  #home { justify-content:flex-start; padding-top:16px; }
+  .homeHead { display:flex; align-items:center; justify-content:center; gap:22px; flex-wrap:wrap; width:100%; margin-bottom:16px; }
+  .brand { text-align:center; }
+  .brand h1 { font-size:24px; margin-bottom:4px; }
+  .brand .ver-cur { margin-bottom:0; font-size:12px; padding:2px 12px; }
+  .tabbar { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .tab-btn { min-width:96px; min-height:44px; font-size:16px; border-radius:10px; border:1px solid #475569; background:#1f2937; color:#e5e7eb; cursor:pointer; padding:0 18px; }
-  .tab-btn.on { background:#3b82f6; border-color:#60a5fa; color:#fff; font-weight:bold; }
+  .tab-btn.on { background:#fbbf24; border-color:#f59e0b; color:#1f2937; font-weight:bold; }
   .page { display:none; width:100%; flex-direction:column; align-items:center; }
   .page.on { display:flex; }
   .placeholder { color:#64748b; font-size:14px; line-height:1.8; text-align:center; padding:40px 16px; max-width:520px; }
-  #runeGrid { display:grid; grid-template-columns:repeat(5,150px); gap:12px; margin-bottom:18px; }
-  .rune-card { display:flex; flex-direction:column; align-items:center; gap:5px; min-height:148px; padding:12px 10px;
-    background:#111a30; border:2px solid #263451; border-radius:12px; cursor:pointer; color:#cbd5e1; text-align:center; }
-  .rune-card .ri { font-size:30px; }
-  .rune-card .rn { font-size:16px; font-weight:bold; color:#e5e7eb; }
-  .rune-card .re { font-size:13px; color:#fbbf24; }
-  .rune-card .rd { font-size:12px; color:#64748b; line-height:1.4; }
-  .rune-card.on { border-color:#3b82f6; background:#16264a; box-shadow:0 0 12px rgba(59,130,246,.35); }
+  /* 符文页：左侧锯阵面板 + 右侧符文列表 */
+  .panel { display:flex; align-items:center; gap:28px; width:100%; max-width:1000px; border:2px solid #263451; border-radius:18px; padding:22px 26px; background:rgba(13,20,38,.55); }
+  #slotBox { position:relative; width:220px; height:500px; flex:0 0 auto; margin:0 auto; }
+  .hex { position:absolute; display:flex; align-items:center; justify-content:center; background:#64748b;
+    clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); }
+  .hex-in { width:84%; height:88%; display:flex; align-items:center; justify-content:center; font-size:18px; background:linear-gradient(160deg,#334155,#1e293b);
+    clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); }
+  .slot-hex { width:47px; height:54px; }
+  .hero-hex { width:78px; height:90px; background:#60a5fa; }
+  .hero-hex .hex-in { background:linear-gradient(160deg,#3b82f6,#1d4ed8); }
+  .listCol { flex:1; min-width:0; width:100%; display:flex; flex-direction:column; align-items:center; }
+  .listTitle { color:#cbd5e1; font-size:17px; font-weight:bold; margin-bottom:14px; }
+  #runeList { display:flex; flex-direction:column; gap:10px; width:100%; max-width:460px; margin-bottom:14px; }
+  .rune-row { display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; text-align:left;
+    background:#111a30; border:2px solid #263451; border-radius:12px; cursor:pointer; color:#cbd5e1; }
+  .rune-row .ri { font-size:26px; }
+  .rune-row .rt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .rune-row .rn { font-size:16px; font-weight:bold; color:#e5e7eb; }
+  .rune-row .rd { font-size:12px; color:#64748b; line-height:1.4; }
+  .rune-row .re { font-size:13px; color:#fbbf24; }
+  .rune-row.on { border-color:#3b82f6; background:#16264a; box-shadow:0 0 12px rgba(59,130,246,.35); }
   .btn { min-width:170px; min-height:48px; font-size:18px; border-radius:10px; border:none; cursor:pointer; padding:0 22px; }
   #btnStart,#btnAgain { background:#3b82f6; color:#fff; }
   #btnLoadout { background:#1f2937; color:#e5e7eb; border:1px solid #475569; margin-left:12px; }
@@ -52,9 +69,9 @@
   .ver-his summary { cursor:pointer; padding:4px 0; }
   .ver-his-list { text-align:left; max-width:480px; margin:6px auto 0; line-height:1.8; }
   @media (max-width: 860px) {
-    #runeGrid { grid-template-columns:repeat(2,minmax(140px,1fr)); width:100%; max-width:400px; gap:10px; }
-    .rune-card { min-height:120px; }
+    .panel { flex-direction:column; gap:16px; padding:16px; }
     h1 { font-size:22px; }
+    .brand h1 { font-size:20px; }
     #guide h1 { font-size:26px; }
     .tab-btn { min-width:82px; font-size:15px; padding:0 12px; }
   }
@@ -65,14 +82,16 @@
     #guide h1 { font-size:22px; margin-bottom:8px; }
     #guide .ver-cur { margin-bottom:14px; }
     .sub { margin-bottom:8px; font-size:12px; }
-    .tabbar { margin-bottom:8px; gap:8px; }
+    .homeHead { margin-bottom:8px; gap:12px; }
+    .brand h1 { font-size:16px; }
     .tab-btn { min-height:38px; font-size:14px; min-width:78px; }
+    .panel { padding:12px 16px; gap:14px; }
+    #slotBox { zoom:0.62; }
+    .listTitle { margin-bottom:8px; font-size:15px; }
+    #runeList { gap:8px; margin-bottom:8px; }
+    .rune-row { padding:6px 10px; }
+    .rune-row .rd { display:none; }
     .placeholder { padding:14px 12px; }
-    #runeGrid { grid-template-columns:repeat(5,minmax(96px,1fr)); max-width:100%; gap:8px; margin-bottom:8px; }
-    .rune-card { min-height:100px; padding:6px 4px; gap:2px; }
-    .rune-card .ri { font-size:22px; }
-    .rune-card .rn { font-size:13px; }
-    .rune-card .rd { display:none; }
     .btn { min-height:44px; font-size:16px; min-width:140px; }
     .ver-desc { display:none; }
   }
@@ -82,23 +101,34 @@
 <div id="game"></div>
 <div id="guide" class="overlay">
   <h1>爆战丨无限弹幕</h1>
-  <div class="ver-cur">当前版本 v1.8</div>
+  <div class="ver-cur">当前版本 v1.9</div>
   <button id="btnGuideStart" class="btn" style="background:#f59e0b;color:#1f2937;font-weight:bold">⛶ 全屏游戏</button>
   <div id="guideHint" class="sub" style="margin-top:16px"></div>
   <button id="btnGuideSkip" class="btn" style="display:none;background:#1f2937;color:#e5e7eb;border:1px solid #475569">继续</button>
 </div>
 <div id="home" class="overlay" style="display:none">
-  <div class="tabbar">
-    <button class="tab-btn on" data-tab="runes">符文</button>
-    <button class="tab-btn" data-tab="mastery">专精</button>
-    <button class="tab-btn" data-tab="equip">装备</button>
-    <button class="tab-btn" data-tab="settings">设置</button>
+  <div class="homeHead">
+    <div class="brand">
+      <h1>爆战丨无限弹幕</h1>
+      <div class="ver-cur">v1.9</div>
+    </div>
+    <div class="tabbar">
+      <button class="tab-btn on" data-tab="runes">符文</button>
+      <button class="tab-btn" data-tab="mastery">专精</button>
+      <button class="tab-btn" data-tab="equip">装备</button>
+      <button class="tab-btn" data-tab="settings">设置</button>
+    </div>
   </div>
   <div id="pageRunes" class="page on">
-    <div class="sub">符文装配（0～5 个，每种最多一次）</div>
-    <div id="runeGrid"></div>
-    <div id="selCount" class="sub"></div>
-    <div class="btnRow"><button id="btnStart" class="btn">进入战斗</button></div>
+    <div class="panel">
+      <div id="slotBox"></div>
+      <div class="listCol">
+        <div class="listTitle">符文列表</div>
+        <div id="runeList"></div>
+        <div id="selCount" class="sub"></div>
+        <div class="btnRow"><button id="btnStart" class="btn">进入战斗</button></div>
+      </div>
+    </div>
   </div>
   <div id="pageMastery" class="page">
     <div class="placeholder">专精系统将在后续版本实装：<br>装配符文参战获得专精经验，升级提升符文伤害，每 5 级解锁专属强化。</div>
@@ -108,11 +138,12 @@
   </div>
   <div id="pageSettings" class="page">
     <div id="verInfo">
-      <div class="ver-cur">当前版本 v1.8</div>
-      <div class="ver-desc">本次更新：基础 UI 布局改版——打开游戏先进入引导页（游戏名 + 当前版本号 + 全屏游戏按钮）；点击进入游戏主页，顶部为符文 / 专精 / 装备 / 设置四个模块入口，下方为模块内容区。</div>
+      <div class="ver-cur">当前版本 v1.9</div>
+      <div class="ver-desc">本次更新：符文装配页按 UI 设计稿改版——主页顶栏左侧显示游戏名与版本号；符文页左侧为 16 槽六边形锯阵（与战场一致的上 8 下 8 交错布局，中央为英雄位），右侧符文列表点选装配。</div>
       <details class="ver-his">
-        <summary>历史更新（v1.7 ～ v1.0）</summary>
+        <summary>历史更新（v1.8 ～ v1.0）</summary>
         <div class="ver-his-list">
+          <div><b>v1.8</b> 基础 UI 布局改版：引导页 + 主页四模块导航</div>
           <div><b>v1.7</b> 主页版本信息区（当前版本 + 历史折叠）</div>
           <div><b>v1.6</b> PWA 横屏全屏方案，主屏幕打开即横屏</div>
           <div><b>v1.5</b> 横屏装配显示修复 + iOS 全屏三层兜底</div>
@@ -137,11 +168,11 @@
   </div>
 </div>
 <button id="btnFsMini" title="全屏">⛶</button>
-<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=1.8').catch(function () {}); }</script>
-<script src="lib/phaser.min.js?v=1.8"></script>
-<script src="js/sim.js?v=1.8"></script>
-<script src="js/main.js?v=1.8"></script>
-<script src="js/main2.js?v=1.8"></script>
-<script src="js/main3.js?v=1.8"></script>
+<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=1.9').catch(function () {}); }</script>
+<script src="lib/phaser.min.js?v=1.9"></script>
+<script src="js/sim.js?v=1.9"></script>
+<script src="js/main.js?v=1.9"></script>
+<script src="js/main2.js?v=1.9"></script>
+<script src="js/main3.js?v=1.9"></script>
 </body>
 </html>
