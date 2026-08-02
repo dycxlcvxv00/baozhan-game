@@ -207,6 +207,44 @@
     this.hudWall.setText('围墙 ' + Math.ceil(S.wallHp) + ' / ' + S.wallMaxHp + (S.shield > 0 ? ' · 护盾 ' + Math.ceil(S.shield) : ''));
   };
 
+  // ================= 全屏 / 横屏适配（用户手势触发；iOS 不支持时降级） =================
+  function enterFullscreen() {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) return false;
+    try {
+      var p = req.call(el);
+      if (p && p.then) {
+        p.then(function () {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(function () {});
+          }
+        }).catch(function () {});
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+  function setupFullscreen() {
+    var btn = document.getElementById('btnFullscreen');
+    var mini = document.getElementById('btnFsMini');
+    var hint = document.getElementById('fsHint');
+    if (btn) btn.onclick = function () {
+      if (!enterFullscreen() && hint) {
+        hint.textContent = '当前浏览器不支持网页全屏，请手动横屏（或“添加到主屏幕”获得全屏体验）';
+      }
+    };
+    if (mini) mini.onclick = function () {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        var exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
+      } else { enterFullscreen(); }
+    };
+    document.addEventListener('fullscreenchange', function () {
+      if (game && game.scale && game.scale.refresh) game.scale.refresh();
+      if (mini) mini.textContent = document.fullscreenElement ? '✕' : '⛶';
+    });
+  }
+
   // ================= 结算与启动 =================
   var resultPanel = document.getElementById('result');
   function showResult(r) {
@@ -244,5 +282,6 @@
     else game.scene.start('battle', { runes: runes });
   }
 
+  setupFullscreen();
   renderLoadout();
 })();
