@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
-<title>爆战丨无限弹幕 v1.0</title>
+<meta name="theme-color" content="#0b1020">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json?v=1.6">
+<title>爆战丨无限弹幕</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { width:100%; height:100%; background:#0b1020; overflow:hidden; font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif; }
@@ -75,10 +80,11 @@
   <button id="btnGuideSkip" class="btn" style="display:none;background:#1f2937;color:#e5e7eb;border:1px solid #475569">继续</button>
 </div>
 <button id="btnFsMini" title="全屏">⛶</button>
-<script src="lib/phaser.min.js?v=1.5"></script>
-<script src="js/sim.js?v=1.5"></script>
-<script src="js/main.js?v=1.5"></script>
-<script src="js/main2.js?v=1.5"></script>
-<script src="js/main3.js?v=1.5"></script>
+<script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js?v=1.6').catch(function () {}); }</script>
+<script src="lib/phaser.min.js?v=1.6"></script>
+<script src="js/sim.js?v=1.6"></script>
+<script src="js/main.js?v=1.6"></script>
+<script src="js/main2.js?v=1.6"></script>
+<script src="js/main3.js?v=1.6"></script>
 </body>
 </html>
