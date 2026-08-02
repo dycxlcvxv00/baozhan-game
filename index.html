@@ -25,18 +25,15 @@
   #btnLoadout { background:#1f2937; color:#e5e7eb; border:1px solid #475569; margin-left:12px; }
   #result { display:none; }
   #resultTitle { font-size:44px; }
-  #rotateHint { display:none; position:fixed; inset:0; z-index:99; background:#0b1020; color:#fbbf24;
-    font-size:22px; text-align:center; padding-top:42vh; }
-  @media (orientation: portrait) { #rotateHint { display:block; } }
+  .btnRow { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  #btnFullscreen { background:#f59e0b; color:#1f2937; font-weight:bold; }
+  #btnFsMini { position:fixed; top:10px; right:10px; z-index:50; width:44px; height:44px;
+    border-radius:10px; border:1px solid #475569; background:rgba(15,23,42,.7); color:#e5e7eb; font-size:20px; cursor:pointer; }
   @media (max-width: 860px) {
     #runeGrid { grid-template-columns:repeat(2,minmax(140px,1fr)); width:100%; max-width:400px; gap:10px; }
     .rune-card { min-height:120px; }
     h1 { font-size:22px; }
   }
-  #fsBox { display:flex; flex-direction:column; align-items:center; gap:14px; }
-  #btnFullscreen { background:#f59e0b; color:#1f2937; font-weight:bold; }
-  #btnFsMini { position:fixed; top:10px; right:10px; z-index:50; width:44px; height:44px;
-    border-radius:10px; border:1px solid #475569; background:rgba(15,23,42,.7); color:#e5e7eb; font-size:20px; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -46,7 +43,10 @@
   <div class="sub">v1.0 · Phaser 3 引擎重构版 · 符文装配（0～5 个，每种最多一次）</div>
   <div id="runeGrid"></div>
   <div id="selCount" class="sub"></div>
-  <button id="btnStart" class="btn">进入战斗</button>
+  <div class="btnRow">
+    <button id="btnStart" class="btn">进入战斗</button>
+    <button id="btnFullscreen" class="btn">⛶ 全屏游戏（横屏）</button>
+  </div>
 </div>
 <div id="result" class="overlay">
   <h1 id="resultTitle"></h1>
@@ -56,15 +56,9 @@
     <button id="btnLoadout" class="btn">重新装配</button>
   </div>
 </div>
-<div id="rotateHint">
-  <div id="fsBox">
-    <button id="btnFullscreen" class="btn">⛶ 全屏游戏（横屏）</button>
-    <div id="fsHint" class="sub">点上方按钮进入全屏并自动横屏；若无效请手动旋转手机</div>
-  </div>
-</div>
 <button id="btnFsMini" title="全屏">⛶</button>
-<script src="lib/phaser.min.js?v=1.1"></script>
-<script src="js/sim.js?v=1.1"></script>
-<script src="js/main.js?v=1.1"></script>
+<script src="lib/phaser.min.js?v=1.2"></script>
+<script src="js/sim.js?v=1.2"></script>
+<script src="js/main.js?v=1.2"></script>
 </body>
 </html>
