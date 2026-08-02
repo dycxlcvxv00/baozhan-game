@@ -1,4 +1,4 @@
-/* 爆战丨无限弹幕 v1.3 · Phaser 表现层 1/3：装配界面 + 战斗场景 */
+/* 爆战丨无限弹幕 v1.8 · Phaser 表现层 1/3：符文模块（主页页签内）+ 战斗场景 */
 'use strict';
   var W = 1280, H = 720;
   var SAVE_KEY = 'baozhan_save_v1';
@@ -10,10 +10,10 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(o)); } catch (e) {}
   }
 
-  // ================= 装配界面（DOM 覆盖画布，手机点按交互） =================
+  // ================= 符文模块（主页「符文」页签，DOM 覆盖画布，手机点按交互） =================
   var save = loadSave();
   var selected = Array.isArray(save.runes) ? save.runes.slice(0, 5) : ['fireball', 'icespike'];
-  var overlay = document.getElementById('loadout');
+  var homeEl = document.getElementById('home');
   var grid = document.getElementById('runeGrid');
 
   function renderLoadout() {
@@ -41,7 +41,7 @@
   }
 
   document.getElementById('btnStart').onclick = function () {
-    overlay.style.display = 'none';
+    homeEl.style.display = 'none';
     startBattle();
   };
 
