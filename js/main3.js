@@ -1,5 +1,5 @@
-/* 爆战丨无限弹幕 v1.6 · Phaser 表现层 3/3：全屏引导 + 结算启动 */
-  // ================= 全屏 / 横屏适配 v1.6 =================
+/* 爆战丨无限弹幕 v1.8 · Phaser 表现层 3/3：引导页 + 主页模块导航 + 结算启动 */
+  // ================= 全屏 / 横屏适配 =================
   var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
     (window.innerWidth <= 860 && 'ontouchstart' in window);
 
@@ -26,31 +26,29 @@
     } catch (e) { refreshScale(); return false; }
   }
 
+  // ================= 引导页（落地页：游戏名 + 当前版本号 + 全屏游戏按钮） =================
+  function enterHome() {
+    document.getElementById('guide').style.display = 'none';
+    homeEl.style.display = 'flex';
+  }
   function setupFullscreen() {
-    var guide = document.getElementById('guide');
     var gStart = document.getElementById('btnGuideStart');
     var gSkip = document.getElementById('btnGuideSkip');
     var gHint = document.getElementById('guideHint');
     var mini = document.getElementById('btnFsMini');
-    var btn = document.getElementById('btnFullscreen');
-
-    if (isMobile && guide) guide.style.display = 'flex';
 
     if (gStart) gStart.onclick = function () {
       if (enterFullscreen()) {
-        guide.style.display = 'none';
-        overlay.style.display = 'flex';
+        enterHome();
       } else {
         gHint.innerHTML = '当前浏览器不支持网页全屏。<b>推荐：点浏览器菜单「添加到主屏幕」，从主屏幕图标打开游戏——将以全屏横屏运行（与视频 App 一致）。</b>或手动横屏后点「继续」。';
         gSkip.style.display = 'block';
       }
     };
     if (gSkip) gSkip.onclick = function () {
-      guide.style.display = 'none';
-      overlay.style.display = 'flex';
-      alert('请手动旋转手机至横屏进行游戏');
+      enterHome();
+      if (isMobile) alert('请手动旋转手机至横屏进行游戏');
     };
-    if (btn) btn.onclick = function () { enterFullscreen(); };
     if (mini) mini.onclick = function () {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         var exit = document.exitFullscreen || document.webkitExitFullscreen;
@@ -63,6 +61,28 @@
     });
     window.addEventListener('resize', function () { setTimeout(refreshScale, 120); });
     window.addEventListener('orientationchange', function () { setTimeout(refreshScale, 120); });
+  }
+
+  // ================= 主页模块导航（符文 / 专精 / 装备 / 设置） =================
+  function setupTabs() {
+    var btns = document.querySelectorAll('.tab-btn');
+    var pages = { runes: 'pageRunes', mastery: 'pageMastery', equip: 'pageEquip', settings: 'pageSettings' };
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].onclick = function () {
+        var tab = this.getAttribute('data-tab');
+        for (var j = 0; j < btns.length; j++) btns[j].className = 'tab-btn' + (btns[j] === this ? ' on' : '');
+        for (var key in pages) {
+          document.getElementById(pages[key]).className = 'page' + (key === tab ? ' on' : '');
+        }
+      };
+    }
+    var reset = document.getElementById('btnResetSave');
+    if (reset) reset.onclick = function () {
+      if (confirm('确定重置本地存档？已装配符文等数据将清空。')) {
+        try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+        location.reload();
+      }
+    };
   }
 
   // ================= 结算与启动 =================
@@ -81,7 +101,7 @@
   };
   document.getElementById('btnLoadout').onclick = function () {
     resultPanel.style.display = 'none';
-    overlay.style.display = 'flex';
+    homeEl.style.display = 'flex';
   };
 
   var game = null;
@@ -105,5 +125,6 @@
   }
 
   setupFullscreen();
+  setupTabs();
   renderLoadout();
   setTimeout(refreshScale, 300);
