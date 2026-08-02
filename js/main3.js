@@ -1,4 +1,4 @@
-/* 爆战丨无限弹幕 v2.0 · DOM UI App（只通过 GameState/GameBridge 通信） */
+/* 爆战丨无限弹幕 v2.0.2 · DOM UI App（只通过 GameState/GameBridge 通信） */
 'use strict';
 var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (window.innerWidth <= 860 && 'ontouchstart' in window);
 var homeEl = document.getElementById('home');
@@ -28,16 +28,24 @@ function renderLoadout() {
   slotBox.innerHTML = '';
   for (i = 0; i < slots.length; i++) {
     var s = slots[i], hex = document.createElement('div');
-    hex.className = 'hex slot-hex';
+    hex.className = 'hex slot-hex' + (s.def ? ' filled' : ' empty');
     hex.style.left = (Math.round(s.point.x) - 23.5) + 'px';
     hex.style.top = (Math.round(s.point.y) - 27) + 'px';
     var inEl = document.createElement('div'); inEl.className = 'hex-in';
-    if (s.def) { hex.style.background = cssColor(s.def.color); inEl.textContent = s.def.icon; }
+    if (s.def) {
+      hex.style.background = cssColor(s.def.color);
+      inEl.textContent = s.def.name.replace('符文', '');
+      inEl.style.color = '#f8fafc';
+    } else {
+      hex.style.background = '#1f2937';
+      inEl.textContent = '空';
+      inEl.style.color = '#475569';
+    }
     hex.appendChild(inEl); slotBox.appendChild(hex);
   }
   var hp = GameState.getHeroUiPoint(box), hero = document.createElement('div');
   hero.className = 'hex hero-hex'; hero.style.left = (Math.round(hp.x) - 39) + 'px'; hero.style.top = (Math.round(hp.y) - 45) + 'px';
-  var heroIn = document.createElement('div'); heroIn.className = 'hex-in'; hero.appendChild(heroIn); slotBox.appendChild(hero);
+  var heroIn = document.createElement('div'); heroIn.className = 'hex-in'; heroIn.textContent = '英雄'; heroIn.style.color = '#dbeafe'; hero.appendChild(heroIn); slotBox.appendChild(hero);
 
   listEl.innerHTML = '';
   BZ.RUNE_ORDER.forEach(function (id) {
