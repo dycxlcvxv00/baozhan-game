@@ -58,7 +58,6 @@
     create: function () {
       this.S = BZ.createBattle(this.runes);
       this.g = this.add.graphics();
-      this.cameras.main.centerOn(W / 2, H / 2);
       this.paused = false;
       this.result = null;
       this.liveTexts = [];
@@ -214,22 +213,21 @@
   function applyRotateFix() {
     var g = document.getElementById('game');
     if (!g) return;
-    var portrait = isPortrait();
-    var inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    if (portrait && !inFs) {
+    if (isPortrait()) {
+      // 竖屏时把舞台整体旋转 90°：任何浏览器都能横着玩（页面加载即生效）
       var vw = window.innerWidth, vh = window.innerHeight;
+      g.style.position = 'fixed';
+      g.style.transformOrigin = 'bottom left';
       g.style.transform = 'rotate(90deg)';
-      g.style.transformOrigin = 'center center';
       g.style.width = vh + 'px';
       g.style.height = vw + 'px';
-      g.style.position = 'fixed';
-      g.style.left = ((vw - vh) / 2) + 'px';
-      g.style.top = ((vh - vw) / 2) + 'px';
+      g.style.left = '0px';
+      g.style.top = (-vw) + 'px';
     } else {
+      g.style.position = '';
       g.style.transform = '';
       g.style.width = '';
       g.style.height = '';
-      g.style.position = '';
       g.style.left = '';
       g.style.top = '';
     }
@@ -303,7 +301,7 @@
         parent: 'game',
         width: W, height: H,
         backgroundColor: '#0b1020',
-        scale: { mode: Phaser.Scale.EXPAND, autoCenter: Phaser.Scale.CENTER_BOTH },
+        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
         scene: [BattleScene]
       });
     }
@@ -316,4 +314,7 @@
 
   setupFullscreen();
   renderLoadout();
+  applyRotateFix();
+  setTimeout(applyRotateFix, 300);
+  setTimeout(applyRotateFix, 1000);
 })();
