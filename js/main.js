@@ -58,6 +58,7 @@
     create: function () {
       this.S = BZ.createBattle(this.runes);
       this.g = this.add.graphics();
+      this.cameras.main.centerOn(W / 2, H / 2);
       this.paused = false;
       this.result = null;
       this.liveTexts = [];
@@ -207,42 +208,71 @@
     this.hudWall.setText('围墙 ' + Math.ceil(S.wallHp) + ' / ' + S.wallMaxHp + (S.shield > 0 ? ' · 护盾 ' + Math.ceil(S.shield) : ''));
   };
 
-  // ================= 全屏 / 横屏适配（用户手势触发；iOS 不支持时降级） =================
+  // ================= 全屏 / 横屏适配 v1.2 =================
+  // 策略：尝试浏览器全屏 + 锁定横屏；不支持的浏览器用 CSS 旋转兜底（竖屏也能横着玩）
+  function isPortrait() { return window.innerHeight > window.innerWidth; }
+  function applyRotateFix() {
+    var g = document.getElementById('game');
+    if (!g) return;
+    var portrait = isPortrait();
+    var inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (portrait && !inFs) {
+      var vw = window.innerWidth, vh = window.innerHeight;
+      g.style.transform = 'rotate(90deg)';
+      g.style.transformOrigin = 'center center';
+      g.style.width = vh + 'px';
+      g.style.height = vw + 'px';
+      g.style.position = 'fixed';
+      g.style.left = ((vw - vh) / 2) + 'px';
+      g.style.top = ((vh - vw) / 2) + 'px';
+    } else {
+      g.style.transform = '';
+      g.style.width = '';
+      g.style.height = '';
+      g.style.position = '';
+      g.style.left = '';
+      g.style.top = '';
+    }
+    if (game && game.scale && game.scale.refresh) game.scale.refresh();
+  }
   function enterFullscreen() {
     var el = document.documentElement;
     var req = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (!req) return false;
+    if (!req) { applyRotateFix(); return false; }
     try {
       var p = req.call(el);
       if (p && p.then) {
         p.then(function () {
           if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(function () {});
+            screen.orientation.lock('landscape').catch(function () { applyRotateFix(); });
           }
-        }).catch(function () {});
+          setTimeout(applyRotateFix, 200);
+          setTimeout(applyRotateFix, 700);
+        }).catch(function () { applyRotateFix(); });
       }
       return true;
-    } catch (e) { return false; }
+    } catch (e) { applyRotateFix(); return false; }
   }
   function setupFullscreen() {
     var btn = document.getElementById('btnFullscreen');
     var mini = document.getElementById('btnFsMini');
-    var hint = document.getElementById('fsHint');
-    if (btn) btn.onclick = function () {
-      if (!enterFullscreen() && hint) {
-        hint.textContent = '当前浏览器不支持网页全屏，请手动横屏（或“添加到主屏幕”获得全屏体验）';
-      }
-    };
+    if (btn) btn.onclick = function () { if (!enterFullscreen()) applyRotateFix(); };
     if (mini) mini.onclick = function () {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         var exit = document.exitFullscreen || document.webkitExitFullscreen;
         if (exit) exit.call(document);
-      } else { enterFullscreen(); }
+      } else { if (!enterFullscreen()) applyRotateFix(); }
     };
+    var refresh = function () { setTimeout(applyRotateFix, 120); };
     document.addEventListener('fullscreenchange', function () {
-      if (game && game.scale && game.scale.refresh) game.scale.refresh();
+      applyRotateFix();
       if (mini) mini.textContent = document.fullscreenElement ? '✕' : '⛶';
     });
+    window.addEventListener('resize', refresh);
+    window.addEventListener('orientationchange', refresh);
+    if (screen.orientation && screen.orientation.addEventListener) {
+      screen.orientation.addEventListener('change', refresh);
+    }
   }
 
   // ================= 结算与启动 =================
@@ -273,13 +303,15 @@
         parent: 'game',
         width: W, height: H,
         backgroundColor: '#0b1020',
-        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        scale: { mode: Phaser.Scale.EXPAND, autoCenter: Phaser.Scale.CENTER_BOTH },
         scene: [BattleScene]
       });
     }
     var s = game.scene.getScene('battle');
     if (s) s.scene.restart({ runes: runes });
     else game.scene.start('battle', { runes: runes });
+    setTimeout(applyRotateFix, 100);
+    setTimeout(applyRotateFix, 500);
   }
 
   setupFullscreen();
