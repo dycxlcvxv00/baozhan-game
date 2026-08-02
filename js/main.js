@@ -1,8 +1,8 @@
-/* 爆战丨无限弹幕 v3.1 · 架构层：GameState + GameBridge + BattleScene */
+/* 爆战丨无限弹幕 v3.2 · 架构层：GameState + GameBridge + BattleScene */
 'use strict';
 var W = 1280, H = 720;
 var GameState = (function () {
-  var VERSION = 'v3.1';
+  var VERSION = 'v3.2';
   var SAVE_KEY = 'baozhan_save_v1';
   var SLOT_FILL_ORDER = BZ.SLOT_ORDER || [12,11,13,10,14,9,15,8,3,4,2,5,1,6,0,7];
   var state = { selectedRunes: [] };
@@ -14,10 +14,11 @@ var GameState = (function () {
   function getRuneSlot(id){ for(var i=0;i<state.selectedRunes.length;i++)if(state.selectedRunes[i]===id)return i; return -1; }
   function placeRuneAt(orderIndex,id){ if(!BZ.RUNE_DEFS[id]||orderIndex<0||orderIndex>=16)return false; var old=getRuneSlot(id); if(old>=0)state.selectedRunes[old]=null; if(!state.selectedRunes[orderIndex]&&getEquippedCount()>=5){ if(old>=0)state.selectedRunes[old]=id; return false; } state.selectedRunes[orderIndex]=id; writeSave(); return true; }
   function clearRuneAt(orderIndex){ if(orderIndex>=0&&orderIndex<16){ state.selectedRunes[orderIndex]=null; writeSave(); } }
+  function toggleSlot(orderIndex,pendingId){ if(pendingId){ placeRuneAt(orderIndex,pendingId); return null; } clearRuneAt(orderIndex); return null; }
   function resetSave(){ try{localStorage.removeItem(SAVE_KEY);}catch(e){} }
   function buildHoneycombUiSlots(box){
-    // v3.1：下排整体略上移，避免触控区贴近容器下边界；横向间距保持。
-    var cx=box.matrixX || box.centerX, cy=box.centerY-6, colGap=46, rowGap=38, innerGap=30, shift=23;
+    // v3.2：恢复居中分布，不再整体上移；位置先冻结，再由统一槽位交互层处理安装/拆卸。
+    var cx=box.matrixX || box.centerX, cy=box.centerY, colGap=46, rowGap=39, innerGap=31, shift=23;
     var rows=[
       {y:cy-innerGap-rowGap*3,shift:shift},{y:cy-innerGap-rowGap*2,shift:0},{y:cy-innerGap-rowGap,shift:shift},{y:cy-innerGap,shift:0},
       {y:cy+innerGap,shift:0},{y:cy+innerGap+rowGap,shift:shift},{y:cy+innerGap+rowGap*2,shift:0},{y:cy+innerGap+rowGap*3,shift:shift}
@@ -29,7 +30,7 @@ var GameState = (function () {
   function getDividerUiLine(box){ return {x1:box.matrixX - 52, x2:box.dividerX || box.centerX + 42, y:box.centerY}; }
   function createBattleConfig(){ return {version:VERSION,runes:getSelectedRunes(),slotOrder:SLOT_FILL_ORDER.slice(),saveKey:SAVE_KEY}; }
   init();
-  return {VERSION:VERSION,SAVE_KEY:SAVE_KEY,SLOT_FILL_ORDER:SLOT_FILL_ORDER,getSelectedRunes:getSelectedRunes,getEquippedCount:getEquippedCount,getRuneSlot:getRuneSlot,placeRuneAt:placeRuneAt,clearRuneAt:clearRuneAt,resetSave:resetSave,getLoadoutSlotView:getLoadoutSlotView,getHeroUiPoint:getHeroUiPoint,getDividerUiLine:getDividerUiLine,createBattleConfig:createBattleConfig};
+  return {VERSION:VERSION,SAVE_KEY:SAVE_KEY,SLOT_FILL_ORDER:SLOT_FILL_ORDER,getSelectedRunes:getSelectedRunes,getEquippedCount:getEquippedCount,getRuneSlot:getRuneSlot,placeRuneAt:placeRuneAt,clearRuneAt:clearRuneAt,toggleSlot:toggleSlot,resetSave:resetSave,getLoadoutSlotView:getLoadoutSlotView,getHeroUiPoint:getHeroUiPoint,getDividerUiLine:getDividerUiLine,createBattleConfig:createBattleConfig};
 })();
 var GameBridge=(function(){var handlers={};return{on:function(n,fn){(handlers[n]||(handlers[n]=[])).push(fn);},emit:function(n,p){var list=handlers[n]||[];for(var i=0;i<list.length;i++)list[i](p||{});}};})();
 function cssColor(c){return '#'+('000000'+c.toString(16)).slice(-6);}
