@@ -1,5 +1,5 @@
-/* 爆战丨无限弹幕 v1.5 · Phaser 表现层 3/3：全屏引导 + 结算启动 */
-  // ================= 全屏 / 横屏适配 v1.5 =================
+/* 爆战丨无限弹幕 v1.6 · Phaser 表现层 3/3：全屏引导 + 结算启动 */
+  // ================= 全屏 / 横屏适配 v1.6 =================
   var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
     (window.innerWidth <= 860 && 'ontouchstart' in window);
 
@@ -7,7 +7,7 @@
     if (game && game.scale && game.scale.refresh) game.scale.refresh();
   }
   function enterFullscreen() {
-    // 三层兼容：标准全屏（安卓 Chrome）→ webkit 全屏（旧 iOS/国产浏览器）→ 手动横屏提示（iPhone Safari）
+    // 三层兼容：标准全屏（安卓 Chrome）→ webkit 全屏（旧 iOS/国产浏览器）→ 引导添加到主屏幕（PWA 横屏全屏）
     var el = document.documentElement;
     var req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (!req) return false;
@@ -41,7 +41,7 @@
         guide.style.display = 'none';
         overlay.style.display = 'flex';
       } else {
-        gHint.textContent = '你的浏览器不支持网页全屏（iPhone 浏览器限制），请手动横屏后点「继续」；将游戏添加到主屏幕可获得全屏体验';
+        gHint.innerHTML = '当前浏览器不支持网页全屏。<b>推荐：点浏览器菜单「添加到主屏幕」，从主屏幕图标打开游戏——将以全屏横屏运行（与视频 App 一致）。</b>或手动横屏后点「继续」。';
         gSkip.style.display = 'block';
       }
     };
