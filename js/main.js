@@ -1,8 +1,8 @@
-/* 爆战丨无限弹幕 v2.5 · 架构层：GameState + GameBridge + BattleScene */
+/* 爆战丨无限弹幕 v2.6 · 架构层：GameState + GameBridge + BattleScene */
 'use strict';
 var W = 1280, H = 720;
 var GameState = (function () {
-  var VERSION = 'v2.5';
+  var VERSION = 'v2.6';
   var SAVE_KEY = 'baozhan_save_v1';
   var SLOT_FILL_ORDER = BZ.SLOT_ORDER || [12,11,13,10,14,9,15,8,3,4,2,5,1,6,0,7];
   var state = { selectedRunes: [] };
@@ -16,8 +16,8 @@ var GameState = (function () {
   function clearRuneAt(orderIndex){ if(orderIndex>=0&&orderIndex<16){ state.selectedRunes[orderIndex]=null; writeSave(); } }
   function resetSave(){ try{localStorage.removeItem(SAVE_KEY);}catch(e){} }
   function buildHoneycombUiSlots(box){
-    // v2.5：英雄移到矩阵右侧，符文矩阵独立占满左侧空间；不再被英雄占用中线。
-    var cx=box.matrixX || box.centerX, cy=box.centerY, colGap=50, rowGap=40, innerGap=36, shift=25;
+    // v2.6：收回边界内；横向间距缩小、纵向间距适中，目标是视觉等距蜂窝。
+    var cx=box.matrixX || box.centerX, cy=box.centerY, colGap=38, rowGap=40, innerGap=32, shift=19;
     var rows=[
       {y:cy-innerGap-rowGap*3,shift:shift},{y:cy-innerGap-rowGap*2,shift:0},{y:cy-innerGap-rowGap,shift:shift},{y:cy-innerGap,shift:0},
       {y:cy+innerGap,shift:0},{y:cy+innerGap+rowGap,shift:shift},{y:cy+innerGap+rowGap*2,shift:0},{y:cy+innerGap+rowGap*3,shift:shift}
@@ -26,7 +26,7 @@ var GameState = (function () {
   }
   function getLoadoutSlotView(box){ var selected=getSelectedRunes(), uiSlots=buildHoneycombUiSlots(box); return uiSlots.map(function(point,orderIndex){ var slotIndex=SLOT_FILL_ORDER[orderIndex], runeId=selected[orderIndex]||null; return {orderIndex:orderIndex,slot:slotIndex,point:point,runeId:runeId,def:runeId?BZ.RUNE_DEFS[runeId]:null}; }); }
   function getHeroUiPoint(box){ return {x:box.heroX || box.centerX + 74,y:box.centerY}; }
-  function getDividerUiLine(box){ return {x:box.dividerX || box.centerX + 38, y1:box.centerY - 170, y2:box.centerY + 170}; }
+  function getDividerUiLine(box){ return {x1:box.matrixX - 48, x2:box.dividerX || box.centerX + 44, y:box.centerY}; }
   function createBattleConfig(){ return {version:VERSION,runes:getSelectedRunes(),slotOrder:SLOT_FILL_ORDER.slice(),saveKey:SAVE_KEY}; }
   init();
   return {VERSION:VERSION,SAVE_KEY:SAVE_KEY,SLOT_FILL_ORDER:SLOT_FILL_ORDER,getSelectedRunes:getSelectedRunes,getEquippedCount:getEquippedCount,getRuneSlot:getRuneSlot,placeRuneAt:placeRuneAt,clearRuneAt:clearRuneAt,resetSave:resetSave,getLoadoutSlotView:getLoadoutSlotView,getHeroUiPoint:getHeroUiPoint,getDividerUiLine:getDividerUiLine,createBattleConfig:createBattleConfig};
