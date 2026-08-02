@@ -1,8 +1,8 @@
-/* 爆战丨无限弹幕 v3.0 · 架构层：GameState + GameBridge + BattleScene */
+/* 爆战丨无限弹幕 v3.1 · 架构层：GameState + GameBridge + BattleScene */
 'use strict';
 var W = 1280, H = 720;
 var GameState = (function () {
-  var VERSION = 'v3.0';
+  var VERSION = 'v3.1';
   var SAVE_KEY = 'baozhan_save_v1';
   var SLOT_FILL_ORDER = BZ.SLOT_ORDER || [12,11,13,10,14,9,15,8,3,4,2,5,1,6,0,7];
   var state = { selectedRunes: [] };
@@ -16,8 +16,8 @@ var GameState = (function () {
   function clearRuneAt(orderIndex){ if(orderIndex>=0&&orderIndex<16){ state.selectedRunes[orderIndex]=null; writeSave(); } }
   function resetSave(){ try{localStorage.removeItem(SAVE_KEY);}catch(e){} }
   function buildHoneycombUiSlots(box){
-    // v3.0：保持 v2.9 横向间距，点击命中区由 DOM 方形按钮负责。
-    var cx=box.matrixX || box.centerX, cy=box.centerY, colGap=46, rowGap=39, innerGap=31, shift=23;
+    // v3.1：下排整体略上移，避免触控区贴近容器下边界；横向间距保持。
+    var cx=box.matrixX || box.centerX, cy=box.centerY-6, colGap=46, rowGap=38, innerGap=30, shift=23;
     var rows=[
       {y:cy-innerGap-rowGap*3,shift:shift},{y:cy-innerGap-rowGap*2,shift:0},{y:cy-innerGap-rowGap,shift:shift},{y:cy-innerGap,shift:0},
       {y:cy+innerGap,shift:0},{y:cy+innerGap+rowGap,shift:shift},{y:cy+innerGap+rowGap*2,shift:0},{y:cy+innerGap+rowGap*3,shift:shift}
