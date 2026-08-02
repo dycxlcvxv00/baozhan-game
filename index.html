@@ -9,7 +9,7 @@
   html,body { width:100%; height:100%; background:#0b1020; overflow:hidden; font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif; }
   #game { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
   #game canvas { display:block; }
-  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(7,11,24,.93); z-index:10; padding:16px; }
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(7,11,24,.93); z-index:10; padding:16px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   h1 { color:#e5e7eb; font-size:28px; margin-bottom:6px; }
   .sub { color:#64748b; font-size:14px; margin-bottom:18px; text-align:center; }
   #runeGrid { display:grid; grid-template-columns:repeat(5,150px); gap:12px; margin-bottom:18px; }
@@ -33,6 +33,17 @@
     #runeGrid { grid-template-columns:repeat(2,minmax(140px,1fr)); width:100%; max-width:400px; gap:10px; }
     .rune-card { min-height:120px; }
     h1 { font-size:22px; }
+  }
+  @media (max-height: 540px) {
+    .overlay { justify-content:flex-start; }
+    h1 { font-size:18px; margin-bottom:2px; }
+    .sub { margin-bottom:8px; font-size:12px; }
+    #runeGrid { grid-template-columns:repeat(5,minmax(96px,1fr)); max-width:100%; gap:8px; margin-bottom:8px; }
+    .rune-card { min-height:100px; padding:6px 4px; gap:2px; }
+    .rune-card .ri { font-size:22px; }
+    .rune-card .rn { font-size:13px; }
+    .rune-card .rd { display:none; }
+    .btn { min-height:44px; font-size:16px; min-width:140px; }
   }
 </style>
 </head>
@@ -64,10 +75,10 @@
   <button id="btnGuideSkip" class="btn" style="display:none;background:#1f2937;color:#e5e7eb;border:1px solid #475569">继续</button>
 </div>
 <button id="btnFsMini" title="全屏">⛶</button>
-<script src="lib/phaser.min.js?v=1.4"></script>
-<script src="js/sim.js?v=1.4"></script>
-<script src="js/main.js?v=1.4"></script>
-<script src="js/main2.js?v=1.4"></script>
-<script src="js/main3.js?v=1.4"></script>
+<script src="lib/phaser.min.js?v=1.5"></script>
+<script src="js/sim.js?v=1.5"></script>
+<script src="js/main.js?v=1.5"></script>
+<script src="js/main2.js?v=1.5"></script>
+<script src="js/main3.js?v=1.5"></script>
 </body>
 </html>
