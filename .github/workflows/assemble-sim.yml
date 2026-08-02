@@ -1,0 +1,26 @@
+name: assemble-sim
+on:
+  push:
+    paths:
+      - '_parts/sim.done'
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 合并 sim.js 分片
+        run: |
+          mkdir -p js
+          cat _parts/sim.js.1 _parts/sim.js.2 _parts/sim.js.3 > js/sim.js
+          wc -c js/sim.js
+      - name: 提交并清理分片
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -r --cached _parts
+          rm -rf _parts
+          git add js/sim.js
+          git commit -m "v1.0: 战斗逻辑核心 sim.js（分片合并入库）[skip ci]" || echo "无变化"
+          git push
