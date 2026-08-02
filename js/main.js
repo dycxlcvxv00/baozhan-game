@@ -1,8 +1,8 @@
-/* 爆战丨无限弹幕 v2.7 · 架构层：GameState + GameBridge + BattleScene */
+/* 爆战丨无限弹幕 v2.8 · 架构层：GameState + GameBridge + BattleScene */
 'use strict';
 var W = 1280, H = 720;
 var GameState = (function () {
-  var VERSION = 'v2.7';
+  var VERSION = 'v2.8';
   var SAVE_KEY = 'baozhan_save_v1';
   var SLOT_FILL_ORDER = BZ.SLOT_ORDER || [12,11,13,10,14,9,15,8,3,4,2,5,1,6,0,7];
   var state = { selectedRunes: [] };
@@ -16,8 +16,8 @@ var GameState = (function () {
   function clearRuneAt(orderIndex){ if(orderIndex>=0&&orderIndex<16){ state.selectedRunes[orderIndex]=null; writeSave(); } }
   function resetSave(){ try{localStorage.removeItem(SAVE_KEY);}catch(e){} }
   function buildHoneycombUiSlots(box){
-    // v2.7：上下区水平居中、平均分布；中心距接近符文尺寸，保留轻微间隙。
-    var cx=box.matrixX || box.centerX, cy=box.centerY, colGap=42, rowGap=42, innerGap=29, shift=21;
+    // v2.8 冻结版：整体上移并轻微缩小，确保不越界；横纵观感等距。
+    var cx=box.matrixX || box.centerX, cy=box.centerY, colGap=40, rowGap=39, innerGap=31, shift=20;
     var rows=[
       {y:cy-innerGap-rowGap*3,shift:shift},{y:cy-innerGap-rowGap*2,shift:0},{y:cy-innerGap-rowGap,shift:shift},{y:cy-innerGap,shift:0},
       {y:cy+innerGap,shift:0},{y:cy+innerGap+rowGap,shift:shift},{y:cy+innerGap+rowGap*2,shift:0},{y:cy+innerGap+rowGap*3,shift:shift}
@@ -25,8 +25,8 @@ var GameState = (function () {
     var slots=[]; for(var r=0;r<rows.length;r++){ slots.push({x:cx-colGap/2+rows[r].shift,y:rows[r].y}); slots.push({x:cx+colGap/2+rows[r].shift,y:rows[r].y}); } return slots;
   }
   function getLoadoutSlotView(box){ var selected=getSelectedRunes(), uiSlots=buildHoneycombUiSlots(box); return uiSlots.map(function(point,orderIndex){ var slotIndex=SLOT_FILL_ORDER[orderIndex], runeId=selected[orderIndex]||null; return {orderIndex:orderIndex,slot:slotIndex,point:point,runeId:runeId,def:runeId?BZ.RUNE_DEFS[runeId]:null}; }); }
-  function getHeroUiPoint(box){ return {x:box.heroX || box.centerX + 66,y:box.centerY}; }
-  function getDividerUiLine(box){ return {x1:box.matrixX - 50, x2:box.dividerX || box.centerX + 44, y:box.centerY}; }
+  function getHeroUiPoint(box){ return {x:box.heroX || box.centerX + 60,y:box.centerY}; }
+  function getDividerUiLine(box){ return {x1:box.matrixX - 48, x2:box.dividerX || box.centerX + 42, y:box.centerY}; }
   function createBattleConfig(){ return {version:VERSION,runes:getSelectedRunes(),slotOrder:SLOT_FILL_ORDER.slice(),saveKey:SAVE_KEY}; }
   init();
   return {VERSION:VERSION,SAVE_KEY:SAVE_KEY,SLOT_FILL_ORDER:SLOT_FILL_ORDER,getSelectedRunes:getSelectedRunes,getEquippedCount:getEquippedCount,getRuneSlot:getRuneSlot,placeRuneAt:placeRuneAt,clearRuneAt:clearRuneAt,resetSave:resetSave,getLoadoutSlotView:getLoadoutSlotView,getHeroUiPoint:getHeroUiPoint,getDividerUiLine:getDividerUiLine,createBattleConfig:createBattleConfig};
