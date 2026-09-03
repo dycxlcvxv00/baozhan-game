@@ -1,0 +1,46 @@
+# 推送源码后自动重建单文件产物，保证 Pages 固定链接始终等于最新源码
+#
+# 为什么需要：Pages 从 main 分支根目录取 index.html。若本地改了 js/ 却忘记跑
+# build_single.cjs，线上会停留在旧版。这个 workflow 兜底：产物有差异就自动提交。
+#
+# 只监听源码变化，避免自己提交 index.html 时触发递归构建。
+name: pages-sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index-h.html'
+      - 'js/**'
+      - 'build_single.cjs'
+      - '.github/workflows/pages-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 重建单文件产物
+        run: node build_single.cjs
+
+      - name: 有差异则自动提交
+        run: |
+          if [ -n "$(git status --porcelain index.html)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "chore: 自动重建 index.html（Pages 产物同步）"
+            git push
+            echo "✅ 产物已同步，Pages 将在 1~2 分钟内更新"
+          else
+            echo "ℹ️ 产物与源码一致，无需提交"
+          fi
