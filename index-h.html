@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>爆战丨无限弹幕 · 横版数值验证沙盒（V4）</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%232fe6d0'/></svg>" />
+<style>
+  :root{
+    --bg0:#060912; --bg1:#0b1322; --bg2:#0e1830;
+    --panel:rgba(16,24,44,0.55); --panel2:rgba(11,17,32,0.66);
+    --glass:rgba(255,255,255,0.04);
+    --line:rgba(125,165,225,0.16);
+    --txt:#eaf0ff; --dim:#93a4c4; --mute:#6c7da0;
+    --accent:#2fe6d0;   /* 青绿霓虹（主操作/高亮） */
+    --accent2:#9b7bff;  /* 紫霓虹（次操作） */
+    --gold:#ffcf6b;     /* 暗金（数值/货币/奖励） */
+    --btn:#161f38; --btnOn:#15788c;
+    --equipOn:rgba(120,150,220,0.22);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;
+    -webkit-user-select:none;user-select:none;-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none;
+    background:
+      radial-gradient(1100px 620px at 50% -12%, #16243f 0%, rgba(22,36,63,0) 60%),
+      radial-gradient(900px 600px at 12% 110%, rgba(34,28,72,0.55) 0%, rgba(34,28,72,0) 55%),
+      linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 100%);
+    color:var(--txt);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
+  #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:top left}
+
+  /* 玻璃拟态通用面板 + 霓虹描边 */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    backdrop-filter:blur(11px) saturate(120%);-webkit-backdrop-filter:blur(11px) saturate(120%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 0 36px rgba(40,70,120,0.10),
+      0 10px 34px rgba(0,0,0,0.42),
+      0 0 0 1px rgba(47,230,208,0.06);
+    position:relative}
+  .ttl{font-weight:700;font-size:22px;color:var(--txt);letter-spacing:.5px}
+  .ttl b{color:var(--accent)}
+  .sub{font-size:15px;color:var(--dim)}
+
+  /* 顶部栏 */
+  #topbar{position:absolute;left:8px;top:8px;width:1904px;height:60px;display:flex;align-items:center;gap:28px;padding:0 26px}
+  #topbar .brand{font-weight:800;font-size:22px;letter-spacing:1px;
+    background:linear-gradient(90deg,#fff,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #topbar .stat{font-size:18px;color:var(--dim)}
+  #topbar .stat b{color:var(--gold);font-weight:700}
+  #topbar .right{margin-left:auto;color:var(--dim);font-size:16px;display:flex;gap:14px;align-items:center}
+  #topbar .chip{height:30px;padding:0 14px;border-radius:16px;display:flex;align-items:center;
+    background:var(--glass);border:1px solid var(--line);color:var(--dim);font-size:14px}
+  #topbar .chip.on{color:var(--accent);border-color:rgba(47,230,208,0.5);box-shadow:0 0 12px rgba(47,230,208,0.25)}
+
+  /* 战斗区 */
+  #battleWrap{position:absolute;left:635px;top:90px;width:650px;height:300px;border-radius:14px;overflow:hidden;
+    border:1px solid rgba(47,230,208,0.38);
+    background:linear-gradient(180deg,#0a1120 0%,#0c1626 100%);
+    box-shadow:
+      0 0 0 1px rgba(47,230,208,0.10),
+      0 0 30px rgba(47,230,208,0.12),
+      inset 0 0 54px rgba(8,26,52,0.7),
+      0 10px 40px rgba(0,0,0,0.5)}
+  #battleWrap canvas{display:block}
+
+  /* 左侧 UI 接口：功能按钮（左 4×2 网格）+ 面板显示区（右侧剩余空间） */
+  #leftPanel{position:absolute;left:4px;top:90px;width:619px;height:300px;padding:18px 20px}
+  #leftPanel .body{display:flex;gap:14px;margin-top:14px;height:218px}
+  #leftPanel .btns{width:306px;display:flex;flex-wrap:wrap;gap:14px;align-content:flex-start}
+  .fbtn{width:64px;height:64px;border-radius:16px;background:var(--btn);
+    border:1px solid var(--line);color:var(--dim);font-size:15px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;user-select:none}
+  .fbtn:hover{border-color:var(--accent);color:var(--txt);box-shadow:0 0 14px rgba(47,230,208,0.22)}
+  .fbtn.on{background:linear-gradient(180deg,#1f9fb2,#136479);border-color:var(--accent);color:#eafffb;
+    box-shadow:0 0 16px rgba(47,230,208,0.55),inset 0 1px 0 rgba(255,255,255,0.25)}
+  #panelView{flex:1;height:218px;border-radius:12px;
+    background:var(--panel2);border:1px solid var(--line);padding:14px;font-size:15px;color:var(--dim);overflow:auto;
+    box-shadow:inset 0 0 26px rgba(20,36,66,0.4)}
+  #panelView b{color:var(--accent)}
+
+  /* 右侧 UI 接口：英雄 10 件装备 */
+  #rightPanel{position:absolute;left:1293px;top:90px;width:619px;height:300px;padding:18px 20px}
+  /* 装备栏顶部切换按钮（预留：装备 / 背包 / 图鉴 / 属性） */
+  #equipTabs{position:absolute;left:20px;top:16px;width:579px;height:34px;display:flex;gap:8px}
+  .etab{flex:1;display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);border-radius:6px;background:var(--panel2);
+    color:var(--mute);font-size:14px;font-weight:600;cursor:pointer;user-select:none;
+    transition:color .12s,border-color .12s,box-shadow .12s}
+  .etab:hover{color:var(--txt);border-color:var(--accent)}
+  .etab.on{color:var(--txt);border-color:var(--accent2);background:var(--equipOn);
+    box-shadow:0 0 10px rgba(155,123,255,.25)}
+  /* 装备栏：竖版纸娃娃布局（按截图 963x252 精确像素坐标绝对定位，共 10 格）
+     整体下移使底部留白 = 顶部标签留白(16px)：grid 视觉高度 236*0.854≈201.5，
+     top = 298(面板内高) - 16(底部留白) - 201.5 ≈ 80.5px，上下对称 */
+  #equipGrid{position:absolute;left:20px;top:76.2px;width:678px;height:236px;
+    transform:scale(0.854);transform-origin:top left}
+  .eslot{position:absolute;box-sizing:border-box;border:2px solid;border-radius:3px;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    font-weight:700;letter-spacing:1px;color:#fff;cursor:pointer;user-select:none;
+    background:linear-gradient(180deg,rgba(34,32,48,.82) 0%,rgba(16,15,26,.9) 100%);
+    text-shadow:0 1px 3px rgba(0,0,0,.9);transition:filter .12s,box-shadow .12s}
+  .eslot .nm{opacity:.92}
+  /* 已穿戴：仅保留深色内阴影增强质感，取消白色光晕 */
+  .eslot.on{box-shadow:inset 0 -16px 26px rgba(0,0,0,.32)}
+  /* 未穿戴：灰度 + 降透明度（纯文字区分，无图标） */
+  .eslot:not(.on){filter:grayscale(.6) brightness(.72);opacity:.8}
+  .eslot:hover{filter:none;opacity:1;box-shadow:0 0 12px rgba(255,220,150,.5)}
+
+  /* 底部面板：左 = 角色属性（宽 = #leftPanel = 619px），右 = 背包占位 */
+  #bottom{position:absolute;left:4px;top:412px;width:1912px;height:660px;padding:18px 24px}
+  #bottom .cols{display:flex;gap:14px;height:624px}
+  #bottom .col.l{width:619px;flex:none;padding:0;overflow:hidden;position:relative}
+  #bottom .col.r{flex:1;padding:14px 22px;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+  #bottom .col.r .ttl{margin-bottom:10px}
+
+  /* === 角色面板（严格按截图 492×798，外层 transform:scale 适配 619 内宽） === */
+  #charPanel{position:relative;width:100%;height:100%;overflow:hidden}
+  #charScale{
+    position:relative;display:flex;flex-direction:column;gap:6px;
+    width:100%;height:100%;box-sizing:border-box;padding:6px 12px 6px}
+  /* （已移除顶部紫色玩家信息栏 .charHead，玩家信息合并进左侧主属性区展示） */
+
+  .coreAttrs{
+    position:relative;width:100%;flex:none;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .coreAttrs .ca{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:6px 4px;border-radius:6px;color:#fff;cursor:default}
+  .coreAttrs .ca .ic{
+    width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+    border-radius:50%;background:rgba(255,255,255,0.12);font-size:22px;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,0.25),0 0 12px rgba(255,255,255,0.18)}
+  .coreAttrs .ca.hp .ic{color:#ff9aa9;background:rgba(255,120,140,0.16);box-shadow:inset 0 0 0 2px rgba(255,154,170,0.5),0 0 14px rgba(255,120,140,0.25)}
+  .coreAttrs .ca.atk .ic{color:#ffd370;background:rgba(255,200,80,0.18);box-shadow:inset 0 0 0 2px rgba(255,200,80,0.5),0 0 14px rgba(255,200,80,0.3)}
+  .coreAttrs .ca.def .ic{color:#a8d3ff;background:rgba(120,180,255,0.18);box-shadow:inset 0 0 0 2px rgba(168,211,255,0.5),0 0 14px rgba(120,180,255,0.3)}
+  .coreAttrs .ca .lbl{font-size:12px;color:#d9c7ff;margin-top:4px;font-weight:600}
+  .coreAttrs .ca .val{font-size:20px;font-weight:800;letter-spacing:.5px;margin-top:1px}
+  .coreAttrs .ca.atk .val{color:#ffc44d}
+
+  .elemGrid{
+    position:relative;width:100%;flex:none;
+    display:grid;grid-template-columns:repeat(2,1fr);gap:8px 12px}
+  .elemGrid .eg{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:4px 10px;border-radius:7px;
+    background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);
+    cursor:default;transition:border-color .12s,background .12s}
+  .elemGrid .eg:hover{border-color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.06)}
+  .elemGrid .eg .lhs{display:flex;align-items:center;gap:8px}
+  .elemGrid .eg .ic{width:22px;height:22px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+  .eg.phys   .ic{background:#c89858;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
+  .eg.frost  .ic{background:#3aa8e6;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
+  .eg.poison .ic{background:#5fa84e;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
+  .eg.chaos  .ic{background:#a35ad8;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
+  .eg.fire   .ic{background:#e3603a;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
+  .eg.light  .ic{background:#9b87f7;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
+  .elemGrid .eg .nm{font-size:14px;color:#fff;font-weight:600}
+  .elemGrid .eg .vl{font-size:15px;color:#ffdc7a;font-weight:700}
+
+  .attrTabs{
+    position:relative;width:100%;flex:none;height:34px;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+  .attrTabs .at{
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;color:#9b8fb5;font-weight:700;letter-spacing:1px;
+    border-radius:6px;background:rgba(0,0,0,0.32);
+    cursor:pointer;border-bottom:3px solid transparent;transition:.12s}
+  .attrTabs .at:hover{color:#fff}
+  .attrTabs .at.on{
+    color:#ffce6a;background:rgba(255,200,80,0.18);
+    border-bottom-color:#ffce6a;
+    box-shadow:0 4px 14px -4px rgba(255,200,80,0.5)}
+
+  .attrBody{
+    position:relative;width:100%;flex:1;min-height:0;overflow-y:auto;
+    padding-right:6px;scrollbar-width:thin}
+  .attrBody::-webkit-scrollbar{width:6px}
+  .attrBody::-webkit-scrollbar-thumb{background:rgba(155,143,181,0.5);border-radius:3px}
+  /* 分组：彩色左条 + 文字标题（恢复攻击/法术/暴击等分组文字） */
+  .attrBody .sg{display:flex;flex-direction:column;margin-bottom:6px;
+    border-left:4px solid transparent;padding-left:8px}
+  .attrBody .sg.atk{border-left-color:#ff7a7a}
+  .attrBody .sg.mgc{border-left-color:#7ab8ff}
+  .attrBody .sg.crt{border-left-color:#ffae3a}
+  .attrBody .sg.def{border-left-color:#9adb6f}
+  .attrBody .sg.bst{border-left-color:#c89cff}
+  .attrBody .sg.oth{border-left-color:#7c9bcc}
+  .attrBody .sgh{display:flex;align-items:center;height:17px;margin-bottom:4px;
+    font-size:13px;font-weight:700;letter-spacing:1px}
+  .attrBody .sgh.atk{color:#ff7a7a}
+  .attrBody .sgh.mgc{color:#7ab8ff}
+  .attrBody .sgh.crt{color:#ffae3a}
+  .attrBody .sgh.def{color:#9adb6f}
+  .attrBody .sgh.bst{color:#c89cff}
+  .attrBody .sgh.oth{color:#7c9bcc}
+  .attrBody .affs{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+  .attrBody .aff{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:5px 10px;border-radius:5px;background:rgba(0,0,0,0.32);
+    border:1px solid rgba(255,255,255,0.06);font-size:13px;
+    cursor:default;transition:background .12s,border-color .12s}
+  .attrBody .aff:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,200,80,0.4)}
+  .attrBody .aff .nm{color:#e9defb}
+  .attrBody .aff .vl{color:#ffdc7a;font-weight:700}
+
+  .attrTip{
+    position:fixed;z-index:9999;pointer-events:none;display:none;
+    background:rgba(8,10,22,0.96);color:#fff;font-size:13px;line-height:1.55;
+    border:1px solid rgba(255,200,80,0.4);border-radius:8px;
+    padding:11px 13px;min-width:160px;max-width:280px;
+    box-shadow:0 10px 28px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.06)}
+  .attrTip h5{margin:0 0 6px;color:#ffce6a;font-size:14px;font-weight:700;letter-spacing:1px}
+  .attrTip .desc{color:#b9a8d9;font-size:11.5px;margin-bottom:8px}
+  .attrTip ul{margin:0;padding:0;list-style:none}
+  .attrTip li{display:flex;justify-content:space-between;color:#e9defb;font-size:12.5px;padding:2px 0}
+  .attrTip li b{color:#ffdc7a;font-weight:700}
+  .attrTip .meta{font-size:11px;color:#897bb0;margin-top:8px;padding-top:6px;border-top:1px dashed rgba(255,255,255,0.12)}
+
+  #bagStub{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;color:var(--dim)}
+  #bagStub .glyph{font-size:54px;color:var(--mute);
+    text-shadow:0 0 18px rgba(155,123,255,0.35)}
+  #bagStub .msg{font-size:16px;color:var(--mute);font-weight:600}
+  #bagStub .hint{font-size:13px;color:var(--mute);max-width:420px;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="stage">
+  <!-- 顶部栏 -->
+  <div id="topbar" class="panel">
+    <span class="brand">爆战丨无限弹幕</span>
+    <span class="stat">关卡 <b id="hLevel">1</b></span>
+    <span class="stat">金币 <b>—</b></span>
+    <span class="stat">战力 <b>—</b></span>
+    <span class="right">
+      <span class="chip on">离线收益</span>
+      <span class="chip">自动战斗</span>
+      <span class="chip">设置</span>
+    </span>
+  </div>
+
+  <!-- 战斗区（Pixi 注入 canvas） -->
+  <div id="battleWrap"></div>
+
+  <!-- 左侧 UI 接口 -->
+  <div id="leftPanel" class="panel">
+    <div class="body">
+      <div class="btns" id="fbtns">
+        <div class="fbtn on" data-k="角色">角色</div>
+        <div class="fbtn" data-k="符文">符文</div>
+        <div class="fbtn" data-k="属性">属性</div>
+        <div class="fbtn" data-k="暴击">暴击</div>
+        <div class="fbtn on" data-k="暂停">暂停</div>
+        <div class="fbtn" data-k="倍速">倍速</div>
+        <div class="fbtn" data-k="重置">重置</div>
+        <div class="fbtn" data-k="满级">满级</div>
+        <div class="fbtn" data-k="设置">设置</div>
+      </div>
+      <div id="panelView"><b>当前面板：符文矩阵</b><br>点击左侧功能按钮切换此处内容（原型占位）。</div>
+    </div>
+  </div>
+
+  <!-- 右侧 UI 接口：英雄 10 件装备 -->
+  <div id="rightPanel" class="panel">
+    <div id="equipTabs"></div>
+    <div id="equipGrid"></div>
+  </div>
+
+  <!-- 底部信息面板：左 = 角色属性面板（619px，与 #leftPanel 同宽）｜右 = 背包占位 -->
+  <div id="bottom" class="panel">
+    <div class="cols">
+
+      <div class="col l" id="charPanel">
+        <div id="charScale">
+          <div class="coreAttrs">
+            <div class="ca hp" data-tip="attr:生命值">
+              <div class="ic">❤</div><div class="lbl">生命值</div><div class="val">32.56 万</div>
+            </div>
+            <div class="ca atk" data-tip="attr:攻击力">
+              <div class="ic">⚔</div><div class="lbl">攻击力</div><div class="val">32024</div>
+            </div>
+            <div class="ca def" data-tip="attr:护甲值">
+              <div class="ic">🛡</div><div class="lbl">护甲值</div><div class="val">9852</div>
+            </div>
+          </div>
+          <div class="elemGrid">
+            <div class="eg phys"   data-tip="attr:物理"><div class="lhs"><span class="ic">✶</span><span class="nm">物理</span></div><span class="vl">1008%</span></div>
+            <div class="eg chaos"  data-tip="attr:混沌"><div class="lhs"><span class="ic">◈</span><span class="nm">混沌</span></div><span class="vl">1008%</span></div>
+            <div class="eg frost"  data-tip="attr:冰霜"><div class="lhs"><span class="ic">❄</span><span class="nm">冰霜</span></div><span class="vl">1008%</span></div>
+            <div class="eg fire"   data-tip="attr:火焰"><div class="lhs"><span class="ic">✦</span><span class="nm">火焰</span></div><span class="vl">1008%</span></div>
+            <div class="eg poison" data-tip="attr:毒素"><div class="lhs"><span class="ic">☣</span><span class="nm">毒素</span></div><span class="vl">1008%</span></div>
+            <div class="eg light"  data-tip="attr:闪电"><div class="lhs"><span class="ic">⚡</span><span class="nm">闪电</span></div><span class="vl">1008%</span></div>
+          </div>
+          <div class="attrTabs" id="attrTabs">
+            <div class="at on" data-cat="damage">伤害</div>
+            <div class="at" data-cat="defense">防御</div>
+            <div class="at" data-cat="boost">增幅</div>
+            <div class="at" data-cat="other">其他</div>
+          </div>
+          <div class="attrBody" id="attrBody"></div>
+        </div>
+      </div>
+
+      <div class="col r">
+        <span class="ttl">🎒 背包 · <b>待开发</b></span>
+        <div id="bagStub">
+          <div class="glyph">▢</div>
+          <div class="msg">背包面板等待接入</div>
+          <div class="hint">右侧空间已按左上 UI 宽度预留；后续背包 / 图鉴 / 资源等面板将挂载于此，与左侧角色属性面板并列显示。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/pixi.min.js"></script>
+<script src="js/runes.js"></script>
+<script src="js/game-h.js"></script>
+<script src="js/equip-panel.js"></script>
+<script src="js/char-panel.js"></script>
+<script src="js/skill-panel.js"></script>
+<script>
+  /* 画布缩放自适应窗口（保持 1920×1080 设计比例，居中铺满可视区） */
+  (function fit(){
+    const st = document.getElementById('stage');
+    if (!st) return;
+    const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    st.style.transform = 'scale(' + s + ')';
+    st.style.left = ((window.innerWidth - 1920 * s) / 2) + 'px';
+    st.style.top = ((window.innerHeight - 1080 * s) / 2) + 'px';
+  })();
+  window.addEventListener('resize', function(){
+    const st = document.getElementById('stage');
+    if (!st) return;
+    const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    st.style.transform = 'scale(' + s + ')';
+    st.style.left = ((window.innerWidth - 1920 * s) / 2) + 'px';
+    st.style.top = ((window.innerHeight - 1080 * s) / 2) + 'px';
+  });
+</script>
+</body>
+</html>

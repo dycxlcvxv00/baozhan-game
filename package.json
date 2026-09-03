@@ -1,0 +1,10 @@
+{
+  "name": "baozhan-game",
+  "version": "4.0.0",
+  "private": true,
+  "description": "《爆战丨无限弹幕》横版（1920×1080）数值验证沙盒 · PixiJS web demo 源码",
+  "scripts": {
+    "build": "node build_single.cjs",
+    "serve": "python3 -m http.server 8200"
+  }
+}
