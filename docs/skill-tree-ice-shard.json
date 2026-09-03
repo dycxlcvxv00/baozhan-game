@@ -10,17 +10,17 @@
   "tree_structure": {
     "main_routes": [1, 3, 5],
     "bridge_routes": [2, 4],
+    "gate_rule": "点完第一列主节点后必须点亮门槛门；门槛门居中于相邻两条主路线的 2×2 主节点块，连接其中 4 个大节点，是进入下一阶与跨线的必经节点。",
     "layout": {
-      "origin": { "x": 80, "y": 280 },
-      "main_tiers": [250, 430, 610, 790, 970],
-      "bridge_positions": [340, 700]
+      "origin": { "x": 80, "y": 290 },
+      "main_tiers": [250, 430, 610, 790],
+      "finals": 960,
+      "gate_positions": { "A": [340, 190], "B": [700, 190], "C": [340, 390], "D": [700, 390] }
     }
   },
   "routes": [
     {
-      "line": 1,
-      "theme": "霜蚀穿刺",
-      "archetype": "穿刺 / 数量 / 精准",
+      "line": 1, "theme": "霜蚀穿刺", "archetype": "穿刺 / 数量 / 精准",
       "nodes": [
         { "id": "l1t1", "tier": 1, "name": "冰锥分裂", "type": "hex", "effect": "冰锥数量 +1（5 枚）", "detail": "投射物数量提升，提高命中密度与清杂效率。" },
         { "id": "l1t2", "tier": 2, "name": "透骨寒意", "type": "hex", "effect": "穿透次数 +1，弹道速度 +15%", "detail": "冰锥可穿透 3 个敌人，对密集兵线贯穿能力更强。" },
@@ -30,18 +30,14 @@
       ]
     },
     {
-      "line": 2,
-      "theme": "路径切换",
-      "archetype": "1号线 ↔ 3号线 跨线门：点亮后可进入相邻主路线",
+      "line": 2, "theme": "门槛切换门", "archetype": "1号线 ↔ 3号线 的 2×2 交汇门槛（A 门=第1-2阶，B 门=第3-4阶）",
       "nodes": [
-        { "id": "l2b1", "bridge": 1, "name": "急速冻结", "type": "diamond", "effect": "施法/弹道速度 +20%", "detail": "提升 DPS 平滑度和命中稳定性，手感质变。" },
-        { "id": "l2b2", "bridge": 2, "name": "冰川智慧", "type": "diamond", "effect": "能耗 -3，充能速率 +0.3/s", "detail": "降低释放门槛，提高释放频率，适合高频 build。" }
+        { "id": "l2b1", "gate": "A", "name": "急速冻结", "type": "diamond", "connects": ["l1t1", "l1t2", "l3t1", "l3t2"], "effect": "门槛门 A：连接相邻 4 主节点（1/3 号 第 1-2 阶）", "detail": "点完第一列后必须点亮，才能进入第 2 阶或跨到 3 号路线。附带施法/弹道速度 +20%。" },
+        { "id": "l2b2", "gate": "B", "name": "冰川智慧", "type": "diamond", "connects": ["l1t3", "l1t4", "l3t3", "l3t4"], "effect": "门槛门 B：连接相邻 4 主节点（1/3 号 第 3-4 阶）", "detail": "第 3 阶通往第 4 阶与终极的必经门。附带能耗 -3 / 充能 +0.3/s。" }
       ]
     },
     {
-      "line": 3,
-      "theme": "凛冬爆发",
-      "archetype": "AoE / 控场 / 爆发",
+      "line": 3, "theme": "凛冬爆发", "archetype": "AoE / 控场 / 爆发",
       "nodes": [
         { "id": "l3t1", "tier": 1, "name": "碎冰爆裂", "type": "hex", "effect": "命中/穿透耗尽时爆裂，造成 80% 冰霜范围伤害", "detail": "给直射投射物附加 AoE 收束，适合中距离聚集目标。" },
         { "id": "l3t2", "tier": 2, "name": "霜冻新星", "type": "hex", "effect": "每第 3 次释放触发周身霜冻新星（120% 伤害，减速 40% 2s）", "detail": "提供贴身防御与周期性控场，弥补被贴脸时的脆弱。" },
@@ -51,18 +47,14 @@
       ]
     },
     {
-      "line": 4,
-      "theme": "路径切换",
-      "archetype": "3号线 ↔ 5号线 跨线门：点亮后可进入相邻主路线",
+      "line": 4, "theme": "门槛切换门", "archetype": "3号线 ↔ 5号线 的 2×2 交汇门槛（C 门=第1-2阶，D 门=第3-4阶）",
       "nodes": [
-        { "id": "l4b1", "bridge": 1, "name": "霜甲护体", "type": "diamond", "effect": "每次释放获得霜甲，吸收 6% 最大生命伤害，持续 4s", "detail": "提供生存护盾，适合站桩输出与高压波次。" },
-        { "id": "l4b2", "bridge": 2, "name": "冷血虹吸", "type": "diamond", "effect": "造成伤害的 10% 转化为生命恢复", "detail": "续航向强化；寒冰锥刺 hit 数高，吸血收益显著。" }
+        { "id": "l4b1", "gate": "C", "name": "霜甲护体", "type": "diamond", "connects": ["l3t1", "l3t2", "l5t1", "l5t2"], "effect": "门槛门 C：连接相邻 4 主节点（3/5 号 第 1-2 阶）", "detail": "点完第一列后必须点亮，才能进入第 2 阶或跨到 5 号路线。附带霜甲护盾 6% 最大生命。" },
+        { "id": "l4b2", "gate": "D", "name": "冷血虹吸", "type": "diamond", "connects": ["l3t3", "l3t4", "l5t3", "l5t4"], "effect": "门槛门 D：连接相邻 4 主节点（3/5 号 第 3-4 阶）", "detail": "第 3 阶通往第 4 阶与终极的必经门。附带吸血 10% 伤害转化。" }
       ]
     },
     {
-      "line": 5,
-      "theme": "永冻支配",
-      "archetype": "DoT / 冰蚀 / 冻结",
+      "line": 5, "theme": "永冻支配", "archetype": "DoT / 冰蚀 / 冻结",
       "nodes": [
         { "id": "l5t1", "tier": 1, "name": "冰霜撕咬", "type": "hex", "effect": "每次命中施加 1 层冰蚀（DoT，2% 最大生命/秒，最多 5 层）", "detail": "把冰锥从直伤技能变成异常启动器，持续输出显著提升。" },
         { "id": "l5t2", "tier": 2, "name": "刺骨霜寒", "type": "hex", "effect": "减速效果提升至 60%，持续时间 +1s", "detail": "强化控制能力，为主动风筝和 Boss 战提供生存空间。" },
@@ -74,32 +66,25 @@
   ],
   "connections": [
     { "from": "origin", "to": "l1t1", "type": "main" },
-    { "from": "l1t1", "to": "l1t2", "type": "main" },
-    { "from": "l1t2", "to": "l1t3", "type": "main" },
-    { "from": "l1t3", "to": "l1t4", "type": "main" },
-    { "from": "l1t4", "to": "l1f", "type": "main" },
     { "from": "origin", "to": "l3t1", "type": "main" },
-    { "from": "l3t1", "to": "l3t2", "type": "main" },
-    { "from": "l3t2", "to": "l3t3", "type": "main" },
-    { "from": "l3t3", "to": "l3t4", "type": "main" },
-    { "from": "l3t4", "to": "l3f", "type": "main" },
     { "from": "origin", "to": "l5t1", "type": "main" },
-    { "from": "l5t1", "to": "l5t2", "type": "main" },
+    { "from": "l1t1", "to": "l2b1", "type": "gate" }, { "from": "l2b1", "to": "l1t2", "type": "gate" },
+    { "from": "l1t2", "to": "l1t3", "type": "main" },
+    { "from": "l1t3", "to": "l2b2", "type": "gate" }, { "from": "l2b2", "to": "l1t4", "type": "gate" },
+    { "from": "l1t4", "to": "l1f", "type": "main" },
+    { "from": "l3t1", "to": "l2b1", "type": "gate" }, { "from": "l2b1", "to": "l3t2", "type": "gate" },
+    { "from": "l3t2", "to": "l3t3", "type": "main" },
+    { "from": "l3t3", "to": "l2b2", "type": "gate" }, { "from": "l2b2", "to": "l3t4", "type": "gate" },
+    { "from": "l3t4", "to": "l3f", "type": "main" },
+    { "from": "l5t1", "to": "l4b1", "type": "gate" }, { "from": "l4b1", "to": "l5t2", "type": "gate" },
     { "from": "l5t2", "to": "l5t3", "type": "main" },
-    { "from": "l5t3", "to": "l5t4", "type": "main" },
+    { "from": "l5t3", "to": "l4b2", "type": "gate" }, { "from": "l4b2", "to": "l5t4", "type": "gate" },
     { "from": "l5t4", "to": "l5f", "type": "main" },
-    { "from": "l1t1", "to": "l2b1", "type": "branch" },
-    { "from": "l2b1", "to": "l3t2", "type": "branch" },
-    { "from": "l1t3", "to": "l2b2", "type": "branch" },
-    { "from": "l2b2", "to": "l3t4", "type": "branch" },
-    { "from": "l3t1", "to": "l4b1", "type": "branch" },
-    { "from": "l4b1", "to": "l5t2", "type": "branch" },
-    { "from": "l3t3", "to": "l4b2", "type": "branch" },
-    { "from": "l4b2", "to": "l5t4", "type": "branch" }
+    { "from": "l3t1", "to": "l4b1", "type": "gate" }, { "from": "l4b1", "to": "l3t2", "type": "gate" },
+    { "from": "l3t3", "to": "l4b2", "type": "gate" }, { "from": "l4b2", "to": "l3t4", "type": "gate" }
   ],
   "notes": {
-    "main_routes": "1/3/5 号线为主要进化路线，每条含 4 个六边形大节点 + 1 个终极圆形节点。",
-    "bridge_routes": "2/4 号线为路径切换点（交汇节点），各含 2 个菱形小节点。点亮小节点后，可跨线进入相邻的 1↔3 / 3↔5 主路线；小节点可附带微强化，但其首要作用是开启跨线通路。",
+    "gate_rule": "门槛门为必经节点：任意主路线要到下一阶，都必须先点亮位于两条主路线之间的门槛门；门同时连接相邻 4 个主节点（2×2 块），因此也是跨线通道。",
     "balance_flag": "本文件为初版设计稿，数值待第 12/13 章数值系统统一定稿后替换。",
     "source": "基于主文档《爆战丨无限弹幕》第 7 章技能系统 · 7.4 基础技能列表。"
   }
