@@ -41,10 +41,11 @@
     .node-shape { stroke-width: 2px; transition: all 0.2s ease; filter: drop-shadow(0 0 2px rgba(0,0,0,0.4)); }
     .node-shape:hover { stroke-width: 3.5px; filter: drop-shadow(0 0 8px currentColor); }
     .node-label { pointer-events: none; fill: var(--text); font-size: 11px; text-anchor: middle; }
-    .link { fill: none; stroke-width: 2px; opacity: 0.5; transition: opacity 0.2s; }
+    .link { fill: none; stroke-width: 2.5px; opacity: 0.55; transition: opacity 0.2s; stroke-linecap: round; }
     .link.main { stroke-width: 2.5px; }
-    .link.gate { stroke-dasharray: 5 4; opacity: 0.6; }
+    .link.gate { stroke-width: 2px; stroke-dasharray: 6 5; opacity: 0.7; animation: flow 1.4s linear infinite; }
     .link:hover { opacity: 1; }
+    @keyframes flow { to { stroke-dashoffset: -22; } }
     .tooltip { position: absolute; width: 290px; background: rgba(6,9,18,0.95);
       border: 1px solid rgba(47,230,208,0.3); border-radius: 10px; padding: 14px;
       color: var(--text); font-size: 13px; line-height: 1.6; pointer-events: none;
@@ -96,7 +97,14 @@
     </div>
 
     <div class="tree-panel" id="treePanel">
-      <svg id="tree" viewBox="0 0 1060 560" xmlns="http://www.w3.org/2000/svg"></svg>
+      <svg id="tree" viewBox="0 0 1060 560" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="linkGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2.5" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+      </svg>
       <div class="tooltip" id="tooltip"></div>
     </div>
 
@@ -222,6 +230,15 @@
       return `M ${d*0.5},-${d*0.866} L ${d},0 L ${d*0.5},${d*0.866} L -${d*0.5},${d*0.866} L -${d},0 L -${d*0.5},-${d*0.866} Z`;
     }
 
+    // 连线：水平同排走直线，跨排（门槛门/起点→首列）走柔和贝塞尔曲线
+    function linkPath(a, b) {
+      const dx = b.x - a.x, dy = b.y - a.y;
+      if (Math.abs(dy) < 6) return `M ${a.x},${a.y} L ${b.x},${b.y}`;
+      const c1x = a.x + dx * 0.15, c1y = a.y + dy * 0.5;
+      const c2x = b.x - dx * 0.15, c2y = b.y - dy * 0.5;
+      return `M ${a.x},${a.y} C ${c1x},${c1y} ${c2x},${c2y} ${b.x},${b.y}`;
+    }
+
     function render() {
       const badges = [
         { x: 14, y: 95, t: '①' }, { x: 14, y: 195, t: '②' },
@@ -235,16 +252,32 @@
         svg.appendChild(t);
       });
 
-      skillData.links.forEach(link => {
+      const defs = svg.querySelector('defs');
+      skillData.links.forEach((link, i) => {
         const a = skillData.nodes.find(n => n.id === link.from);
         const b = skillData.nodes.find(n => n.id === link.to);
         if (!a || !b) return;
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
-        line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
-        line.setAttribute('class', `link ${link.type === 'gate' ? 'gate' : 'main'}`);
-        line.setAttribute('stroke', link.type === 'gate' ? COLORS[2] : COLORS[a.line || 3]);
-        svg.appendChild(line);
+
+        const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+        grad.setAttribute('id', `grad-${i}`);
+        grad.setAttribute('gradientUnits', 'userSpaceOnUse');
+        grad.setAttribute('x1', a.x); grad.setAttribute('y1', a.y);
+        grad.setAttribute('x2', b.x); grad.setAttribute('y2', b.y);
+        const cA = a.type === 'origin' ? COLORS.origin : (link.type === 'gate' ? COLORS[2] : (COLORS[a.line] || COLORS[3]));
+        const cB = link.type === 'gate' ? COLORS[2] : (COLORS[b.line] || COLORS[a.line] || COLORS[3]);
+        const s0 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', cA);
+        const s1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        s1.setAttribute('offset', '100%'); s1.setAttribute('stop-color', cB);
+        grad.appendChild(s0); grad.appendChild(s1);
+        defs.appendChild(grad);
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', linkPath(a, b));
+        path.setAttribute('class', `link ${link.type === 'gate' ? 'gate' : 'main'}`);
+        path.setAttribute('stroke', `url(#grad-${i})`);
+        path.setAttribute('filter', 'url(#linkGlow)');
+        svg.appendChild(path);
       });
 
       skillData.nodes.forEach(node => {
