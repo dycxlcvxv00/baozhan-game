@@ -1,0 +1,106 @@
+{
+  "skill": {
+    "name": "寒冰锥刺",
+    "en": "ICE SHARD",
+    "base_tags": ["法术", "冰霜", "投射物", "直射", "异常"],
+    "base_description": "直线发射 4 枚冰锥，造成 300% 冰霜伤害；冰锥可穿透 2 个敌人；命中时降低目标 30% 移动速度（持续 2s）。",
+    "cost": 12,
+    "charge_rate": "1/S"
+  },
+  "tree_structure": {
+    "main_routes": [1, 3, 5],
+    "bridge_routes": [2, 4],
+    "layout": {
+      "origin": { "x": 80, "y": 280 },
+      "main_tiers": [250, 430, 610, 790, 970],
+      "bridge_positions": [340, 700]
+    }
+  },
+  "routes": [
+    {
+      "line": 1,
+      "theme": "霜蚀穿刺",
+      "archetype": "穿刺 / 数量 / 精准",
+      "nodes": [
+        { "id": "l1t1", "tier": 1, "name": "冰锥分裂", "type": "hex", "effect": "冰锥数量 +1（5 枚）", "detail": "投射物数量提升，提高命中密度与清杂效率。" },
+        { "id": "l1t2", "tier": 2, "name": "透骨寒意", "type": "hex", "effect": "穿透次数 +1，弹道速度 +15%", "detail": "冰锥可穿透 3 个敌人，对密集兵线贯穿能力更强。" },
+        { "id": "l1t3", "tier": 3, "name": "霜刃聚焦", "type": "hex", "effect": "暴击率 +25%，暴伤 +50%；冰锥变窄，射程 +20%", "detail": "走精准狙击路线，对单体首领伤害大幅提升。" },
+        { "id": "l1t4", "tier": 4, "name": "极寒冰枪", "type": "hex", "effect": "冰锥转化为细长冰枪，射程 +50%，基础伤害 +40%", "detail": "由散射变为集束穿刺，命中判定更集中，单体爆发更高。" },
+        { "id": "l1f", "tier": 5, "name": "绝对零度之矛", "type": "ultimate", "effect": "冰枪无限穿透，路径留下极寒冰径，减速 60% 持续 3s", "detail": "终极穿刺路线：一条直线贯穿全场，冰径提供强控场。" }
+      ]
+    },
+    {
+      "line": 2,
+      "theme": "分支强化",
+      "archetype": "1号线 ↔ 3号线 跨线增益",
+      "nodes": [
+        { "id": "l2b1", "bridge": 1, "name": "急速冻结", "type": "diamond", "effect": "施法/弹道速度 +20%", "detail": "提升 DPS 平滑度和命中稳定性，手感质变。" },
+        { "id": "l2b2", "bridge": 2, "name": "冰川智慧", "type": "diamond", "effect": "能耗 -3，充能速率 +0.3/s", "detail": "降低释放门槛，提高释放频率，适合高频 build。" }
+      ]
+    },
+    {
+      "line": 3,
+      "theme": "凛冬爆发",
+      "archetype": "AoE / 控场 / 爆发",
+      "nodes": [
+        { "id": "l3t1", "tier": 1, "name": "碎冰爆裂", "type": "hex", "effect": "命中/穿透耗尽时爆裂，造成 80% 冰霜范围伤害", "detail": "给直射投射物附加 AoE 收束，适合中距离聚集目标。" },
+        { "id": "l3t2", "tier": 2, "name": "霜冻新星", "type": "hex", "effect": "每第 3 次释放触发周身霜冻新星（120% 伤害，减速 40% 2s）", "detail": "提供贴身防御与周期性控场，弥补被贴脸时的脆弱。" },
+        { "id": "l3t3", "tier": 3, "name": "深寒骨髓", "type": "hex", "effect": "冰霜伤害 +30%；生命低于 25% 敌人有 20% 几率冻结 1.5s", "detail": "斩杀线与硬控双重收益，对精英/首领收尾阶段极强。" },
+        { "id": "l3t4", "tier": 4, "name": "暴风雪召唤", "type": "hex", "effect": "每次释放额外落下 3 枚冰锥（各 100% 伤害）", "detail": "由直射扩展为区域打击，提高打击范围与 hit 数。" },
+        { "id": "l3f", "tier": 5, "name": "凛冬降临", "type": "ultimate", "effect": "锥形散射 12 枚冰锥，命中区域生成 4s 暴风雪", "detail": "终极 AoE 路线：正面扇形清屏 + 持续伤害减速场。" }
+      ]
+    },
+    {
+      "line": 4,
+      "theme": "分支强化",
+      "archetype": "3号线 ↔ 5号线 跨线增益",
+      "nodes": [
+        { "id": "l4b1", "bridge": 1, "name": "霜甲护体", "type": "diamond", "effect": "每次释放获得霜甲，吸收 6% 最大生命伤害，持续 4s", "detail": "提供生存护盾，适合站桩输出与高压波次。" },
+        { "id": "l4b2", "bridge": 2, "name": "冷血虹吸", "type": "diamond", "effect": "造成伤害的 10% 转化为生命恢复", "detail": "续航向强化；寒冰锥刺 hit 数高，吸血收益显著。" }
+      ]
+    },
+    {
+      "line": 5,
+      "theme": "永冻支配",
+      "archetype": "DoT / 冰蚀 / 冻结",
+      "nodes": [
+        { "id": "l5t1", "tier": 1, "name": "冰霜撕咬", "type": "hex", "effect": "每次命中施加 1 层冰蚀（DoT，2% 最大生命/秒，最多 5 层）", "detail": "把冰锥从直伤技能变成异常启动器，持续输出显著提升。" },
+        { "id": "l5t2", "tier": 2, "name": "刺骨霜寒", "type": "hex", "effect": "减速效果提升至 60%，持续时间 +1s", "detail": "强化控制能力，为主动风筝和 Boss 战提供生存空间。" },
+        { "id": "l5t3", "tier": 3, "name": "寒毒蔓延", "type": "hex", "effect": "冰蚀最大层数 +3，持续时间 +100%；死亡时传染给附近敌人", "detail": "群体异常扩散，怪物越多、战斗越长收益越高。" },
+        { "id": "l5t4", "tier": 4, "name": "冰封陵墓", "type": "hex", "effect": "5 层及以上冰蚀敌人被命中时，25% 几率冻结 2s", "detail": "由异常触发硬控，形成「叠层→冻结→继续叠层」的控杀循环。" },
+        { "id": "l5f", "tier": 5, "name": "永恒凛冬", "type": "ultimate", "effect": "冰蚀不再消退；冻结敌人死亡时碎裂，扩散当前层数", "detail": "终极 DoT/控制路线：无限叠加 + 死亡连锁传染，越战越强。" }
+      ]
+    }
+  ],
+  "connections": [
+    { "from": "origin", "to": "l1t1", "type": "main" },
+    { "from": "l1t1", "to": "l1t2", "type": "main" },
+    { "from": "l1t2", "to": "l1t3", "type": "main" },
+    { "from": "l1t3", "to": "l1t4", "type": "main" },
+    { "from": "l1t4", "to": "l1f", "type": "main" },
+    { "from": "origin", "to": "l3t1", "type": "main" },
+    { "from": "l3t1", "to": "l3t2", "type": "main" },
+    { "from": "l3t2", "to": "l3t3", "type": "main" },
+    { "from": "l3t3", "to": "l3t4", "type": "main" },
+    { "from": "l3t4", "to": "l3f", "type": "main" },
+    { "from": "origin", "to": "l5t1", "type": "main" },
+    { "from": "l5t1", "to": "l5t2", "type": "main" },
+    { "from": "l5t2", "to": "l5t3", "type": "main" },
+    { "from": "l5t3", "to": "l5t4", "type": "main" },
+    { "from": "l5t4", "to": "l5f", "type": "main" },
+    { "from": "l1t1", "to": "l2b1", "type": "branch" },
+    { "from": "l2b1", "to": "l3t2", "type": "branch" },
+    { "from": "l1t3", "to": "l2b2", "type": "branch" },
+    { "from": "l2b2", "to": "l3t4", "type": "branch" },
+    { "from": "l3t1", "to": "l4b1", "type": "branch" },
+    { "from": "l4b1", "to": "l5t2", "type": "branch" },
+    { "from": "l3t3", "to": "l4b2", "type": "branch" },
+    { "from": "l4b2", "to": "l5t4", "type": "branch" }
+  ],
+  "notes": {
+    "main_routes": "1/3/5 号线为主要进化路线，每条含 4 个六边形大节点 + 1 个终极圆形节点。",
+    "bridge_routes": "2/4 号线为跨线分支，各含 2 个菱形小型强化点，可在相邻主路线之间跳转或叠加增益。",
+    "balance_flag": "本文件为初版设计稿，数值待第 12/13 章数值系统统一定稿后替换。",
+    "source": "基于主文档《爆战丨无限弹幕》第 7 章技能系统 · 7.4 基础技能列表。"
+  }
+}
