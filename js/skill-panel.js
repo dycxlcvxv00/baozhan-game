@@ -97,7 +97,7 @@
     btn.addEventListener('click', function () {
       if (btn.classList.contains('on')) {
         btn.classList.remove('on');
-        if (placeholder) placeholder.innerHTML = '<b>当前面板：符文矩阵</b><br>点击左侧功能按钮切换此处内容';
+        if (placeholder) placeholder.innerHTML = '<b>功能面板</b><br>点击左侧功能按钮（装备 / 技能 / 宠物 / 铭文）切换此处内容';
       } else {
         Array.prototype.forEach.call(document.querySelectorAll('#fbtns .fbtn'), function (x) { x.classList.remove('on'); });
         btn.classList.add('on');
