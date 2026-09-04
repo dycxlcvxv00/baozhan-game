@@ -103,9 +103,9 @@
   .eslot:not(.on){filter:grayscale(.6) brightness(.72);opacity:.8}
   .eslot:hover{filter:none;opacity:1;box-shadow:0 0 12px rgba(255,220,150,.5)}
 
-  /* 底部面板：可切换视图容器（.bview 各内缩 4px，使左侧属性栏对齐面板顶/底/左） */
+  /* 底部面板：可切换视图容器（顶/左/右内缩 4px，底部内缩 8px，属性栏对齐面板） */
   #bottom{position:absolute;left:4px;top:412px;width:1912px;height:660px;padding:0}
-  #bottom .bview{position:absolute;inset:4px}
+  #bottom .bview{position:absolute;inset:4px 4px 8px 4px}
   #bottom .bview[hidden]{display:none}
   #bottom .cols{display:flex;gap:14px;height:100%}
   #bottom .col.l{width:619px;flex:none;padding:0;overflow:hidden;position:relative}
@@ -152,10 +152,10 @@
   .coreAttrs .ca.def{background:linear-gradient(160deg,rgba(120,180,255,0.20),rgba(120,180,255,0.04));border-color:rgba(168,211,255,0.45)}
   .coreAttrs .ca.def .val{color:#cfe6ff}
 
-  /* （需求4：元素词缀高度拉伸铺满、字号放大） */
+  /* （元素词缀：自然高度、等比 3 列，不拉伸、不滚动；区级满宽，略宽于下方属性区） */
   .elemGrid{
-    position:relative;width:100%;flex:1;min-height:0;margin-top:10px;
-    display:grid;grid-template-columns:repeat(2,1fr);gap:10px 12px;align-content:stretch}
+    position:relative;width:100%;margin-top:10px;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px 12px}
   .elemGrid .eg{
     display:flex;align-items:center;justify-content:space-between;
     padding:8px 12px;border-radius:8px;
@@ -189,8 +189,8 @@
     box-shadow:0 4px 14px -4px rgba(255,200,80,0.5)}
 
   .attrBody{
-    position:relative;width:100%;flex:1;min-height:0;overflow-y:auto;
-    padding-right:6px;scrollbar-width:thin}
+    position:relative;width:88%;margin:0 auto;flex:1;min-height:0;
+    padding-right:6px;overflow:visible;scrollbar-width:thin}
   .attrBody::-webkit-scrollbar{width:6px}
   .attrBody::-webkit-scrollbar-thumb{background:rgba(155,143,181,0.5);border-radius:3px}
   /* （需求5：分组标题改为贯穿全宽、略高于文字的渐变长条；相关属性做 3 块分割） */
@@ -203,11 +203,11 @@
   .attrBody .sg.def .sgh{background:linear-gradient(90deg,rgba(154,219,111,0.55),rgba(154,219,111,0))}
   .attrBody .sg.bst .sgh{background:linear-gradient(90deg,rgba(200,156,255,0.55),rgba(200,156,255,0))}
   .attrBody .sg.oth .sgh{background:linear-gradient(90deg,rgba(124,155,204,0.55),rgba(124,155,204,0))}
-  .attrBody .affs{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+  .attrBody .affs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   .attrBody .aff{
     display:flex;align-items:center;justify-content:space-between;
-    padding:5px 10px;border-radius:5px;background:rgba(0,0,0,0.32);
-    border:1px solid rgba(255,255,255,0.06);font-size:13px;
+    padding:7px 12px;border-radius:5px;background:rgba(0,0,0,0.32);
+    border:1px solid rgba(255,255,255,0.06);font-size:15px;
     cursor:default;transition:background .12s,border-color .12s}
   .attrBody .aff:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,200,80,0.4)}
   .attrBody .aff .nm{color:#e9defb}
