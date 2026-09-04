@@ -52,10 +52,8 @@
     .link.activatable { opacity: 0.5; }
     .link.active { opacity: 0.9; }
     .link:hover { opacity: 1; }
-    /* 流光：在连线之上叠加一条短亮段，从起点扫向目标（pathLength=100 归一化） */
-    .link-streak { fill: none; stroke: #eafcff; stroke-width: 3.5px; stroke-linecap: round;
-      stroke-dasharray: 14 100; animation: streak 1.6s linear infinite; pointer-events: none; filter: drop-shadow(0 0 4px #bfefff); }
-    @keyframes streak { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -100; } }
+    /* 流光：柔和渐变光带（线性过渡），由 JS 生成渐变 + SMIL 沿连线位移实现 */
+    .link-streak { fill: none; stroke-width: 3.5px; stroke-linecap: round; pointer-events: none; filter: drop-shadow(0 0 4px #bfefff); }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .tooltip { position: absolute; width: 290px; background: rgba(6,9,18,0.95);
       border: 1px solid rgba(47,230,208,0.3); border-radius: 10px; padding: 14px;
@@ -358,16 +356,36 @@
         path.setAttribute('d', d);
         path.setAttribute('class', `link ${st}${link.type === 'gate' ? ' gate' : ''}`);
         path.setAttribute('stroke', `url(#grad-${i})`);
-        path.setAttribute('filter', 'url(#linkGlow)');
         path.style.pointerEvents = 'none';
         svg.appendChild(path);
 
-        // 待连接：在连线之上叠加一条流光（短亮段）朝目标节点扫过
+        // 待连接：叠加一条柔和渐变光带，沿连线从起点线性流向目标（软边自然过渡，非短段）
         if (st === 'activatable') {
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const sg = document.createElementNS(NS, 'linearGradient');
+          sg.setAttribute('id', `streak-${i}`);
+          sg.setAttribute('gradientUnits', 'userSpaceOnUse');
+          sg.setAttribute('x1', a.x); sg.setAttribute('y1', a.y);
+          sg.setAttribute('x2', b.x); sg.setAttribute('y2', b.y);
+          const s0 = document.createElementNS(NS, 'stop'); s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', '#eafcff'); s0.setAttribute('stop-opacity', '0');
+          const s1 = document.createElementNS(NS, 'stop'); s1.setAttribute('offset', '50%'); s1.setAttribute('stop-color', '#eafcff'); s1.setAttribute('stop-opacity', '0.95');
+          const s2 = document.createElementNS(NS, 'stop'); s2.setAttribute('offset', '100%'); s2.setAttribute('stop-color', '#eafcff'); s2.setAttribute('stop-opacity', '0');
+          sg.appendChild(s0); sg.appendChild(s1); sg.appendChild(s2);
+          const at = document.createElementNS(NS, 'animateTransform');
+          at.setAttribute('attributeName', 'gradientTransform');
+          at.setAttribute('type', 'translate');
+          at.setAttribute('from', `${-dx} ${-dy}`);
+          at.setAttribute('to', `${dx} ${dy}`);
+          at.setAttribute('dur', '1.8s');
+          at.setAttribute('repeatCount', 'indefinite');
+          sg.appendChild(at);
+          defs.appendChild(sg);
+
           const streak = document.createElementNS(NS, 'path');
           streak.setAttribute('d', d);
           streak.setAttribute('class', 'link-streak');
-          streak.setAttribute('pathLength', '100');
+          streak.setAttribute('stroke', `url(#streak-${i})`);
+          streak.style.pointerEvents = 'none';
           svg.appendChild(streak);
         }
       });
