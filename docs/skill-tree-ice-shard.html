@@ -276,21 +276,50 @@
     function computeActivatable() {
       const act = new Set(activated);
       const maxX = Math.max(...activated.map(id => nodeMap[id].x));   // 只能向右延伸：左侧节点不可激活
-      const actb = new Set();
+      // 1) 从已激活节点可达、且向右的候选
+      const reachable = new Set();
       skillData.links.forEach(l => {
         [l.from, l.to].forEach(end => {
           if (act.has(end)) {
             const other = end === l.from ? l.to : l.from;
-            if (!act.has(other) && nodeMap[other].x >= maxX) actb.add(other);
+            if (!act.has(other) && nodeMap[other].x >= maxX) reachable.add(other);
           }
         });
       });
-      return { act, actb };
+      // 2) 分支取舍：点亮某节点后，关闭同阶的其它分支
+      //    规则：候选 X 连着一个已激活的「选择型父节点」Y（起点 / 六边形主节点），
+      //    且 Y 还连着一个已激活的、与 X 同 x 的兄弟 Z，则 X 被关掉（变淡、无流光）。
+      //    注：菱形门槛节点(l2b1/l4b1/...)不作为互斥父节点 —— 它打通 2×2 后两侧同阶节点都可点亮。
+      const dimmed = new Set();
+      reachable.forEach(X => {
+        skillData.links.forEach(l => {
+          const ends = [l.from, l.to];
+          if (!ends.includes(X)) return;
+          const Y = ends[0] === X ? ends[1] : ends[0];
+          if (!act.has(Y)) return;
+          if (!(nodeMap[Y].type === 'origin' || nodeMap[Y].type === 'hex')) return; // 仅起点/主节点形成互斥分支
+          skillData.links.forEach(l2 => {
+            const e2 = [l2.from, l2.to];
+            if (!e2.includes(Y)) return;
+            const Z = e2[0] === Y ? e2[1] : e2[0];
+            if (act.has(Z) && Z !== X && nodeMap[Z].x === nodeMap[X].x) dimmed.add(X);
+          });
+        });
+      });
+      // 3) 可点亮 = 可达 且 未被取舍关掉
+      const actb = new Set();
+      reachable.forEach(X => { if (!dimmed.has(X)) actb.add(X); });
+      return { act, actb, dimmed };
     }
-    function linkState(l, act) {
-      const a = act.has(l.from), b = act.has(l.to);
+    function linkState(l, res) {
+      const a = res.act.has(l.from), b = res.act.has(l.to);
       if (a && b) return 'active';
-      if (a || b) return 'activatable';
+      if (a !== b) {
+        // 一端已激活：另一端必须仍在可点亮集合内才算「待点亮」；
+        // 若另一端已被分支取舍关掉（变淡），则该连线归为 locked（无流光、更淡）。
+        const other = a ? l.to : l.from;
+        return res.actb.has(other) ? 'activatable' : 'locked';
+      }
       return 'locked';
     }
     function clearSvg() { while (svg.firstChild) svg.removeChild(svg.firstChild); }
@@ -326,7 +355,8 @@
     }
 
     function render() {
-      const { act, actb } = computeActivatable();
+      const res = computeActivatable();
+      const { act, actb } = res;
       clearSvg();
       const defs = document.createElementNS(NS, 'defs');
       defs.innerHTML = '<filter id="linkGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
@@ -338,7 +368,7 @@
         const b = skillData.nodes.find(n => n.id === link.to);
         if (!a || !b) return;
         const straight = link.straight || Math.abs(b.y - a.y) < 6;
-        const st = linkState(link, act);
+        const st = linkState(link, res);
         const d = linkPath(a, b, straight);
 
         const grad = document.createElementNS(NS, 'linearGradient');
