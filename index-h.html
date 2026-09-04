@@ -103,43 +103,62 @@
   .eslot:not(.on){filter:grayscale(.6) brightness(.72);opacity:.8}
   .eslot:hover{filter:none;opacity:1;box-shadow:0 0 12px rgba(255,220,150,.5)}
 
-  /* 底部面板：左 = 角色属性（宽 = #leftPanel = 619px），右 = 背包占位 */
-  #bottom{position:absolute;left:4px;top:412px;width:1912px;height:660px;padding:18px 24px}
-  #bottom .cols{display:flex;gap:14px;height:624px}
+  /* 底部面板：可切换视图容器（.bview 各内缩 4px，使左侧属性栏对齐面板顶/底/左） */
+  #bottom{position:absolute;left:4px;top:412px;width:1912px;height:660px;padding:0}
+  #bottom .bview{position:absolute;inset:4px}
+  #bottom .bview[hidden]{display:none}
+  #bottom .cols{display:flex;gap:14px;height:100%}
   #bottom .col.l{width:619px;flex:none;padding:0;overflow:hidden;position:relative}
   #bottom .col.r{flex:1;padding:14px 22px;display:flex;flex-direction:column;border-left:1px solid var(--line)}
   #bottom .col.r .ttl{margin-bottom:10px}
+  /* 功能视图占位（装备/宠物/铭文 等未接入面板的原型提示） */
+  .phView{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--dim);font-size:17px;text-align:center;line-height:1.7}
+  .phView b{color:var(--accent);font-size:24px;letter-spacing:.5px}
+  /* 技能视图：2×2 自适应网格 */
+  #skillGridHost{position:absolute;inset:0;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;align-content:start;overflow:auto}
+  .skillCell{position:relative;border:1px solid var(--line);border-radius:14px;background:var(--panel2);
+    padding:16px;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:.15s;min-height:150px}
+  .skillCell:hover{border-color:var(--accent);box-shadow:0 0 16px rgba(47,230,208,0.18)}
+  .skillCell .nm{font-weight:700;font-size:20px}
+  .skillCell .tags{font-size:13px;color:var(--mute)}
+  .skillCell .desc{font-size:14px;color:var(--dim);line-height:1.6}
 
   /* === 角色面板（严格按截图 492×798，外层 transform:scale 适配 619 内宽） === */
   #charPanel{position:relative;width:100%;height:100%;overflow:hidden}
   #charScale{
     position:relative;display:flex;flex-direction:column;gap:6px;
-    width:100%;height:100%;box-sizing:border-box;padding:6px 12px 6px}
+    width:100%;height:100%;box-sizing:border-box;padding:0 12px 6px}
   /* （已移除顶部紫色玩家信息栏 .charHead，玩家信息合并进左侧主属性区展示） */
 
+  /* （需求3：3 大主属性改为「图标衬底 + 文本镶嵌」，顶端内缩） */
   .coreAttrs{
-    position:relative;width:100%;flex:none;
+    position:relative;width:100%;flex:none;margin-top:0;
     display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   .coreAttrs .ca{
+    position:relative;overflow:hidden;min-height:80px;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:6px 4px;border-radius:6px;color:#fff;cursor:default}
+    padding:8px 4px;border-radius:14px;color:#fff;cursor:default;
+    background:linear-gradient(160deg,rgba(255,255,255,0.12),rgba(255,255,255,0.03));
+    border:1px solid rgba(255,255,255,0.10)}
   .coreAttrs .ca .ic{
-    width:40px;height:40px;display:flex;align-items:center;justify-content:center;
-    border-radius:50%;background:rgba(255,255,255,0.12);font-size:22px;
-    box-shadow:inset 0 0 0 2px rgba(255,255,255,0.25),0 0 12px rgba(255,255,255,0.18)}
-  .coreAttrs .ca.hp .ic{color:#ff9aa9;background:rgba(255,120,140,0.16);box-shadow:inset 0 0 0 2px rgba(255,154,170,0.5),0 0 14px rgba(255,120,140,0.25)}
-  .coreAttrs .ca.atk .ic{color:#ffd370;background:rgba(255,200,80,0.18);box-shadow:inset 0 0 0 2px rgba(255,200,80,0.5),0 0 14px rgba(255,200,80,0.3)}
-  .coreAttrs .ca.def .ic{color:#a8d3ff;background:rgba(120,180,255,0.18);box-shadow:inset 0 0 0 2px rgba(168,211,255,0.5),0 0 14px rgba(120,180,255,0.3)}
-  .coreAttrs .ca .lbl{font-size:12px;color:#d9c7ff;margin-top:4px;font-weight:600}
-  .coreAttrs .ca .val{font-size:20px;font-weight:800;letter-spacing:.5px;margin-top:1px}
-  .coreAttrs .ca.atk .val{color:#ffc44d}
+    position:absolute;right:4px;bottom:0;font-size:40px;line-height:1;opacity:.20;
+    filter:drop-shadow(0 0 6px rgba(255,255,255,0.25));pointer-events:none}
+  .coreAttrs .ca .lbl{position:relative;font-size:13px;color:#e7ddff;font-weight:600;margin-bottom:2px}
+  .coreAttrs .ca .val{position:relative;font-size:25px;font-weight:800;letter-spacing:.5px}
+  .coreAttrs .ca.hp{background:linear-gradient(160deg,rgba(255,120,140,0.20),rgba(255,120,140,0.04));border-color:rgba(255,154,170,0.45)}
+  .coreAttrs .ca.hp .val{color:#ffd0d8}
+  .coreAttrs .ca.atk{background:linear-gradient(160deg,rgba(255,200,80,0.20),rgba(255,200,80,0.04));border-color:rgba(255,200,80,0.45)}
+  .coreAttrs .ca.atk .val{color:#ffe08a}
+  .coreAttrs .ca.def{background:linear-gradient(160deg,rgba(120,180,255,0.20),rgba(120,180,255,0.04));border-color:rgba(168,211,255,0.45)}
+  .coreAttrs .ca.def .val{color:#cfe6ff}
 
+  /* （需求4：元素词缀高度拉伸铺满、字号放大） */
   .elemGrid{
-    position:relative;width:100%;flex:none;
-    display:grid;grid-template-columns:repeat(2,1fr);gap:8px 12px}
+    position:relative;width:100%;flex:1;min-height:0;margin-top:10px;
+    display:grid;grid-template-columns:repeat(2,1fr);gap:10px 12px;align-content:stretch}
   .elemGrid .eg{
     display:flex;align-items:center;justify-content:space-between;
-    padding:4px 10px;border-radius:7px;
+    padding:8px 12px;border-radius:8px;
     background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);
     cursor:default;transition:border-color .12s,background .12s}
   .elemGrid .eg:hover{border-color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.06)}
@@ -152,8 +171,8 @@
   .eg.chaos  .ic{background:#a35ad8;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
   .eg.fire   .ic{background:#e3603a;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
   .eg.light  .ic{background:#9b87f7;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}
-  .elemGrid .eg .nm{font-size:14px;color:#fff;font-weight:600}
-  .elemGrid .eg .vl{font-size:15px;color:#ffdc7a;font-weight:700}
+  .elemGrid .eg .nm{font-size:16px;color:#fff;font-weight:600}
+  .elemGrid .eg .vl{font-size:17px;color:#ffdc7a;font-weight:700}
 
   .attrTabs{
     position:relative;width:100%;flex:none;height:34px;
@@ -174,23 +193,16 @@
     padding-right:6px;scrollbar-width:thin}
   .attrBody::-webkit-scrollbar{width:6px}
   .attrBody::-webkit-scrollbar-thumb{background:rgba(155,143,181,0.5);border-radius:3px}
-  /* 分组：彩色左条 + 文字标题（恢复攻击/法术/暴击等分组文字） */
-  .attrBody .sg{display:flex;flex-direction:column;margin-bottom:6px;
-    border-left:4px solid transparent;padding-left:8px}
-  .attrBody .sg.atk{border-left-color:#ff7a7a}
-  .attrBody .sg.mgc{border-left-color:#7ab8ff}
-  .attrBody .sg.crt{border-left-color:#ffae3a}
-  .attrBody .sg.def{border-left-color:#9adb6f}
-  .attrBody .sg.bst{border-left-color:#c89cff}
-  .attrBody .sg.oth{border-left-color:#7c9bcc}
-  .attrBody .sgh{display:flex;align-items:center;height:17px;margin-bottom:4px;
-    font-size:13px;font-weight:700;letter-spacing:1px}
-  .attrBody .sgh.atk{color:#ff7a7a}
-  .attrBody .sgh.mgc{color:#7ab8ff}
-  .attrBody .sgh.crt{color:#ffae3a}
-  .attrBody .sgh.def{color:#9adb6f}
-  .attrBody .sgh.bst{color:#c89cff}
-  .attrBody .sgh.oth{color:#7c9bcc}
+  /* （需求5：分组标题改为贯穿全宽、略高于文字的渐变长条；相关属性做 3 块分割） */
+  .attrBody .sg{display:flex;flex-direction:column;margin-bottom:8px;padding-left:0;border-left:none}
+  .attrBody .sgh{display:flex;align-items:center;height:28px;margin-bottom:6px;padding:0 12px;
+    border-radius:7px;font-size:15px;font-weight:700;letter-spacing:1px;color:#fff}
+  .attrBody .sg.atk .sgh{background:linear-gradient(90deg,rgba(255,122,122,0.55),rgba(255,122,122,0))}
+  .attrBody .sg.mgc .sgh{background:linear-gradient(90deg,rgba(122,184,255,0.55),rgba(122,184,255,0))}
+  .attrBody .sg.crt .sgh{background:linear-gradient(90deg,rgba(255,174,58,0.55),rgba(255,174,58,0))}
+  .attrBody .sg.def .sgh{background:linear-gradient(90deg,rgba(154,219,111,0.55),rgba(154,219,111,0))}
+  .attrBody .sg.bst .sgh{background:linear-gradient(90deg,rgba(200,156,255,0.55),rgba(200,156,255,0))}
+  .attrBody .sg.oth .sgh{background:linear-gradient(90deg,rgba(124,155,204,0.55),rgba(124,155,204,0))}
   .attrBody .affs{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
   .attrBody .aff{
     display:flex;align-items:center;justify-content:space-between;
@@ -259,50 +271,75 @@
     <div id="equipGrid"></div>
   </div>
 
-  <!-- 底部信息面板：左 = 角色属性面板（619px，与 #leftPanel 同宽）｜右 = 背包占位 -->
+  <!-- 底部信息面板：可切换视图，默认显示角色属性；点击左侧 4 个按钮切换对应功能视图 -->
   <div id="bottom" class="panel">
-    <div class="cols">
 
-      <div class="col l" id="charPanel">
-        <div id="charScale">
-          <div class="coreAttrs">
-            <div class="ca hp" data-tip="attr:生命值">
-              <div class="ic">❤</div><div class="lbl">生命值</div><div class="val">32.56 万</div>
+    <!-- 视图①：角色属性（默认） -->
+    <div class="bview" id="viewChar">
+      <div class="cols">
+
+        <div class="col l" id="charPanel">
+          <div id="charScale">
+            <div class="coreAttrs">
+              <div class="ca hp" data-tip="attr:生命值">
+                <div class="ic">❤</div><div class="lbl">生命值</div><div class="val">32.56 万</div>
+              </div>
+              <div class="ca atk" data-tip="attr:攻击力">
+                <div class="ic">⚔</div><div class="lbl">攻击力</div><div class="val">32024</div>
+              </div>
+              <div class="ca def" data-tip="attr:护甲值">
+                <div class="ic">🛡</div><div class="lbl">护甲值</div><div class="val">9852</div>
+              </div>
             </div>
-            <div class="ca atk" data-tip="attr:攻击力">
-              <div class="ic">⚔</div><div class="lbl">攻击力</div><div class="val">32024</div>
+            <div class="elemGrid">
+              <div class="eg phys"   data-tip="attr:物理"><div class="lhs"><span class="ic">✶</span><span class="nm">物理</span></div><span class="vl">1008%</span></div>
+              <div class="eg chaos"  data-tip="attr:混沌"><div class="lhs"><span class="ic">◈</span><span class="nm">混沌</span></div><span class="vl">1008%</span></div>
+              <div class="eg frost"  data-tip="attr:冰霜"><div class="lhs"><span class="ic">❄</span><span class="nm">冰霜</span></div><span class="vl">1008%</span></div>
+              <div class="eg fire"   data-tip="attr:火焰"><div class="lhs"><span class="ic">✦</span><span class="nm">火焰</span></div><span class="vl">1008%</span></div>
+              <div class="eg poison" data-tip="attr:毒素"><div class="lhs"><span class="ic">☣</span><span class="nm">毒素</span></div><span class="vl">1008%</span></div>
+              <div class="eg light"  data-tip="attr:闪电"><div class="lhs"><span class="ic">⚡</span><span class="nm">闪电</span></div><span class="vl">1008%</span></div>
             </div>
-            <div class="ca def" data-tip="attr:护甲值">
-              <div class="ic">🛡</div><div class="lbl">护甲值</div><div class="val">9852</div>
+            <div class="attrTabs" id="attrTabs">
+              <div class="at on" data-cat="damage">伤害</div>
+              <div class="at" data-cat="defense">防御</div>
+              <div class="at" data-cat="boost">增幅</div>
+              <div class="at" data-cat="other">其他</div>
             </div>
+            <div class="attrBody" id="attrBody"></div>
           </div>
-          <div class="elemGrid">
-            <div class="eg phys"   data-tip="attr:物理"><div class="lhs"><span class="ic">✶</span><span class="nm">物理</span></div><span class="vl">1008%</span></div>
-            <div class="eg chaos"  data-tip="attr:混沌"><div class="lhs"><span class="ic">◈</span><span class="nm">混沌</span></div><span class="vl">1008%</span></div>
-            <div class="eg frost"  data-tip="attr:冰霜"><div class="lhs"><span class="ic">❄</span><span class="nm">冰霜</span></div><span class="vl">1008%</span></div>
-            <div class="eg fire"   data-tip="attr:火焰"><div class="lhs"><span class="ic">✦</span><span class="nm">火焰</span></div><span class="vl">1008%</span></div>
-            <div class="eg poison" data-tip="attr:毒素"><div class="lhs"><span class="ic">☣</span><span class="nm">毒素</span></div><span class="vl">1008%</span></div>
-            <div class="eg light"  data-tip="attr:闪电"><div class="lhs"><span class="ic">⚡</span><span class="nm">闪电</span></div><span class="vl">1008%</span></div>
-          </div>
-          <div class="attrTabs" id="attrTabs">
-            <div class="at on" data-cat="damage">伤害</div>
-            <div class="at" data-cat="defense">防御</div>
-            <div class="at" data-cat="boost">增幅</div>
-            <div class="at" data-cat="other">其他</div>
-          </div>
-          <div class="attrBody" id="attrBody"></div>
         </div>
-      </div>
 
-      <div class="col r">
-        <span class="ttl">🎒 背包 · <b>待开发</b></span>
-        <div id="bagStub">
-          <div class="glyph">▢</div>
-          <div class="msg">背包面板等待接入</div>
-          <div class="hint">右侧空间已按左上 UI 宽度预留；后续背包 / 图鉴 / 资源等面板将挂载于此，与左侧角色属性面板并列显示。</div>
+        <div class="col r">
+          <span class="ttl">🎒 背包 · <b>待开发</b></span>
+          <div id="bagStub">
+            <div class="glyph">▢</div>
+            <div class="msg">背包面板等待接入</div>
+            <div class="hint">右侧空间已按左上 UI 宽度预留；后续背包 / 图鉴 / 资源等面板将挂载于此，与左侧角色属性面板并列显示。</div>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- 视图②：技能 -->
+    <div class="bview" id="viewSkill" hidden>
+      <div id="skillGridHost"></div>
+    </div>
+
+    <!-- 视图③：装备 -->
+    <div class="bview" id="viewEquip" hidden>
+      <div class="phView"><b>装备面板</b>英雄 10 件装备的穿戴 / 卸下与数值总览将在此展示。<br>右侧栏纸娃娃装备槽同步显示，本视图后续接入装备详情与套装效果。</div>
+    </div>
+
+    <!-- 视图④：宠物 -->
+    <div class="bview" id="viewPet" hidden>
+      <div class="phView"><b>宠物面板</b>宠物出战、技能与养成系统（开发中）。<br>后续接入主文档宠物章节设定。</div>
+    </div>
+
+    <!-- 视图⑤：铭文 -->
+    <div class="bview" id="viewRune" hidden>
+      <div class="phView"><b>铭文面板</b>铭文镶嵌、词条与共鸣系统（开发中）。<br>后续接入主文档符文 / 铭文章节设定。</div>
+    </div>
+
   </div>
 </div>
 

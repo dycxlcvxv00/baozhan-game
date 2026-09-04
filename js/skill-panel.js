@@ -44,25 +44,19 @@
   }
 
   function renderGrid() {
-    const view = document.getElementById('panelView');
-    if (!view) return;
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:12px;'
-      + 'padding:8px;width:100%;height:100%;box-sizing:border-box';
+    const host = document.getElementById('skillGridHost') || document.getElementById('panelView');
+    if (!host) return;
+    host.innerHTML = '';
     SKILLS.forEach(function (s) {
       const cell = document.createElement('div');
-      cell.style.cssText = 'border:1px solid var(--line);border-radius:12px;'
-        + 'background:var(--panel2);padding:12px;cursor:pointer;display:flex;'
-        + 'flex-direction:column;gap:6px;transition:.15s';
-      cell.innerHTML = '<div style="font-weight:700;color:' + (ELEM_COLOR[s.element] || '#eaf0ff')
-        + '">' + s.name + ' <span style="color:var(--mute);font-size:12px">' + s.en + '</span></div>'
-        + '<div style="font-size:13px;color:var(--dim)">' + s.tags.join(' · ') + '</div>'
-        + '<div style="font-size:13px;color:var(--mute)">' + s.desc + '</div>';
+      cell.className = 'skillCell';
+      cell.innerHTML = '<div class="nm" style="color:' + (ELEM_COLOR[s.element] || '#eaf0ff') + '">'
+        + s.name + ' <span style="color:var(--mute);font-size:13px;font-weight:600">' + s.en + '</span></div>'
+        + '<div class="tags">' + s.tags.join(' · ') + '</div>'
+        + '<div class="desc">' + s.desc + '</div>';
       cell.addEventListener('click', function () { openPopup(s); });
-      grid.appendChild(cell);
+      host.appendChild(cell);
     });
-    view.innerHTML = '';
-    view.appendChild(grid);
   }
 
   function openPopup(s) {
@@ -90,25 +84,7 @@
     }, 0);
   }
 
-  function init() {
-    const btn = document.querySelector('#fbtns .fbtn[data-k="技能"]');
-    if (!btn) return; // 当前 DOM 尚未含「技能」按钮，待接入左侧 UI 后自动生效
-    const placeholder = document.getElementById('panelView');
-    btn.addEventListener('click', function () {
-      if (btn.classList.contains('on')) {
-        btn.classList.remove('on');
-        if (placeholder) placeholder.innerHTML = '<b>功能面板</b><br>点击左侧功能按钮（装备 / 技能 / 宠物 / 铭文）切换此处内容';
-      } else {
-        Array.prototype.forEach.call(document.querySelectorAll('#fbtns .fbtn'), function (x) { x.classList.remove('on'); });
-        btn.classList.add('on');
-        renderGrid();
-      }
-    });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // 「技能」按钮的点击切换由 left-tabs.js 统一接管（点击 → 切换 #bottom 视图 → 调 __skillRender）。
+  // 本模块只负责渲染，不绑定按钮，避免与 left-tabs 重复绑定同一按钮造成冲突。
+  window.__skillRender = renderGrid;
 })();
