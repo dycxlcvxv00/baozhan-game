@@ -41,6 +41,8 @@
     .node-shape { stroke-width: 2px; transition: all 0.2s ease; filter: drop-shadow(0 0 2px rgba(0,0,0,0.4)); }
     .node-shape:hover { stroke-width: 3.5px; filter: drop-shadow(0 0 8px currentColor); }
     .node-label { pointer-events: none; fill: var(--text); font-size: 11px; text-anchor: middle; }
+    .node-num { pointer-events: none; fill: #fff; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; text-shadow: 0 0 4px rgba(0,0,0,0.9); }
+    .node-num.sm { font-size: 11px; }
     .link { fill: none; stroke-width: 2.5px; opacity: 0.55; transition: opacity 0.2s; stroke-linecap: round; }
     .link.main { stroke-width: 2.5px; }
     .link.gate { stroke-width: 2px; stroke-dasharray: 6 5; opacity: 0.7; animation: flow 1.4s linear infinite; }
@@ -129,6 +131,18 @@
     const COLORS = {
       1: '#2fe6d0', 2: '#8fa3c6', 3: '#9b7bff', 4: '#8fa3c6', 5: '#ff6b6b',
       final: '#ffcf6b', origin: '#e8f1ff'
+    };
+
+    // 全局编号（左→右、每列内上→下；起点=1，随树深度递增）
+    const NUM = {
+      origin: 1,
+      l1t1: 2, l3t1: 3, l5t1: 4,
+      l2b1: 5, l4b1: 6,
+      l1t2: 7, l3t2: 8, l5t2: 9,
+      l1t3: 10, l3t3: 11, l5t3: 12,
+      l2b2: 13, l4b2: 14,
+      l1t4: 15, l3t4: 16, l5t4: 17,
+      l1f: 18, l3f: 19, l5f: 20
     };
 
     const skillData = {
@@ -227,7 +241,7 @@
         return `M 0,-${d} L ${d},0 L 0,${d} L -${d},0 Z`;
       }
       const d = r;
-      return `M ${d*0.5},-${d*0.866} L ${d},0 L ${d*0.5},${d*0.866} L -${d*0.5},${d*0.866} L -${d},0 L -${d*0.5},-${d*0.866} Z`;
+      return `M 0,-${d} L ${d*0.866},-${d*0.5} L ${d*0.866},${d*0.5} L 0,${d} L -${d*0.866},${d*0.5} L -${d*0.866},-${d*0.5} Z`;
     }
 
     // 连线：水平同排走直线，跨排（门槛门/起点→首列）走柔和贝塞尔曲线
@@ -308,6 +322,14 @@
           g.appendChild(path);
         }
 
+        const num = NUM[node.id];
+        if (num) {
+          const numEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          numEl.setAttribute('class', 'node-num' + (node.type === 'diamond' ? ' sm' : ''));
+          numEl.textContent = num;
+          g.appendChild(numEl);
+        }
+
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('y', r + 16); label.setAttribute('class', 'node-label');
         label.textContent = node.name; g.appendChild(label);
@@ -321,9 +343,10 @@
     }
 
     function showTooltip(e, node) {
+      const num = NUM[node.id] ? `#${NUM[node.id]} ` : '';
       const typeMap = { origin: '起点', hex: '主进化节点', diamond: '门槛切换门', circle: '终极效果' };
       const route = node.line ? `路线 ${node.line}${node.tier ? ' · 第 ' + node.tier + ' 阶' : (node.gate ? ' · 门 ' + node.gate : '')}` : '';
-      tooltip.innerHTML = `<h4>${node.name}</h4><span class="type">${typeMap[node.type]}${route ? ' · ' + route : ''}</span><div>${node.effect}</div>`;
+      tooltip.innerHTML = `<h4>${num}${node.name}</h4><span class="type">${typeMap[node.type]}${route ? ' · ' + route : ''}</span><div>${node.effect}</div>`;
       tooltip.classList.add('visible'); moveTooltip(e);
     }
     function moveTooltip(e) {
@@ -337,7 +360,8 @@
 
     function openDetail(node) {
       const typeMap = { origin: '起点', hex: '主进化节点', diamond: '门槛切换门', circle: '终极效果' };
-      document.getElementById('detailTitle').textContent = node.name;
+      const num = NUM[node.id] ? `#${NUM[node.id]} ` : '';
+      document.getElementById('detailTitle').textContent = num + node.name;
       document.getElementById('detailMeta').textContent = typeMap[node.type] + (node.line ? ` · 路线 ${node.line}` : '');
       document.getElementById('detailEffect').innerHTML = `<strong>${node.effect}</strong><br/>${node.detail}`;
       document.getElementById('detailHint').textContent = node.type === 'diamond'
