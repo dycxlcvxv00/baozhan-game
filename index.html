@@ -155,7 +155,7 @@
   /* （元素词缀：自然高度、等比 3 列，不拉伸、不滚动；列间距收紧使元素格略宽） */
   .elemGrid{
     position:relative;width:100%;margin-top:10px;
-    display:grid;grid-template-columns:repeat(3,1fr);gap:10px 8px}
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px 5px}
   .elemGrid .eg{
     display:flex;align-items:center;justify-content:space-between;
     padding:8px 12px;border-radius:8px;
@@ -189,7 +189,7 @@
     box-shadow:0 4px 14px -4px rgba(255,200,80,0.5)}
 
   .attrBody{
-    position:relative;width:62%;margin:0 auto;flex:1;min-height:0;
+    position:relative;width:100%;margin:0;flex:1;min-height:0;
     padding-right:6px;overflow:visible;scrollbar-width:thin}
   .attrBody::-webkit-scrollbar{width:6px}
   .attrBody::-webkit-scrollbar-thumb{background:rgba(155,143,181,0.5);border-radius:3px}
@@ -203,7 +203,7 @@
   .attrBody .sg.def .sgh{background:linear-gradient(90deg,rgba(154,219,111,0.55),rgba(154,219,111,0))}
   .attrBody .sg.bst .sgh{background:linear-gradient(90deg,rgba(200,156,255,0.55),rgba(200,156,255,0))}
   .attrBody .sg.oth .sgh{background:linear-gradient(90deg,rgba(124,155,204,0.55),rgba(124,155,204,0))}
-  .attrBody .affs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+  .attrBody .affs{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
   .attrBody .aff{
     display:flex;align-items:center;justify-content:space-between;
     padding:7px 12px;border-radius:5px;background:rgba(0,0,0,0.32);
