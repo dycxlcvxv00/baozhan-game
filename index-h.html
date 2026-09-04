@@ -154,11 +154,11 @@
 
   /* （元素词缀：自然高度、等比 3 列，不拉伸、不滚动；列间距收紧使元素格略宽） */
   .elemGrid{
-    position:relative;width:100%;margin-top:7px;
-    display:grid;grid-template-columns:repeat(3,1fr);gap:5px 5px}
+    position:relative;width:100%;margin-top:5px;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:3px 5px}
   .elemGrid .eg{
     display:flex;align-items:center;justify-content:space-between;
-    padding:12px 12px;border-radius:8px;
+    padding:13.5px 12px;border-radius:8px;
     background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);
     cursor:default;transition:border-color .12s,background .12s}
   .elemGrid .eg:hover{border-color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.06)}
@@ -190,9 +190,9 @@
 
   .attrBody{
     position:relative;width:100%;margin:0;flex:1;min-height:0;
-    padding-right:6px;overflow:visible;scrollbar-width:thin}
-  .attrBody::-webkit-scrollbar{width:6px}
-  .attrBody::-webkit-scrollbar-thumb{background:rgba(155,143,181,0.5);border-radius:3px}
+    padding-right:6px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
+  /* 隐藏滚动条：内容偶有超出时可用滚轮滚动，且绝不出现可见「滑动块」 */
+  .attrBody::-webkit-scrollbar{display:none}
   /* （需求5：分组标题改为贯穿全宽、略高于文字的渐变长条；相关属性做 3 块分割） */
   .attrBody .sg{display:flex;flex-direction:column;margin-bottom:8px;padding-left:0;border-left:none}
   .attrBody .sgh{display:flex;align-items:center;height:28px;margin-bottom:6px;padding:0 12px;
@@ -206,7 +206,7 @@
   .attrBody .affs{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}
   .attrBody .aff{
     display:flex;align-items:center;justify-content:space-between;
-    padding:11px 12px;border-radius:5px;background:rgba(0,0,0,0.32);
+    padding:12.5px 12px;border-radius:5px;background:rgba(0,0,0,0.32);
     border:1px solid rgba(255,255,255,0.06);font-size:15px;
     cursor:default;transition:background .12s,border-color .12s}
   .attrBody .aff:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,200,80,0.4)}
