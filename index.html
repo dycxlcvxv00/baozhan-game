@@ -127,7 +127,7 @@
   #charPanel{position:relative;width:100%;height:100%;overflow:hidden}
   #charScale{
     position:relative;display:flex;flex-direction:column;gap:4px;
-    width:100%;height:100%;box-sizing:border-box;padding:0 12px 6px}
+    width:100%;height:100%;box-sizing:border-box;padding:0 12px 0}
   /* （已移除顶部紫色玩家信息栏 .charHead，玩家信息合并进左侧主属性区展示） */
 
   /* （需求3：3 大主属性改为「图标衬底 + 文本镶嵌」，顶端内缩） */
@@ -190,12 +190,13 @@
 
   .attrBody{
     position:relative;width:100%;margin:0;flex:1;min-height:0;
-    padding-right:6px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
-  /* 隐藏滚动条：内容偶有超出时可用滚轮滚动，且绝不出现可见「滑动块」 */
+    padding-right:6px;overflow:visible}
+  /* 兜底：万一内容超出仍不出现可见「滑动块」（行高累计后仅个别分类可能微超） */
   .attrBody::-webkit-scrollbar{display:none}
+  .attrBody{scrollbar-width:none;-ms-overflow-style:none}
   /* （需求5：分组标题改为贯穿全宽、略高于文字的渐变长条；相关属性做 3 块分割） */
-  .attrBody .sg{display:flex;flex-direction:column;margin-bottom:8px;padding-left:0;border-left:none}
-  .attrBody .sgh{display:flex;align-items:center;height:28px;margin-bottom:6px;padding:0 12px;
+  .attrBody .sg{display:flex;flex-direction:column;margin-bottom:4px;padding-left:0;border-left:none}
+  .attrBody .sgh{display:flex;align-items:center;height:26px;margin-bottom:6px;padding:0 12px;
     border-radius:7px;font-size:15px;font-weight:700;letter-spacing:1px;color:#fff}
   .attrBody .sg.atk .sgh{background:linear-gradient(90deg,rgba(255,122,122,0.55),rgba(255,122,122,0))}
   .attrBody .sg.mgc .sgh{background:linear-gradient(90deg,rgba(122,184,255,0.55),rgba(122,184,255,0))}
