@@ -47,10 +47,10 @@
     .node-num { pointer-events: none; fill: #fff; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; text-shadow: 0 0 4px rgba(0,0,0,0.9); }
     .node-num.sm { font-size: 11px; }
     .link { fill: none; stroke-width: 2.5px; stroke-linecap: round; transition: opacity 0.25s, stroke-width 0.2s; }
-    .link.gate { stroke-width: 2px; stroke-dasharray: 6 5; animation: flow 1.4s linear infinite; }
-    .link.locked { opacity: 0.32; }
-    .link.activatable { opacity: 0.6; animation: flow 1.4s linear infinite, blink 1.4s ease-in-out infinite; }
-    .link.active { opacity: 0.95; }
+    .link.gate { stroke-width: 2px; }
+    .link.locked { opacity: 0.2; stroke-dasharray: none; }
+    .link.activatable { opacity: 0.75; stroke-dasharray: 6 5; animation: flow 1.4s linear infinite; }
+    .link.active { opacity: 0.95; stroke-dasharray: none; }
     .link:hover { opacity: 1; }
     @keyframes flow { to { stroke-dashoffset: -22; } }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -87,7 +87,7 @@
   <div class="wrap">
     <h1>寒冰锥刺 · 觉醒路线</h1>
     <div class="subtitle">基于《爆战丨无限弹幕》第 7 章技能系统 · 横版 demo 原型</div>
-    <div class="subtitle" style="color: var(--accent); margin: -10px 0 14px;">操作：左键点击「可激活」节点点亮路线，右键回退上一步。未解锁连线高透明，可激活节点/连线微闪烁，激活后变亮发光。</div>
+    <div class="subtitle" style="color: var(--accent); margin: -10px 0 14px;">操作：左键点击「可激活」节点点亮路线，右键回退上一步。不可达连线变淡，待连接连线朝目标节点流动，已激活连线变亮发光。</div>
 
     <div class="base-skill">
       <h2>基础形态 · 寒冰锥刺 ICE SHARD</h2>
