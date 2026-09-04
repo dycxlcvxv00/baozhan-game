@@ -47,7 +47,7 @@
     .node-num { pointer-events: none; fill: #fff; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; text-shadow: 0 0 4px rgba(0,0,0,0.9); }
     .node-num.sm { font-size: 11px; }
     .link { fill: none; stroke-width: 2.5px; stroke-linecap: round; transition: opacity 0.25s, stroke-width 0.2s; }
-    .link.gate { stroke-width: 2px; }
+    .link.gate { stroke-width: 2.6px; }
     .link.locked { opacity: 0.3; }
     .link.activatable { opacity: 0.5; }
     .link.active { opacity: 0.95; filter: drop-shadow(0 0 2px rgba(180,240,255,0.45)); }
@@ -272,6 +272,19 @@
       const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
       return `rgba(${r},${g},${b},${a})`;
     }
+    // 向白色混合 t（0~1），保留原色相的高亮版本，用于流光核心
+    function mixWhite(hex, t) {
+      const h = hex.replace('#', '');
+      const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+      const m = v => Math.round(v + (255 - v) * t);
+      return `rgb(${m(r)},${m(g)},${m(b)})`;
+    }
+    // 门槛门连线配色：取「非门那一端」所属主路线的颜色
+    //   1号线(2/7/10/15)->门 偏绿  3号线(3/8/11/16)->门 偏紫  5号线(4/9/12/17)->门 偏红
+    function gateMainColor(a, b) {
+      const main = a.type === 'diamond' ? b : (b.type === 'diamond' ? a : null);
+      return COLORS[main && main.line] || COLORS[2];
+    }
     const nodeMap = Object.fromEntries(skillData.nodes.map(n => [n.id, n]));
     function computeActivatable() {
       const act = new Set(activated);
@@ -286,10 +299,10 @@
           }
         });
       });
-      // 2) 分支取舍：点亮某节点后，关闭同阶的其它分支
-      //    规则：候选 X 连着一个已激活的「选择型父节点」Y（起点 / 六边形主节点），
-      //    且 Y 还连着一个已激活的、与 X 同 x 的兄弟 Z，则 X 被关掉（变淡、无流光）。
-      //    注：菱形门槛节点(l2b1/l4b1/...)不作为互斥父节点 —— 它打通 2×2 后两侧同阶节点都可点亮。
+      // 2) 分支取舍：点亮某节点后，关闭同阶的其它分支（失流光 + 连线变淡 + 禁止点亮）
+      //    规则：候选 X 连着一个已激活的父节点 Y，且 Y 还连着一个已激活的、与 X 同 x 的兄弟 Z，
+      //    则 X 被关掉。对所有分叉一视同仁：起点选线、主节点选门、门槛门选下一阶，均为「同阶二选一」。
+      //    例：点 5(门A) 后点 7 → 8 关闭；反向点 8 → 7 关闭；点 13(门B) 后点 15 → 16 关闭。
       const dimmed = new Set();
       reachable.forEach(X => {
         skillData.links.forEach(l => {
@@ -297,7 +310,6 @@
           if (!ends.includes(X)) return;
           const Y = ends[0] === X ? ends[1] : ends[0];
           if (!act.has(Y)) return;
-          if (!(nodeMap[Y].type === 'origin' || nodeMap[Y].type === 'hex')) return; // 仅起点/主节点形成互斥分支
           skillData.links.forEach(l2 => {
             const e2 = [l2.from, l2.to];
             if (!e2.includes(Y)) return;
@@ -376,17 +388,23 @@
         grad.setAttribute('gradientUnits', 'userSpaceOnUse');
         grad.setAttribute('x1', a.x); grad.setAttribute('y1', a.y);
         grad.setAttribute('x2', b.x); grad.setAttribute('y2', b.y);
-        const cA = a.type === 'origin' ? COLORS.origin : (link.type === 'gate' ? COLORS[2] : (COLORS[a.line] || COLORS[3]));
-        const cB = link.type === 'gate' ? COLORS[2] : (COLORS[b.line] || COLORS[a.line] || COLORS[3]);
+        // 门槛门连线：整条采用「所连主路线」的颜色（2->5 偏绿 / 3->5 偏紫 / 4->6 偏红，其余同理）
+        const isGate = link.type === 'gate';
+        const gColor = isGate ? gateMainColor(a, b) : null;
+        const cA = a.type === 'origin' ? COLORS.origin : (isGate ? gColor : (COLORS[a.line] || COLORS[3]));
+        const cB = isGate ? gColor : (COLORS[b.line] || COLORS[a.line] || COLORS[3]);
+        // 流光核心色：门槛门用主路线色提亮，普通连线用白亮色
+        const streakCore = isGate ? mixWhite(gColor, 0.72) : '#eafcff';
         const s0 = document.createElementNS(NS, 'stop'); s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', cA);
         const s1 = document.createElementNS(NS, 'stop'); s1.setAttribute('offset', '100%'); s1.setAttribute('stop-color', cB);
         grad.appendChild(s0); grad.appendChild(s1); defs.appendChild(grad);
 
         const path = document.createElementNS(NS, 'path');
         path.setAttribute('d', d);
-        path.setAttribute('class', `link ${st}${link.type === 'gate' ? ' gate' : ''}`);
+        path.setAttribute('class', `link ${st}${isGate ? ' gate' : ''}`);
         path.setAttribute('stroke', `url(#grad-${i})`);
         path.style.pointerEvents = 'none';
+        if (isGate) path.style.filter = `drop-shadow(0 0 3px ${tint(gColor, 0.55)})`;   // 弧线带主色外发光，更明显
         svg.appendChild(path);
 
         // 可连接（待点亮）连线：叠加柔和渐变光带沿连线线性流动，提示此处可连接（流光划过）
@@ -397,9 +415,9 @@
           sg.setAttribute('gradientUnits', 'userSpaceOnUse');
           sg.setAttribute('x1', a.x); sg.setAttribute('y1', a.y);
           sg.setAttribute('x2', b.x); sg.setAttribute('y2', b.y);
-          const s0 = document.createElementNS(NS, 'stop'); s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', '#eafcff'); s0.setAttribute('stop-opacity', '0');
-          const s1 = document.createElementNS(NS, 'stop'); s1.setAttribute('offset', '50%'); s1.setAttribute('stop-color', '#eafcff'); s1.setAttribute('stop-opacity', '0.95');
-          const s2 = document.createElementNS(NS, 'stop'); s2.setAttribute('offset', '100%'); s2.setAttribute('stop-color', '#eafcff'); s2.setAttribute('stop-opacity', '0');
+          const s0 = document.createElementNS(NS, 'stop'); s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', streakCore); s0.setAttribute('stop-opacity', '0');
+          const s1 = document.createElementNS(NS, 'stop'); s1.setAttribute('offset', '50%'); s1.setAttribute('stop-color', streakCore); s1.setAttribute('stop-opacity', '0.95');
+          const s2 = document.createElementNS(NS, 'stop'); s2.setAttribute('offset', '100%'); s2.setAttribute('stop-color', streakCore); s2.setAttribute('stop-opacity', '0');
           sg.appendChild(s0); sg.appendChild(s1); sg.appendChild(s2);
           const at = document.createElementNS(NS, 'animateTransform');
           at.setAttribute('attributeName', 'gradientTransform');
@@ -416,6 +434,7 @@
           streak.setAttribute('class', 'link-streak');
           streak.setAttribute('stroke', `url(#streak-${i})`);
           streak.style.pointerEvents = 'none';
+          if (isGate) streak.style.filter = `drop-shadow(0 0 5px ${tint(gColor, 0.7)})`;  // 流光也带主色辉光
           svg.appendChild(streak);
         }
       });
