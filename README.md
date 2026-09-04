@@ -28,6 +28,13 @@ js/
   equip-panel.js        装备面板（10 部位 / 右键卸装备 / 屏蔽右键菜单与文字选中）
   char-panel.js         角色属性面板（6 主属性 / 6 元素 / 4 分类 tab / hover 词缀 tooltip）
   skill-panel.js        技能面板（2×2 技能格 + Last Epoch 弹窗，数值待同步主文档 7.4）
+docs/
+  skill-tree-ice-shard.html   技能专精（觉醒树）交互原型 · 寒冰锥刺（自包含，双击即开）
+  skill-tree-ice-shard.json   觉醒树拓扑结构化数据
+  skill-awakening-ice-shard.md 觉醒树开发文档（拓扑/交互规则/截图/变更记录）
+  screenshots/                觉醒树各状态截图
+.codebuddy/
+  skills/skill-awakening/SKILL.md  技能专精调用入口（新会话说「调用技能专精代码」触发）
 build_single.cjs        多文件 → 零依赖单文件构建脚本
 .github/workflows/
   pages-sync.yml        push 源码后自动重建 index.html（防忘记打包导致线上不同步）
@@ -108,6 +115,21 @@ cd /workspace/baozhan-game && python3 -m http.server 8200
 
 # ③ 改代码 → 打包 → push → 链接自动更新
 node build_single.cjs && git add -A && git commit -m "..." && git push origin main
+```
+
+## 技能专精（觉醒树）· 快速调用
+
+> 改技能觉醒树**不需要**跑构建，直接说「**调用技能专精代码**」即可。
+> 代码在 `docs/skill-tree-ice-shard.html`（自包含单文件），规则与截图见
+> `docs/skill-awakening-ice-shard.md`，调用入口定义在
+> `.codebuddy/skills/skill-awakening/SKILL.md`。
+
+```bash
+# 口令触发后 AI 会自动执行：
+git clone git@github.com:dycxlcvxv00/baozhan-game.git /workspace/baozhan-game
+# → 读 docs/skill-awakening-ice-shard.md（先读规则再改）
+# → 改 docs/skill-tree-ice-shard.html（不要动 index.html / js/*）
+# → 验证（状态机断言 + Playwright 截图）→ 提交推送
 ```
 
 > 本仓库是 **public（公开仓）**，不是私有仓——早期文档里「GitHub 私有仓」的表述已作废。
