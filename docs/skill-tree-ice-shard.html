@@ -40,14 +40,20 @@
     .node-group { cursor: pointer; }
     .node-shape { stroke-width: 2px; transition: all 0.2s ease; filter: drop-shadow(0 0 2px rgba(0,0,0,0.4)); }
     .node-shape:hover { stroke-width: 3.5px; filter: drop-shadow(0 0 8px currentColor); }
+    .node-shape.locked { opacity: 0.4; }
+    .node-shape.activatable { animation: blink 1.4s ease-in-out infinite; filter: drop-shadow(0 0 4px currentColor); }
+    .node-shape.active { opacity: 1; stroke-width: 3px; filter: drop-shadow(0 0 8px currentColor); }
     .node-label { pointer-events: none; fill: var(--text); font-size: 11px; text-anchor: middle; }
     .node-num { pointer-events: none; fill: #fff; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; text-shadow: 0 0 4px rgba(0,0,0,0.9); }
     .node-num.sm { font-size: 11px; }
-    .link { fill: none; stroke-width: 2.5px; opacity: 0.55; transition: opacity 0.2s; stroke-linecap: round; }
-    .link.main { stroke-width: 2.5px; }
-    .link.gate { stroke-width: 2px; stroke-dasharray: 6 5; opacity: 0.7; animation: flow 1.4s linear infinite; }
+    .link { fill: none; stroke-width: 2.5px; stroke-linecap: round; transition: opacity 0.25s, stroke-width 0.2s; }
+    .link.gate { stroke-width: 2px; stroke-dasharray: 6 5; animation: flow 1.4s linear infinite; }
+    .link.locked { opacity: 0.16; }
+    .link.activatable { opacity: 0.6; animation: flow 1.4s linear infinite, blink 1.4s ease-in-out infinite; }
+    .link.active { opacity: 0.95; }
     .link:hover { opacity: 1; }
     @keyframes flow { to { stroke-dashoffset: -22; } }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .tooltip { position: absolute; width: 290px; background: rgba(6,9,18,0.95);
       border: 1px solid rgba(47,230,208,0.3); border-radius: 10px; padding: 14px;
       color: var(--text); font-size: 13px; line-height: 1.6; pointer-events: none;
@@ -81,6 +87,7 @@
   <div class="wrap">
     <h1>寒冰锥刺 · 觉醒路线</h1>
     <div class="subtitle">基于《爆战丨无限弹幕》第 7 章技能系统 · 横版 demo 原型</div>
+    <div class="subtitle" style="color: var(--accent); margin: -10px 0 14px;">操作：左键点击「可激活」节点点亮路线，右键回退上一步。未解锁连线高透明，可激活节点/连线微闪烁，激活后变亮发光。</div>
 
     <div class="base-skill">
       <h2>基础形态 · 寒冰锥刺 ICE SHARD</h2>
@@ -204,25 +211,25 @@
       ],
       links: [
         // 起点 → 第一列
-        { from: 'origin', to: 'l1t1' }, { from: 'origin', to: 'l3t1' }, { from: 'origin', to: 'l5t1' },
+        { from: 'origin', to: 'l1t1', straight: true }, { from: 'origin', to: 'l3t1' }, { from: 'origin', to: 'l5t1', straight: true },
 
         // 1号线：第1列 → 门A → 第2阶 → 第3阶 → 门B → 第4阶 → 终极
         { from: 'l1t1', to: 'l2b1', type: 'gate' }, { from: 'l2b1', to: 'l1t2', type: 'gate' },
-        { from: 'l1t2', to: 'l1t3' },
+        { from: 'l1t2', to: 'l1t3', straight: true },
         { from: 'l1t3', to: 'l2b2', type: 'gate' }, { from: 'l2b2', to: 'l1t4', type: 'gate' },
-        { from: 'l1t4', to: 'l1f' },
+        { from: 'l1t4', to: 'l1f', straight: true },
 
         // 3号线：第1列 → 门A → 第2阶 → 第3阶 → 门B → 第4阶 → 终极
         { from: 'l3t1', to: 'l2b1', type: 'gate' }, { from: 'l2b1', to: 'l3t2', type: 'gate' },
-        { from: 'l3t2', to: 'l3t3' },
+        { from: 'l3t2', to: 'l3t3', straight: true },
         { from: 'l3t3', to: 'l2b2', type: 'gate' }, { from: 'l2b2', to: 'l3t4', type: 'gate' },
-        { from: 'l3t4', to: 'l3f' },
+        { from: 'l3t4', to: 'l3f', straight: true },
 
         // 5号线：第1列 → 门C → 第2阶 → 第3阶 → 门D → 第4阶 → 终极
         { from: 'l5t1', to: 'l4b1', type: 'gate' }, { from: 'l4b1', to: 'l5t2', type: 'gate' },
-        { from: 'l5t2', to: 'l5t3' },
+        { from: 'l5t2', to: 'l5t3', straight: true },
         { from: 'l5t3', to: 'l4b2', type: 'gate' }, { from: 'l4b2', to: 'l5t4', type: 'gate' },
-        { from: 'l5t4', to: 'l5f' },
+        { from: 'l5t4', to: 'l5f', straight: true },
 
         // 门C 同时连接 3/5 号第1-2阶 的 2×2（4 节点）
         { from: 'l3t1', to: 'l4b1', type: 'gate' }, { from: 'l4b1', to: 'l3t2', type: 'gate' },
@@ -244,109 +251,216 @@
       return `M 0,-${d} L ${d*0.866},-${d*0.5} L ${d*0.866},${d*0.5} L 0,${d} L -${d*0.866},${d*0.5} L -${d*0.866},-${d*0.5} Z`;
     }
 
-    // 连线：水平同排走直线，跨排（门槛门/起点→首列）走柔和贝塞尔曲线
-    function linkPath(a, b) {
+    // 连线：straight=true 强制直线；否则水平同排走直线，跨排走柔和贝塞尔曲线
+    function linkPath(a, b, straight) {
       const dx = b.x - a.x, dy = b.y - a.y;
-      if (Math.abs(dy) < 6) return `M ${a.x},${a.y} L ${b.x},${b.y}`;
+      if (straight || Math.abs(dy) < 6) return `M ${a.x},${a.y} L ${b.x},${b.y}`;
       const c1x = a.x + dx * 0.15, c1y = a.y + dy * 0.5;
       const c2x = b.x - dx * 0.15, c2y = b.y - dy * 0.5;
       return `M ${a.x},${a.y} C ${c1x},${c1y} ${c2x},${c2y} ${b.x},${b.y}`;
     }
 
-    function render() {
-      const badges = [
-        { x: 14, y: 95, t: '①' }, { x: 14, y: 195, t: '②' },
-        { x: 14, y: 295, t: '③' }, { x: 14, y: 395, t: '④' },
-        { x: 14, y: 495, t: '⑤' }
-      ];
-      badges.forEach(b => {
-        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        t.setAttribute('x', b.x); t.setAttribute('y', b.y);
-        t.setAttribute('class', 'route-badge'); t.textContent = b.t;
-        svg.appendChild(t);
-      });
+    const NS = 'http://www.w3.org/2000/svg';
 
-      const defs = svg.querySelector('defs');
+    // ===== 激活状态机 =====
+    const activated = ['origin'];   // 起点默认点亮
+    const history = ['origin'];
+
+    function tint(hex, a) {
+      const h = hex.replace('#', '');
+      const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+    function computeActivatable() {
+      const act = new Set(activated);
+      const actb = new Set();
+      skillData.links.forEach(l => {
+        if (act.has(l.from) && !act.has(l.to)) actb.add(l.to);
+        if (act.has(l.to) && !act.has(l.from)) actb.add(l.from);
+      });
+      return { act, actb };
+    }
+    function linkState(l, act) {
+      const a = act.has(l.from), b = act.has(l.to);
+      if (a && b) return 'active';
+      if (a || b) return 'activatable';
+      return 'locked';
+    }
+    function clearSvg() { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+
+    // 终极节点内部图案（三种不同样式）
+    function finalMotif(id, color) {
+      const els = [];
+      if (id === 'l1f') {            // 绝对零度之矛：穿刺之刃
+        const p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', 'M 0,-15 L 4,0 L 0,15 L -4,0 Z');
+        p.setAttribute('fill', 'none'); p.setAttribute('stroke', color); p.setAttribute('stroke-width', '2');
+        els.push(p);
+        const cg = document.createElementNS(NS, 'line');
+        cg.setAttribute('x1', '-9'); cg.setAttribute('y1', '0'); cg.setAttribute('x2', '9'); cg.setAttribute('y2', '0');
+        cg.setAttribute('stroke', color); cg.setAttribute('stroke-width', '2');
+        els.push(cg);
+      } else if (id === 'l3f') {     // 凛冬降临：霜爆星芒
+        for (let k = 0; k < 6; k++) {
+          const ang = k * Math.PI / 3, x2 = (Math.cos(ang) * 15).toFixed(1), y2 = (Math.sin(ang) * 15).toFixed(1);
+          const ln = document.createElementNS(NS, 'line');
+          ln.setAttribute('x1', '0'); ln.setAttribute('y1', '0'); ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
+          ln.setAttribute('stroke', color); ln.setAttribute('stroke-width', '2');
+          els.push(ln);
+        }
+      } else if (id === 'l5f') {     // 永恒凛冬：同心冰环
+        [15, 10, 5].forEach(rr => {
+          const c = document.createElementNS(NS, 'circle');
+          c.setAttribute('r', rr); c.setAttribute('fill', 'none'); c.setAttribute('stroke', color); c.setAttribute('stroke-width', '2');
+          els.push(c);
+        });
+      }
+      return els;
+    }
+
+    function render() {
+      const { act, actb } = computeActivatable();
+      clearSvg();
+      const defs = document.createElementNS(NS, 'defs');
+      defs.innerHTML = '<filter id="linkGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+      svg.appendChild(defs);
+
+      // ---- 连线 ----
       skillData.links.forEach((link, i) => {
         const a = skillData.nodes.find(n => n.id === link.from);
         const b = skillData.nodes.find(n => n.id === link.to);
         if (!a || !b) return;
+        const straight = link.straight || Math.abs(b.y - a.y) < 6;
+        const st = linkState(link, act);
 
-        const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+        const grad = document.createElementNS(NS, 'linearGradient');
         grad.setAttribute('id', `grad-${i}`);
         grad.setAttribute('gradientUnits', 'userSpaceOnUse');
         grad.setAttribute('x1', a.x); grad.setAttribute('y1', a.y);
         grad.setAttribute('x2', b.x); grad.setAttribute('y2', b.y);
         const cA = a.type === 'origin' ? COLORS.origin : (link.type === 'gate' ? COLORS[2] : (COLORS[a.line] || COLORS[3]));
         const cB = link.type === 'gate' ? COLORS[2] : (COLORS[b.line] || COLORS[a.line] || COLORS[3]);
-        const s0 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-        s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', cA);
-        const s1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-        s1.setAttribute('offset', '100%'); s1.setAttribute('stop-color', cB);
-        grad.appendChild(s0); grad.appendChild(s1);
-        defs.appendChild(grad);
+        const s0 = document.createElementNS(NS, 'stop'); s0.setAttribute('offset', '0%'); s0.setAttribute('stop-color', cA);
+        const s1 = document.createElementNS(NS, 'stop'); s1.setAttribute('offset', '100%'); s1.setAttribute('stop-color', cB);
+        grad.appendChild(s0); grad.appendChild(s1); defs.appendChild(grad);
 
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', linkPath(a, b));
-        path.setAttribute('class', `link ${link.type === 'gate' ? 'gate' : 'main'}`);
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', linkPath(a, b, straight));
+        path.setAttribute('class', `link ${st}${link.type === 'gate' ? ' gate' : ''}`);
         path.setAttribute('stroke', `url(#grad-${i})`);
         path.setAttribute('filter', 'url(#linkGlow)');
+        path.style.pointerEvents = 'none';
         svg.appendChild(path);
       });
 
+      // ---- 节点 ----
       skillData.nodes.forEach(node => {
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const g = document.createElementNS(NS, 'g');
         g.setAttribute('class', 'node-group');
         g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+        const st = act.has(node.id) ? 'active' : (actb.has(node.id) ? 'activatable' : 'locked');
 
         let r = node.type === 'origin' ? 22 : (node.type === 'circle' ? 26 : (node.type === 'diamond' ? 14 : 22));
         const color = node.type === 'origin' ? COLORS.origin : (node.type === 'circle' ? COLORS.final : COLORS[node.line]);
+        const fill = st === 'active' ? tint(color, 0.22) : 'rgba(6,9,18,0.85)';
 
         if (node.type === 'circle') {
-          const outer = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          const outer = document.createElementNS(NS, 'circle');
           outer.setAttribute('r', r + 5); outer.setAttribute('fill', 'none');
           outer.setAttribute('stroke', color); outer.setAttribute('stroke-width', '2');
-          outer.setAttribute('class', 'node-shape'); outer.style.color = color;
+          outer.setAttribute('class', 'node-shape ' + st); outer.style.color = color;
           g.appendChild(outer);
-          const inner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          inner.setAttribute('r', r); inner.setAttribute('fill', 'rgba(6,9,18,0.85)');
+          const inner = document.createElementNS(NS, 'circle');
+          inner.setAttribute('r', r); inner.setAttribute('fill', fill);
           inner.setAttribute('stroke', color); inner.setAttribute('stroke-width', '2');
-          inner.setAttribute('class', 'node-shape'); inner.style.color = color;
+          inner.setAttribute('class', 'node-shape ' + st); inner.style.color = color;
           g.appendChild(inner);
+          finalMotif(node.id, color).forEach(el => g.appendChild(el));
         } else {
-          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          const path = document.createElementNS(NS, 'path');
           path.setAttribute('d', shapePath(node.type, r));
-          path.setAttribute('fill', 'rgba(6,9,18,0.85)');
+          path.setAttribute('fill', fill);
           path.setAttribute('stroke', color);
-          path.setAttribute('class', 'node-shape'); path.style.color = color;
+          path.setAttribute('class', 'node-shape ' + st); path.style.color = color;
           g.appendChild(path);
+          // 六边形/菱形：内嵌小一圈图形 + 中心点，增加复杂度
+          if (node.type === 'hex') {
+            const ih = document.createElementNS(NS, 'path');
+            ih.setAttribute('d', shapePath('hex', r * 0.58));
+            ih.setAttribute('fill', 'none'); ih.setAttribute('stroke', color); ih.setAttribute('stroke-width', '1'); ih.setAttribute('opacity', '0.5');
+            g.appendChild(ih);
+            const dot = document.createElementNS(NS, 'circle');
+            dot.setAttribute('r', '2.4'); dot.setAttribute('fill', color); dot.setAttribute('opacity', '0.85');
+            g.appendChild(dot);
+          } else if (node.type === 'diamond') {
+            const ih = document.createElementNS(NS, 'path');
+            ih.setAttribute('d', shapePath('diamond', r * 0.5));
+            ih.setAttribute('fill', 'none'); ih.setAttribute('stroke', color); ih.setAttribute('stroke-width', '1'); ih.setAttribute('opacity', '0.5');
+            g.appendChild(ih);
+          } else if (node.type === 'origin') {
+            const ir = document.createElementNS(NS, 'circle');
+            ir.setAttribute('r', r * 0.55); ir.setAttribute('fill', 'none'); ir.setAttribute('stroke', color); ir.setAttribute('stroke-width', '1'); ir.setAttribute('opacity', '0.5');
+            g.appendChild(ir);
+          }
         }
 
         const num = NUM[node.id];
         if (num) {
-          const numEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          if (node.type === 'circle') {
+            const numBg = document.createElementNS(NS, 'circle');
+            numBg.setAttribute('r', '9'); numBg.setAttribute('fill', 'rgba(6,9,18,0.7)');
+            g.appendChild(numBg);
+          }
+          const numEl = document.createElementNS(NS, 'text');
           numEl.setAttribute('class', 'node-num' + (node.type === 'diamond' ? ' sm' : ''));
           numEl.textContent = num;
           g.appendChild(numEl);
         }
 
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        const label = document.createElementNS(NS, 'text');
         label.setAttribute('y', r + 16); label.setAttribute('class', 'node-label');
         label.textContent = node.name; g.appendChild(label);
 
         g.addEventListener('mouseenter', e => showTooltip(e, node));
         g.addEventListener('mousemove', e => moveTooltip(e));
         g.addEventListener('mouseleave', hideTooltip);
-        g.addEventListener('click', () => openDetail(node));
+        g.addEventListener('click', () => { openDetail(node); if (actb.has(node.id)) activate(node.id); });
         svg.appendChild(g);
       });
+
+      // ---- 路线徽标 ----
+      const badges = [
+        { x: 14, y: 95, t: '①' }, { x: 14, y: 195, t: '②' },
+        { x: 14, y: 295, t: '③' }, { x: 14, y: 395, t: '④' },
+        { x: 14, y: 495, t: '⑤' }
+      ];
+      badges.forEach(b => {
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', b.x); t.setAttribute('y', b.y);
+        t.setAttribute('class', 'route-badge'); t.textContent = b.t;
+        svg.appendChild(t);
+      });
     }
+
+    function activate(id) {
+      if (activated.includes(id)) return;
+      activated.push(id); history.push(id); render();
+    }
+    function undo() {
+      if (history.length <= 1) return;       // 起点不可回退
+      const id = history.pop();
+      const idx = activated.indexOf(id);
+      if (idx >= 0) activated.splice(idx, 1);
+      render();
+    }
+    svg.addEventListener('contextmenu', e => { e.preventDefault(); undo(); });
 
     function showTooltip(e, node) {
       const num = NUM[node.id] ? `#${NUM[node.id]} ` : '';
       const typeMap = { origin: '起点', hex: '主进化节点', diamond: '门槛切换门', circle: '终极效果' };
       const route = node.line ? `路线 ${node.line}${node.tier ? ' · 第 ' + node.tier + ' 阶' : (node.gate ? ' · 门 ' + node.gate : '')}` : '';
-      tooltip.innerHTML = `<h4>${num}${node.name}</h4><span class="type">${typeMap[node.type]}${route ? ' · ' + route : ''}</span><div>${node.effect}</div>`;
+      const stTxt = activated.includes(node.id) ? '【已激活】' : (computeActivatable().actb.has(node.id) ? '【可激活 · 左键点亮】' : '【未解锁】');
+      tooltip.innerHTML = `<h4>${num}${node.name}</h4><span class="type">${typeMap[node.type]}${route ? ' · ' + route : ''} · ${stTxt}</span><div>${node.effect}</div>`;
       tooltip.classList.add('visible'); moveTooltip(e);
     }
     function moveTooltip(e) {
@@ -362,11 +476,11 @@
       const typeMap = { origin: '起点', hex: '主进化节点', diamond: '门槛切换门', circle: '终极效果' };
       const num = NUM[node.id] ? `#${NUM[node.id]} ` : '';
       document.getElementById('detailTitle').textContent = num + node.name;
-      document.getElementById('detailMeta').textContent = typeMap[node.type] + (node.line ? ` · 路线 ${node.line}` : '');
+      document.getElementById('detailMeta').textContent = typeMap[node.type] + (node.line ? ` · 路线 ${node.line}` : '') + (node.gate ? ` · 门 ${node.gate}` : '');
       document.getElementById('detailEffect').innerHTML = `<strong>${node.effect}</strong><br/>${node.detail}`;
       document.getElementById('detailHint').textContent = node.type === 'diamond'
         ? '门槛门：居中于相邻两条主路线的 2×2 主节点块，连接其中 4 个大节点。点亮后既进入下一阶，也可跨到相邻主路线。'
-        : '点击节点查看详情；悬停查看简要效果。主路线每一阶之间都由「门槛门」隔开，必须依次点亮才能前进。';
+        : '左键点击「可激活」节点点亮路线；右键回退上一步。主路线每一阶之间都由门槛门隔开，必须依次点亮才能前进。';
       panel.classList.add('open');
     }
     function closeDetail() { panel.classList.remove('open'); }
