@@ -48,11 +48,11 @@
     .node-num.sm { font-size: 11px; }
     .link { fill: none; stroke-width: 2.5px; stroke-linecap: round; transition: opacity 0.25s, stroke-width 0.2s; }
     .link.gate { stroke-width: 2px; }
-    .link.locked { opacity: 0.35; }
+    .link.locked { opacity: 0.3; }
     .link.activatable { opacity: 0.5; }
-    .link.active { opacity: 0.9; }
+    .link.active { opacity: 0.95; filter: drop-shadow(0 0 2px rgba(180,240,255,0.45)); }
     .link:hover { opacity: 1; }
-    /* 流光：柔和渐变光带（线性过渡），由 JS 生成渐变 + SMIL 沿连线位移实现 */
+    /* 流光：仅出现在已点亮（active）连线上，柔和渐变光带线性流动 */
     .link-streak { fill: none; stroke-width: 3.5px; stroke-linecap: round; pointer-events: none; filter: drop-shadow(0 0 4px #bfefff); }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .tooltip { position: absolute; width: 290px; background: rgba(6,9,18,0.95);
@@ -88,7 +88,7 @@
   <div class="wrap">
     <h1>寒冰锥刺 · 觉醒路线</h1>
     <div class="subtitle">基于《爆战丨无限弹幕》第 7 章技能系统 · 横版 demo 原型</div>
-    <div class="subtitle" style="color: var(--accent); margin: -10px 0 14px;">操作：左键点击「可激活」节点点亮路线，右键回退上一步。只能依次向右延伸，不能回点左侧节点。不可达连线变淡，待连接连线流光划过朝目标流动，已激活连线变亮发光。</div>
+    <div class="subtitle" style="color: var(--accent); margin: -10px 0 14px;">操作：左键点击「可激活」（闪烁）节点点亮路线，右键回退上一步。只能依次向右延伸，不能回点左侧节点。已点亮连线流光流动且更明显，未点亮连线取消流光并半透明。</div>
 
     <div class="base-skill">
       <h2>基础形态 · 寒冰锥刺 ICE SHARD</h2>
@@ -359,8 +359,8 @@
         path.style.pointerEvents = 'none';
         svg.appendChild(path);
 
-        // 待连接：叠加一条柔和渐变光带，沿连线从起点线性流向目标（软边自然过渡，非短段）
-        if (st === 'activatable') {
+        // 已点亮连线：叠加一条柔和渐变光带，沿连线线性流动（软边自然过渡），使已建路径明显发光
+        if (st === 'active') {
           const dx = b.x - a.x, dy = b.y - a.y;
           const sg = document.createElementNS(NS, 'linearGradient');
           sg.setAttribute('id', `streak-${i}`);
@@ -399,7 +399,7 @@
 
         let r = node.type === 'origin' ? 22 : (node.type === 'circle' ? 26 : (node.type === 'diamond' ? 14 : 22));
         const color = node.type === 'origin' ? COLORS.origin : (node.type === 'circle' ? COLORS.final : COLORS[node.line]);
-        const fill = st === 'active' ? tint(color, 0.22) : 'rgba(6,9,18,0.85)';
+        const fill = st === 'active' ? '#12283a' : '#0a0f1c';   // 实心不透明，遮挡下层连线
 
         if (node.type === 'circle') {
           const outer = document.createElementNS(NS, 'circle');
