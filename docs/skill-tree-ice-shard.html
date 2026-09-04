@@ -48,7 +48,7 @@
     .node-num.sm { font-size: 11px; }
     .link { fill: none; stroke-width: 2.5px; stroke-linecap: round; transition: opacity 0.25s, stroke-width 0.2s; }
     .link.gate { stroke-width: 2px; stroke-dasharray: 6 5; animation: flow 1.4s linear infinite; }
-    .link.locked { opacity: 0.16; }
+    .link.locked { opacity: 0.32; }
     .link.activatable { opacity: 0.6; animation: flow 1.4s linear infinite, blink 1.4s ease-in-out infinite; }
     .link.active { opacity: 0.95; }
     .link:hover { opacity: 1; }
@@ -424,7 +424,7 @@
         g.addEventListener('mouseenter', e => showTooltip(e, node));
         g.addEventListener('mousemove', e => moveTooltip(e));
         g.addEventListener('mouseleave', hideTooltip);
-        g.addEventListener('click', () => { openDetail(node); if (actb.has(node.id)) activate(node.id); });
+        g.addEventListener('click', () => { if (actb.has(node.id)) activate(node.id); });
         svg.appendChild(g);
       });
 
