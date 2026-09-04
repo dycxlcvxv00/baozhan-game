@@ -52,7 +52,7 @@
     .link.activatable { opacity: 0.5; }
     .link.active { opacity: 0.95; filter: drop-shadow(0 0 2px rgba(180,240,255,0.45)); }
     .link:hover { opacity: 1; }
-    /* 流光：仅出现在已点亮（active）连线上，柔和渐变光带线性流动 */
+    /* 流光：出现在可连接（activatable）连线上，柔和渐变光带线性流动，提示此处可点亮 */
     .link-streak { fill: none; stroke-width: 3.5px; stroke-linecap: round; pointer-events: none; filter: drop-shadow(0 0 4px #bfefff); }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .tooltip { position: absolute; width: 290px; background: rgba(6,9,18,0.95);
@@ -88,7 +88,7 @@
   <div class="wrap">
     <h1>寒冰锥刺 · 觉醒路线</h1>
     <div class="subtitle">基于《爆战丨无限弹幕》第 7 章技能系统 · 横版 demo 原型</div>
-    <div class="subtitle" style="color: var(--accent); margin: -10px 0 14px;">操作：左键点击「可激活」（闪烁）节点点亮路线，右键回退上一步。只能依次向右延伸，不能回点左侧节点。已点亮连线流光流动且更明显，未点亮连线取消流光并半透明。</div>
+    <div class="subtitle" style="color: var(--accent); margin: -10px 0 14px;">操作：左键点击「可激活」（闪烁）节点点亮路线，右键回退上一步。只能依次向右延伸，不能回点左侧节点。可连接连线流光划过提示可点亮，连接后变为高亮常态线（无流光）。</div>
 
     <div class="base-skill">
       <h2>基础形态 · 寒冰锥刺 ICE SHARD</h2>
@@ -359,8 +359,8 @@
         path.style.pointerEvents = 'none';
         svg.appendChild(path);
 
-        // 已点亮连线：叠加一条柔和渐变光带，沿连线线性流动（软边自然过渡），使已建路径明显发光
-        if (st === 'active') {
+        // 可连接（待点亮）连线：叠加柔和渐变光带沿连线线性流动，提示此处可连接（流光划过）
+        if (st === 'activatable') {
           const dx = b.x - a.x, dy = b.y - a.y;
           const sg = document.createElementNS(NS, 'linearGradient');
           sg.setAttribute('id', `streak-${i}`);
