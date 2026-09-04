@@ -107,7 +107,7 @@
   #bottom{position:absolute;left:4px;top:412px;width:1912px;height:660px;padding:0}
   #bottom .bview{position:absolute;inset:4px 4px 8px 4px}
   #bottom .bview[hidden]{display:none}
-  #bottom .cols{display:flex;gap:3px;height:100%}
+  #bottom .cols{display:flex;gap:2px;height:100%}
   #bottom .col.l{width:619px;flex:none;padding:0;overflow:hidden;position:relative}
   #bottom .col.r{flex:1;padding:14px 22px;display:flex;flex-direction:column;border-left:1px solid var(--line)}
   #bottom .col.r .ttl{margin-bottom:10px}
@@ -126,7 +126,7 @@
   /* === 角色面板（严格按截图 492×798，外层 transform:scale 适配 619 内宽） === */
   #charPanel{position:relative;width:100%;height:100%;overflow:hidden}
   #charScale{
-    position:relative;display:flex;flex-direction:column;gap:6px;
+    position:relative;display:flex;flex-direction:column;gap:4px;
     width:100%;height:100%;box-sizing:border-box;padding:0 12px 6px}
   /* （已移除顶部紫色玩家信息栏 .charHead，玩家信息合并进左侧主属性区展示） */
 
@@ -154,11 +154,11 @@
 
   /* （元素词缀：自然高度、等比 3 列，不拉伸、不滚动；列间距收紧使元素格略宽） */
   .elemGrid{
-    position:relative;width:100%;margin-top:10px;
-    display:grid;grid-template-columns:repeat(3,1fr);gap:7px 5px}
+    position:relative;width:100%;margin-top:7px;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:5px 5px}
   .elemGrid .eg{
     display:flex;align-items:center;justify-content:space-between;
-    padding:10px 12px;border-radius:8px;
+    padding:12px 12px;border-radius:8px;
     background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);
     cursor:default;transition:border-color .12s,background .12s}
   .elemGrid .eg:hover{border-color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.06)}
@@ -203,10 +203,10 @@
   .attrBody .sg.def .sgh{background:linear-gradient(90deg,rgba(154,219,111,0.55),rgba(154,219,111,0))}
   .attrBody .sg.bst .sgh{background:linear-gradient(90deg,rgba(200,156,255,0.55),rgba(200,156,255,0))}
   .attrBody .sg.oth .sgh{background:linear-gradient(90deg,rgba(124,155,204,0.55),rgba(124,155,204,0))}
-  .attrBody .affs{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+  .attrBody .affs{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}
   .attrBody .aff{
     display:flex;align-items:center;justify-content:space-between;
-    padding:9px 12px;border-radius:5px;background:rgba(0,0,0,0.32);
+    padding:11px 12px;border-radius:5px;background:rgba(0,0,0,0.32);
     border:1px solid rgba(255,255,255,0.06);font-size:15px;
     cursor:default;transition:background .12s,border-color .12s}
   .attrBody .aff:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,200,80,0.4)}
