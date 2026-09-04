@@ -64,20 +64,16 @@
       0 10px 40px rgba(0,0,0,0.5)}
   #battleWrap canvas{display:block}
 
-  /* 左侧 UI 接口：功能按钮（左 4×2 网格）+ 面板显示区（右侧剩余空间） */
+  /* 左侧 UI 接口：功能按钮区（仅保留 4 个功能按钮） */
   #leftPanel{position:absolute;left:4px;top:90px;width:619px;height:300px;padding:18px 20px}
-  #leftPanel .body{display:flex;gap:14px;margin-top:14px;height:218px}
-  #leftPanel .btns{width:306px;display:flex;flex-wrap:wrap;gap:14px;align-content:flex-start}
+  #leftPanel .body{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:14px;height:218px}
+  #leftPanel .btns{width:306px;display:flex;flex-wrap:wrap;gap:14px;align-content:flex-start;justify-content:center}
   .fbtn{width:64px;height:64px;border-radius:16px;background:var(--btn);
     border:1px solid var(--line);color:var(--dim);font-size:15px;font-weight:600;
     display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;user-select:none}
   .fbtn:hover{border-color:var(--accent);color:var(--txt);box-shadow:0 0 14px rgba(47,230,208,0.22)}
   .fbtn.on{background:linear-gradient(180deg,#1f9fb2,#136479);border-color:var(--accent);color:#eafffb;
     box-shadow:0 0 16px rgba(47,230,208,0.55),inset 0 1px 0 rgba(255,255,255,0.25)}
-  #panelView{flex:1;height:218px;border-radius:12px;
-    background:var(--panel2);border:1px solid var(--line);padding:14px;font-size:15px;color:var(--dim);overflow:auto;
-    box-shadow:inset 0 0 26px rgba(20,36,66,0.4)}
-  #panelView b{color:var(--accent)}
 
   /* 右侧 UI 接口：英雄 10 件装备 */
   #rightPanel{position:absolute;left:1293px;top:90px;width:619px;height:300px;padding:18px 20px}
@@ -254,7 +250,6 @@
         <div class="fbtn" data-k="宠物">宠物</div>
         <div class="fbtn" data-k="铭文">铭文</div>
       </div>
-      <div id="panelView"><b>功能面板</b><br>点击左侧功能按钮（装备 / 技能 / 宠物 / 铭文）切换此处内容。</div>
     </div>
   </div>
 
