@@ -65,6 +65,10 @@
     for (const k in BASE_ATTR) attr[k] = BASE_ATTR[k] + equip.attrBonus(k);
     critBuildCfg = equip.hasOnHitCritBuild();
     if (!critBuildCfg) critBuild = 0;           // 无装备特效 → 暴击率不积累
+    // 围墙血量即英雄生命；护甲由 wallTakeDamage 参与减伤
+    wallHpMax = attr.hp;
+    if (wallHp <= 0) wallHp = wallHpMax;         // 初始化 / 破墙复位 → 按英雄生命补满
+    else if (wallHp > wallHpMax) wallHp = wallHpMax;
   }
 
   /* ---------- 装备系统（复用 runes.js） ---------- */
@@ -81,14 +85,21 @@
     { id: 'lightning',name: '连锁闪电', elem: 'lightning',coef: 0.24, isSpell: true,  crit: 0, cd: 1.35 },
   ];
 
-  /* 防御方阵：英雄 + 4 塔，全部落在 DEF_X 这条垂直线上，按 8 车道分布 */
+  /* 防御方阵：英雄 + 4 塔，全部落在 DEF_X 这条垂直线；在 [DEF_MARGIN, BH-DEF_MARGIN]
+     内均匀竖直分布，最上下端留白（英雄居中） */
+  const DEF_MARGIN = 30;
   const defenders = [
-    { id: 'hero',     name: '英雄',   x: DEF_X, y: LANES[4], skill: HERO_SKILL,    color: 0xffd54a, cd: 0 },
-    { id: 'ice',      name: '冰锥刺', x: DEF_X, y: LANES[0], skill: TOWER_SKILLS[0], color: 0x6ad0ff, cd: 0 },
-    { id: 'fire',     name: '爆裂火球', x: DEF_X, y: LANES[1], skill: TOWER_SKILLS[1], color: 0xff8a5a, cd: 0 },
-    { id: 'poison',   name: '剧毒爆弹', x: DEF_X, y: LANES[5], skill: TOWER_SKILLS[2], color: 0x9be36a, cd: 0 },
-    { id: 'lightning',name: '连锁闪电', x: DEF_X, y: LANES[7], skill: TOWER_SKILLS[3], color: 0xc89bff, cd: 0 },
+    { id: 'ice',      name: '冰锥刺', x: DEF_X, y: 0, skill: TOWER_SKILLS[0], color: 0x6ad0ff, cd: 0 },
+    { id: 'fire',     name: '爆裂火球', x: DEF_X, y: 0, skill: TOWER_SKILLS[1], color: 0xff8a5a, cd: 0 },
+    { id: 'hero',     name: '英雄',   x: DEF_X, y: 0, skill: HERO_SKILL,    color: 0xffd54a, cd: 0 },
+    { id: 'poison',   name: '剧毒爆弹', x: DEF_X, y: 0, skill: TOWER_SKILLS[2], color: 0x9be36a, cd: 0 },
+    { id: 'lightning',name: '连锁闪电', x: DEF_X, y: 0, skill: TOWER_SKILLS[3], color: 0xc89bff, cd: 0 },
   ];
+  (function layoutDefenders() {
+    const n = defenders.length;
+    const span = (BH - 2 * DEF_MARGIN) / (n - 1);
+    defenders.forEach((d, i) => { d.y = Math.round(DEF_MARGIN + i * span); });
+  })();
 
   /* ---------- 伤害计算（对齐第 13 章） ---------- */
   const ELEM_KEY = { phys: 'phys', ice: 'ice', fire: 'fire', poison: 'poison', lightning: 'lightning', chaos: 'chaos' };
@@ -113,8 +124,8 @@
     return { dmg: Math.max(1, Math.round(dmg)), crit: isCrit };
   }
 
-  /* 围墙承伤：护甲 → 减免 → 最终减伤 → 格挡 → 护盾优先 */
-  let wallHp = 2000, wallHpMax = 2000;
+  /* 围墙承伤：护甲 → 减免 → 最终减伤 → 格挡 → 护盾优先（血量即英雄生命） */
+  let wallHp = 0, wallHpMax = 0;
   function wallTakeDamage(raw) {
     const a = attr;
     let dmg = raw * (100 / (100 + a.armor));
@@ -138,7 +149,6 @@
   let purify = 0;           // 净化值（击杀小怪/精英积攒）
   const PURIFY_MAX = 100;   // 净化满 → 生成 BOSS
   let bossActive = false;   // 当前场上是否有 BOSS
-  const dmgLog = [];        // {t, dmg} 用于 DPS
 
   function spawnMonster() {
     let type;
@@ -152,7 +162,7 @@
     const lane = LANES[(Math.random() * LANES.length) | 0];
     const m = {
       x: SPAWN_X, y: lane, type,
-      hp: maxhp, maxhp, speed: 34 + Math.random() * 16,
+      hp: maxhp, maxhp, speed: (34 + Math.random() * 16) * 0.7,
       atkCd: 0, g: null, bar: null, dead: false,
     };
     if (type === 'boss') bossActive = true;
@@ -223,8 +233,8 @@
     drawWall();
     // 防御方阵底座（紫色霓虹，发光）
     const d = new PIXI.Graphics();
-    d.lineStyle(8, 0x9b7bff, 0.10); d.moveTo(DEF_X, 12); d.lineTo(DEF_X, BH - 12);
-    d.lineStyle(1, 0x9b7bff, 0.55); d.moveTo(DEF_X, 12); d.lineTo(DEF_X, BH - 12);
+    d.lineStyle(8, 0x9b7bff, 0.10); d.moveTo(DEF_X, DEF_MARGIN); d.lineTo(DEF_X, BH - DEF_MARGIN);
+    d.lineStyle(1, 0x9b7bff, 0.55); d.moveTo(DEF_X, DEF_MARGIN); d.lineTo(DEF_X, BH - DEF_MARGIN);
     bgLayer.addChild(d);
   })();
 
@@ -248,32 +258,14 @@
   });
 
   /* ---------- HUD（顶层 uiLayer） ---------- */
-  // 关卡数（顶部中央）
-  const levelText = new PIXI.Text('第 1 关', {
-    fontFamily: 'Arial', fontSize: 19, fill: 0xfff2cc, fontWeight: '800',
-    stroke: 0x141b2e, strokeThickness: 4,
-  });
-  levelText.anchor.set(0.5, 0);
-  levelText.x = BW / 2; levelText.y = 6;
-  uiLayer.addChild(levelText);
-
-  // 净化值进度条（关卡数下方）
-  const PURIFY_BAR = { x: BW / 2 - 130, y: 34, w: 260, h: 11 };
-  const purifyBar = new PIXI.Graphics();
-  uiLayer.addChild(purifyBar);
-  const purifyLabel = new PIXI.Text('', { fontFamily: 'Arial', fontSize: 11, fill: 0x9fd0ff, fontWeight: '700' });
-  purifyLabel.anchor.set(0.5, 0);
-  purifyLabel.x = BW / 2; purifyLabel.y = PURIFY_BAR.y + PURIFY_BAR.h + 2;
-  uiLayer.addChild(purifyLabel);
-
-  // 围墙血条（镶嵌在墙顶部）
+  // 围墙血条（竖向，贴墙左侧；血量即英雄生命，护甲参与减伤）
   const wallHpBar = new PIXI.Graphics();
   uiLayer.addChild(wallHpBar);
 
-  // 左下角简报（DPS / 击杀 / BOSS）
-  const hud = new PIXI.Text('', { fontFamily: 'Arial', fontSize: 12, fill: 0xbcd0f0, fontWeight: '600' });
-  hud.x = 8; hud.y = BH - 18;
-  uiLayer.addChild(hud);
+  // 顶部栏 DOM 引用：关卡数 / 净化进度已移出战斗区，接到大页面顶部栏（不遮挡战斗视野）
+  const domLevel = document.getElementById('hLevel');
+  const domPurifyFill = document.getElementById('purifyFill');
+  const domPurifyBar = domPurifyFill ? domPurifyFill.parentElement : null;
 
   /* ---------- 主循环 ---------- */
   let frames = 0, spawned = 0;
@@ -289,6 +281,7 @@
     for (const m of monsters) {
       if (m.dead) continue;
       m.x -= m.speed * dt;
+      if (m.x < WALL_RX + 2) m.x = WALL_RX + 2;   // 被墙体阻挡（不再越过围墙）
       if (!m.g) {
         m.g = new PIXI.Graphics();
         const col = m.type === 'boss' ? 0xff6b81 : m.type === 'elite' ? 0xffa657 : 0xff8a6b;
@@ -369,7 +362,6 @@
         const res = computeDamage({ id: b.srcId }, b.skill, t);
         t.hp -= res.dmg;
         addPop(t.x, t.y - 8, res.dmg, res.crit);
-        dmgLog.push({ t: performance.now(), dmg: res.dmg });
         if (critBuildCfg) { critBuild = Math.min(critBuildCfg.cap, critBuild + critBuildCfg.perHit); }
         if (t.hp <= 0) { t.dead = true; killGfx(t); killGfx(b); killMonster(t); }
         else killGfx(b);
@@ -390,28 +382,20 @@
     }
     for (let i = pops.length - 1; i >= 0; i--) if (pops[i].done) pops.splice(i, 1);
 
-    // HUD
-    const now = performance.now();
-    while (dmgLog.length && now - dmgLog[0].t > 3000) dmgLog.shift();
-    const dps = dmgLog.reduce((s, e) => s + e.dmg, 0) / 3;
-    levelText.text = `第 ${level} 关`;
-    hud.text = `DPS ${Math.round(dps)} · 击杀 ${killCount}` + (bossActive ? ' · ★ BOSS' : '');
-
-    // 净化值进度条
+    // 顶部栏 DOM 同步（关卡数 / 净化进度已移至大页面顶部栏，不遮挡战斗视野）
     const pr = Math.max(0, Math.min(1, purify / PURIFY_MAX));
-    purifyBar.clear();
-    purifyBar.beginFill(0x0d1320, 0.72); purifyBar.drawRoundedRect(PURIFY_BAR.x, PURIFY_BAR.y, PURIFY_BAR.w, PURIFY_BAR.h, 5); purifyBar.endFill();
-    purifyBar.beginFill(pr >= 1 ? 0xffd54a : 0x49e0ff, 0.95); purifyBar.drawRoundedRect(PURIFY_BAR.x, PURIFY_BAR.y, Math.max(1, PURIFY_BAR.w * pr), PURIFY_BAR.h, 5); purifyBar.endFill();
-    purifyBar.lineStyle(1, 0x49e0ff, 0.6); purifyBar.drawRoundedRect(PURIFY_BAR.x, PURIFY_BAR.y, PURIFY_BAR.w, PURIFY_BAR.h, 5); purifyBar.lineStyle(0);
-    purifyLabel.text = pr >= 1 ? 'BOSS 来袭！' : `净化 ${Math.round(pr * 100)}%`;
-    purifyLabel.style.fill = pr >= 1 ? 0xffd54a : 0x9fd0ff;
+    if (domLevel) domLevel.textContent = level;
+    if (domPurifyFill) domPurifyFill.style.width = (pr * 100).toFixed(1) + '%';
+    if (domPurifyBar) domPurifyBar.classList.toggle('boss', pr >= 1);
 
-    // 围墙血条（镶嵌墙顶）
-    const wr = Math.max(0, wallHp / wallHpMax);
-    wallHpBar.clear();
-    wallHpBar.beginFill(0x10141f, 0.9); wallHpBar.drawRoundedRect(WALL_X - 1, 6, WALL_W + 2, 12, 3); wallHpBar.endFill();
+    // 围墙血条（竖向，贴墙左侧；血量即英雄生命，护甲参与减伤）
+    const wr = wallHpMax > 0 ? Math.max(0, wallHp / wallHpMax) : 0;
+    const VBAR = { x: WALL_X - 9, w: 6, top: 6, bot: BH - 6 };
+    const vh = VBAR.bot - VBAR.top;
     const wcol = wr > 0.5 ? 0x6ee7a8 : wr > 0.25 ? 0xffd166 : 0xff6b81;
-    wallHpBar.beginFill(wcol, 0.96); wallHpBar.drawRoundedRect(WALL_X, 7, Math.max(1, WALL_W * wr), 10, 2); wallHpBar.endFill();
+    wallHpBar.clear();
+    wallHpBar.beginFill(0x10141f, 0.92); wallHpBar.drawRoundedRect(VBAR.x, VBAR.top, VBAR.w, vh, 3); wallHpBar.endFill();
+    wallHpBar.beginFill(wcol, 0.96); wallHpBar.drawRoundedRect(VBAR.x, VBAR.top, VBAR.w, Math.max(1, vh * wr), 3); wallHpBar.endFill();
   }
 
   function killMonster(m) {

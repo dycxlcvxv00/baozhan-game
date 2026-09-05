@@ -95,7 +95,7 @@ push 后访问固定链接即可看到最新版，**无需任何手动部署动�
 | 2 | 打包注入游离标签 | 页面崩坏、报脚本错误 | PixiJS 源码含 `$&` / `` $` `` / `$'`，用 `String.replace(re, content)` 会被当作替换模式解析。`build_single.cjs` 已改用**函数返回值**替换 |
 | 3 | 忘记打包就 push | 线上停在旧版 | 先 `node build_single.cjs`；`pages-sync.yml` 兜底 |
 | 4 | 换测试链接 | 玩家丢档 | 固定链接永不变，域名即存档域 |
-| 5 | 坐标散落硬编码 | 布局改一处坏一片 | `BW/BH/DEF_X/WALL_X/SPAWN_X/LANES` 全在 `js/game-h.js`，只改常量 |
+| 5 | 坐标散落硬编码 | 布局改一处坏一片 | `BW/BH/DEF_X/WALL_X/WALL_W/SPAWN_X/LANES/DEF_MARGIN` 全在 `js/game-h.js`，只改常量；英雄+4 塔由 `layoutDefenders()` 在 `[DEF_MARGIN, BH-DEF_MARGIN]` 内均匀竖直分布（英雄居中）；关卡数/净化进度已移到大页面顶部栏（DOM `hLevel`/`purifyFill`），不在战斗区画布内 |
 | 6 | 改视觉动内联样式 | 配色不一致 | 只动 `index-h.html` 的 `:root` 变量 |
 | 7 | 暴击不涨 | 以为数值 bug | `onHitCritBuild` 有装备门控，须穿带该特效的装备（默认「烈阳长刃」），卸下立即归零 |
 | 8 | 沙箱连不上 GitHub | `gnutls_handshake() failed` / `Permission denied` | 见「新会话接续」第 1 步，跑项目资产《GitHub 连接》第 0 步 |

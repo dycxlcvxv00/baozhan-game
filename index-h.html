@@ -52,6 +52,16 @@
   #topbar .chip{height:30px;padding:0 14px;border-radius:16px;display:flex;align-items:center;
     background:var(--glass);border:1px solid var(--line);color:var(--dim);font-size:14px}
   #topbar .chip.on{color:var(--accent);border-color:rgba(47,230,208,0.5);box-shadow:0 0 12px rgba(47,230,208,0.25)}
+  /* 顶部栏：关卡数 + 净化进度条（战斗区关卡/进度已上移至此，不遮挡战斗视野） */
+  #topbar .lvl{font-size:18px;color:var(--dim);display:flex;align-items:center;gap:8px;white-space:nowrap}
+  #topbar .lvl b{color:var(--gold);font-weight:800;font-size:21px}
+  #topbar .purwrap{display:flex;align-items:center;gap:10px;white-space:nowrap}
+  #topbar .purwrap .lab{font-size:15px;color:var(--dim)}
+  #topbar .purbar{width:240px;height:12px;border-radius:8px;background:rgba(255,255,255,0.08);
+    border:1px solid var(--line);overflow:hidden;position:relative}
+  #topbar .purbar > i{display:block;height:100%;width:0%;border-radius:8px;
+    background:linear-gradient(90deg,#49e0ff,#2fe6d0);transition:width .12s linear}
+  #topbar .purbar.boss > i{background:linear-gradient(90deg,#ffd54a,#ff8a5a);box-shadow:0 0 12px rgba(255,138,90,.5)}
 
   /* 战斗区 */
   #battleWrap{position:absolute;left:635px;top:90px;width:650px;height:300px;border-radius:14px;overflow:hidden;
@@ -379,7 +389,11 @@
   <!-- 顶部栏 -->
   <div id="topbar" class="panel">
     <span class="brand">爆战丨无限弹幕</span>
-    <span class="stat">关卡 <b id="hLevel">1</b></span>
+    <span class="lvl">关卡 <b id="hLevel">1</b></span>
+    <span class="purwrap">
+      <span class="lab">净化</span>
+      <span class="purbar" id="purifyBar"><i id="purifyFill"></i></span>
+    </span>
     <span class="stat">金币 <b>—</b></span>
     <span class="stat">战力 <b>—</b></span>
     <span class="right">
