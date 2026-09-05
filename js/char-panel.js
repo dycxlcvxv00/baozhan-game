@@ -180,8 +180,14 @@
     }
     return d.base + bonusOf(key);  // pct 属性（基础通常 0）
   }
+  // 千分位 + 最多 2 位小数（整数不补 .00）
   function fmtNum(n){
-    return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const r = Math.round(n * 100) / 100;
+    const s = '' + r;
+    const dot = s.indexOf('.');
+    const intPart = dot < 0 ? s : s.slice(0, dot);
+    const decPart = dot < 0 ? '' : s.slice(dot);
+    return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + decPart;
   }
   function displayVal(key){
     const d = ATTR_DEFS[key];
@@ -189,11 +195,11 @@
     const v = getVal(key);
     switch (d.kind) {
       case 'flat':   return fmtNum(v);
-      case 'count':  return '' + v;
-      case 'charge': return v.toFixed(1) + ' / s';
-      case 'critdmg':return v + '%';
+      case 'count':  return fmtNum(v);
+      case 'charge': return fmtNum(v) + ' / s';
+      case 'critdmg':return fmtNum(v) + '%';
       case 'pct':
-      default:       return (v > 0 ? '+' : '') + v + '%';
+      default:       return (v > 0 ? '+' : '') + fmtNum(v) + '%';
     }
   }
   // 计算用乘区：数值型属性已是最终值；pct/暴击伤害属性 → 系数
@@ -339,14 +345,14 @@
       return '<ul class="src">' + rows.join('') + '</ul>';
     }
 
-    // 基础值格式化（按属性类型）
+    // 基础值格式化（按属性类型，统一保留 2 位小数）
     function baseText(k){
       const d = ATTR_DEFS[k];
       if (!d) return '0';
       if (d.kind === 'flat')   return fmtNum(d.base);
-      if (d.kind === 'count')  return '' + d.base;
-      if (d.kind === 'charge') return d.base.toFixed(1) + ' / s';
-      return d.base + '%'; // pct / critdmg
+      if (d.kind === 'count')  return fmtNum(d.base);
+      if (d.kind === 'charge') return fmtNum(d.base) + ' / s';
+      return fmtNum(d.base) + '%'; // pct / critdmg
     }
     // 带基础值的属性：flat(critdmg 也算有基础) / count / charge
     function hasBaseValue(k){
@@ -360,7 +366,7 @@
       const baseRow = hasBaseValue(k)
         ? '<div class="srcTitle">基础值</div>'
         + '<div class="baseRow">基础 <b>' + baseText(k) + '</b>'
-        + '<span class="arrow">→</span>当前 <b>' + displayVal(k) + '</b></div>'
+        + '<span class="sep">｜</span>当前 <b>' + displayVal(k) + '</b></div>'
         : '';
       tip.innerHTML =
         '<h5>' + k + '</h5>' +

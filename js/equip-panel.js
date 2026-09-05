@@ -69,19 +69,31 @@
         div.style.top = sd.y + 'px';
         div.style.width = sd.w + 'px';
         div.style.height = sd.h + 'px';
-        div.style.borderColor = on ? sd.c : 'rgba(165,172,190,.55)';
         div.style.fontSize = (sd.w < 60 ? 10 : (sd.w < 120 ? 12 : 14)) + 'px';
 
+        // 边框颜色：已穿戴 = 装备品质色（持续显示）；未穿戴 = 灰
+        var RAR = window.RARITY || {};
+        var rc = on ? ((RAR[it.rarity] || {}).color || '#fff') : 'rgba(165,172,190,.55)';
+        div.style.borderColor = rc;
+
         if (on) {
-          // 已穿戴：显示装备图标 + 名称 + 品质色
-          var RAR = window.RARITY || {};
-          var rc = (RAR[it.rarity] || {}).color || '#fff';
+          // 已穿戴：显示装备图标 + 名称（品质色）+ 可 hover 看详情弹窗
+          div.dataset.item = it.id;
           div.innerHTML =
             '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:4px">'
           +   '<span style="font-size:' + (sd.w < 60 ? '20' : '32') + 'px;line-height:1">' + (it.icon || '❔') + '</span>'
           +   '<span class="nm" style="color:' + rc + ';font-size:' + (sd.w < 60 ? '9' : '11') + 'px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">' + it.name + '</span>'
           + '</div>';
           div.title = it.name + '（' + it.slot + '）· 右键卸下';
+          // hover 显示装备属性弹窗（复用背包提示 UI）
+          div.addEventListener('mouseenter', function(){
+            div.title = '';
+            if (window.showEquipTip) window.showEquipTip(div);
+          });
+          div.addEventListener('mouseleave', function(){
+            div.title = it.name + '（' + it.slot + '）· 右键卸下';
+            if (window.equipTipEl) window.equipTipEl.style.display = 'none';
+          });
         } else {
           div.innerHTML = '<span class="nm">' + sd.key + '</span>';
           div.title = sd.key + '  未穿戴';

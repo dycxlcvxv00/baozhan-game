@@ -299,7 +299,7 @@
   .attrTip .srcTitle{font-size:11px;color:#897bb0;font-weight:700;margin:6px 0 2px}
   .attrTip .baseRow{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:12.5px;color:#b9a8d9}
   .attrTip .baseRow b{color:#ffdc7a;font-weight:700}
-  .attrTip .baseRow .arrow{color:#6c7da0;font-size:13px}
+  .attrTip .baseRow .sep{color:#6c7da0;font-size:13px}
 
   /* === 背包面板（装备页右侧） === */
   #bagCol{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
@@ -2447,8 +2447,14 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     }
     return d.base + bonusOf(key);  // pct 属性（基础通常 0）
   }
+  // 千分位 + 最多 2 位小数（整数不补 .00）
   function fmtNum(n){
-    return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const r = Math.round(n * 100) / 100;
+    const s = '' + r;
+    const dot = s.indexOf('.');
+    const intPart = dot < 0 ? s : s.slice(0, dot);
+    const decPart = dot < 0 ? '' : s.slice(dot);
+    return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + decPart;
   }
   function displayVal(key){
     const d = ATTR_DEFS[key];
@@ -2456,11 +2462,11 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     const v = getVal(key);
     switch (d.kind) {
       case 'flat':   return fmtNum(v);
-      case 'count':  return '' + v;
-      case 'charge': return v.toFixed(1) + ' / s';
-      case 'critdmg':return v + '%';
+      case 'count':  return fmtNum(v);
+      case 'charge': return fmtNum(v) + ' / s';
+      case 'critdmg':return fmtNum(v) + '%';
       case 'pct':
-      default:       return (v > 0 ? '+' : '') + v + '%';
+      default:       return (v > 0 ? '+' : '') + fmtNum(v) + '%';
     }
   }
   // 计算用乘区：数值型属性已是最终值；pct/暴击伤害属性 → 系数
@@ -2606,14 +2612,14 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       return '<ul class="src">' + rows.join('') + '</ul>';
     }
 
-    // 基础值格式化（按属性类型）
+    // 基础值格式化（按属性类型，统一保留 2 位小数）
     function baseText(k){
       const d = ATTR_DEFS[k];
       if (!d) return '0';
       if (d.kind === 'flat')   return fmtNum(d.base);
-      if (d.kind === 'count')  return '' + d.base;
-      if (d.kind === 'charge') return d.base.toFixed(1) + ' / s';
-      return d.base + '%'; // pct / critdmg
+      if (d.kind === 'count')  return fmtNum(d.base);
+      if (d.kind === 'charge') return fmtNum(d.base) + ' / s';
+      return fmtNum(d.base) + '%'; // pct / critdmg
     }
     // 带基础值的属性：flat(critdmg 也算有基础) / count / charge
     function hasBaseValue(k){
@@ -2627,7 +2633,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       const baseRow = hasBaseValue(k)
         ? '<div class="srcTitle">基础值</div>'
         + '<div class="baseRow">基础 <b>' + baseText(k) + '</b>'
-        + '<span class="arrow">→</span>当前 <b>' + displayVal(k) + '</b></div>'
+        + '<span class="sep">｜</span>当前 <b>' + displayVal(k) + '</b></div>'
         : '';
       tip.innerHTML =
         '<h5>' + k + '</h5>' +
@@ -2737,19 +2743,31 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
         div.style.top = sd.y + 'px';
         div.style.width = sd.w + 'px';
         div.style.height = sd.h + 'px';
-        div.style.borderColor = on ? sd.c : 'rgba(165,172,190,.55)';
         div.style.fontSize = (sd.w < 60 ? 10 : (sd.w < 120 ? 12 : 14)) + 'px';
 
+        // 边框颜色：已穿戴 = 装备品质色（持续显示）；未穿戴 = 灰
+        var RAR = window.RARITY || {};
+        var rc = on ? ((RAR[it.rarity] || {}).color || '#fff') : 'rgba(165,172,190,.55)';
+        div.style.borderColor = rc;
+
         if (on) {
-          // 已穿戴：显示装备图标 + 名称 + 品质色
-          var RAR = window.RARITY || {};
-          var rc = (RAR[it.rarity] || {}).color || '#fff';
+          // 已穿戴：显示装备图标 + 名称（品质色）+ 可 hover 看详情弹窗
+          div.dataset.item = it.id;
           div.innerHTML =
             '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:4px">'
           +   '<span style="font-size:' + (sd.w < 60 ? '20' : '32') + 'px;line-height:1">' + (it.icon || '❔') + '</span>'
           +   '<span class="nm" style="color:' + rc + ';font-size:' + (sd.w < 60 ? '9' : '11') + 'px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">' + it.name + '</span>'
           + '</div>';
           div.title = it.name + '（' + it.slot + '）· 右键卸下';
+          // hover 显示装备属性弹窗（复用背包提示 UI）
+          div.addEventListener('mouseenter', function(){
+            div.title = '';
+            if (window.showEquipTip) window.showEquipTip(div);
+          });
+          div.addEventListener('mouseleave', function(){
+            div.title = it.name + '（' + it.slot + '）· 右键卸下';
+            if (window.equipTipEl) window.equipTipEl.style.display = 'none';
+          });
         } else {
           div.innerHTML = '<span class="nm">' + sd.key + '</span>';
           div.title = sd.key + '  未穿戴';
@@ -3278,6 +3296,10 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       // 整理 / 分解：逻辑后续接入（整理=按品质/类型排序；分解=批量转化为资源）
     });
   });
+
+  // 暴露装备提示 UI，供右上角装备栏（纸娃娃）复用
+  window.showEquipTip = showEquipTip;   // 入参为带 dataset.item 的单元格
+  window.equipTipEl = equipTip;
 })();
 
 </script>

@@ -244,4 +244,8 @@
       // 整理 / 分解：逻辑后续接入（整理=按品质/类型排序；分解=批量转化为资源）
     });
   });
+
+  // 暴露装备提示 UI，供右上角装备栏（纸娃娃）复用
+  window.showEquipTip = showEquipTip;   // 入参为带 dataset.item 的单元格
+  window.equipTipEl = equipTip;
 })();
