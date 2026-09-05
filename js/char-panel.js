@@ -361,14 +361,35 @@
       return '<ul class="src">' + rows.join('') + '</ul>';
     }
 
+    // 基础值格式化（按属性类型）
+    function baseText(k){
+      const d = ATTR_DEFS[k];
+      if (!d) return '0';
+      if (d.kind === 'flat')   return fmtNum(d.base);
+      if (d.kind === 'count')  return '' + d.base;
+      if (d.kind === 'charge') return d.base.toFixed(1) + ' / s';
+      return d.base + '%'; // pct / critdmg
+    }
+    // 带基础值的属性：flat(critdmg 也算有基础) / count / charge
+    function hasBaseValue(k){
+      const d = ATTR_DEFS[k];
+      return !!(d && (d.kind === 'flat' || d.kind === 'count' || d.kind === 'charge' || d.kind === 'critdmg'));
+    }
+
     function showTip(target){
       const k = (target.dataset.tip || '').replace(/^attr:/, '');
       const data = ATTR_POOL[k] || {desc:'', affixes:[]};
+      const baseRow = hasBaseValue(k)
+        ? '<div class="srcTitle">基础值</div>'
+        + '<div class="baseRow">基础 <b>' + baseText(k) + '</b>'
+        + '<span class="arrow">→</span>当前 <b>' + displayVal(k) + '</b></div>'
+        : '';
       tip.innerHTML =
         '<h5>' + k + '</h5>' +
         '<div class="desc">' + (data.desc || '该属性的实际装备加成数值如下。') + '</div>' +
+        baseRow +
         '<div class="srcTitle">词缀明细</div>' + buildSrcList(k) +
-        '<div class="meta">当前值：' + displayVal(k) + ' ｜ 同名词缀加法、异名词缀乘区</div>';
+        '<div class="meta">主属性先叠加到基础值，再计算各类百分比加成（独立乘区）</div>';
       const r = target.getBoundingClientRect();
       tip.style.display = 'block';
       const tw = tip.offsetWidth, th = tip.offsetHeight;
