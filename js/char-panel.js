@@ -300,14 +300,29 @@
     tip.className = 'attrTip';
     document.body.appendChild(tip);
 
+    // 列出该属性来自已穿戴装备的实际加成明细（数值按真实体现）
+    function buildSrcList(k){
+      const srcs = [];
+      for (const id2 in HERO.equipped) {
+        const it = ITEM_MAP[id2];
+        if (it && it.attrs && it.attrs[k] != null) {
+          const v = it.attrs[k];
+          const d = ATTR_DEFS[k];
+          const unit = (d && d.kind === 'flat') ? '' : '%';
+          srcs.push('<li><span>' + it.name + '</span><b>+' + v + unit + '</b></li>');
+        }
+      }
+      if (!srcs.length) return '<div class="meta">暂无装备加成（当前为裸身基础值）</div>';
+      return '<ul class="src">' + srcs.join('') + '</ul>';
+    }
+
     function showTip(target){
       const k = (target.dataset.tip || '').replace(/^attr:/, '');
-      const data = ATTR_POOL[k];
-      if (!data) { tip.style.display = 'none'; return; }
+      const data = ATTR_POOL[k] || {desc:'', affixes:[]};
       tip.innerHTML =
         '<h5>' + k + '</h5>' +
-        '<div class="desc">' + data.desc + '</div>' +
-        '<ul>' + data.affixes.map(a => '<li><span>' + a + '</span><b>词缀</b></li>').join('') + '</ul>' +
+        '<div class="desc">' + (data.desc || '该属性的实际装备加成数值如下。') + '</div>' +
+        '<div class="srcTitle">装备加成明细</div>' + buildSrcList(k) +
         '<div class="meta">当前值：' + displayVal(k) + ' ｜ 同名词缀加法、异名词缀乘区</div>';
       const r = target.getBoundingClientRect();
       tip.style.display = 'block';

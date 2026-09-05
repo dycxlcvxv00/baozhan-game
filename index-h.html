@@ -282,6 +282,7 @@
   .attrTip li{display:flex;justify-content:space-between;color:#e9defb;font-size:12.5px;padding:2px 0}
   .attrTip li b{color:#ffdc7a;font-weight:700}
   .attrTip .meta{font-size:11px;color:#897bb0;margin-top:8px;padding-top:6px;border-top:1px dashed rgba(255,255,255,0.12)}
+  .attrTip .srcTitle{font-size:11px;color:#897bb0;font-weight:700;margin:6px 0 2px}
 
   /* === 背包面板（装备页右侧） === */
   #bagCol{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
@@ -332,16 +333,16 @@
   /* 装备详情提示 UI（hover 背包物品触发，整框配色跟随品质：上深下浅） */
   #equipTip{position:fixed;z-index:9999;width:282px;padding:0;
     background:linear-gradient(180deg,
-      color-mix(in srgb, var(--qc) 30%, #0a0814),
-      color-mix(in srgb, var(--qc) 12%, #0a0814));
-    border:1px solid rgba(184,66,255,0.5);border-radius:10px;overflow:hidden;
+      color-mix(in srgb, var(--qc) 18%, #0a0814),
+      color-mix(in srgb, var(--qc) 6%, #0a0814));
+    border:1px solid rgba(255,255,255,0.14);border-radius:10px;overflow:hidden;
     box-shadow:0 14px 44px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04);
     color:#e9defb;font-size:12.5px;pointer-events:none;
     animation:etIn .12s ease}
   @keyframes etIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
   #equipTip .etHead{display:flex;align-items:center;gap:10px;padding:10px 12px;
     border-bottom:1px solid rgba(255,255,255,0.08);
-    background:color-mix(in srgb, var(--qc) 24%, #0a0814)}
+    background:color-mix(in srgb, var(--qc) 14%, #0a0814)}
   #equipTip .etIcon{font-size:30px;filter:drop-shadow(0 0 8px rgba(255,255,255,0.3));flex:none}
   #equipTip .etTitle{display:flex;flex-direction:column;flex:1;min-width:0}
   #equipTip .etName{font-size:14px;font-weight:700;color:#fff;line-height:1.2}
@@ -352,12 +353,12 @@
   #equipTip .etRow{display:flex;justify-content:space-between;align-items:center;
     padding:8px 12px;font-size:12.5px}
   #equipTip .etK{color:#b9a8d9}
-  #equipTip .etV{color:#ffce6a;font-weight:700}
+  #equipTip .etV{color:#e3c074;font-weight:700}
   #equipTip .etDiv{height:1px;margin:0 12px;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)}
   #equipTip .etMain{display:flex;flex-direction:column;align-items:center;padding:8px 0 6px}
-  #equipTip .etMainNum{font-size:40px;font-weight:800;color:#fff;line-height:1;
-    text-shadow:0 0 16px rgba(155,123,255,0.5)}
+  #equipTip .etMainNum{font-size:40px;font-weight:800;color:#e9e2ff;line-height:1;
+    text-shadow:0 0 10px rgba(155,123,255,0.28)}
   #equipTip .etMainLbl{font-size:11px;color:#b9a8d9;margin-top:2px}
   #equipTip .etSec{display:flex;align-items:center;padding:8px 12px 2px}
   #equipTip .etSecT{font-size:12px;font-weight:700;color:#c9b8ee;letter-spacing:1px}
@@ -453,6 +454,8 @@
             <div class="bagTools">
               <button class="bagTool" data-act="sort">整理</button>
               <button class="bagTool" data-act="split">分解</button>
+              <button class="bagTool" data-act="forge">铸造</button>
+              <button class="bagTool" data-act="add">增加装备</button>
             </div>
             <div class="bagPages" id="bagPages"></div>
           </div>

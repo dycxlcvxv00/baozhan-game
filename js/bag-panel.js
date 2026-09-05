@@ -53,15 +53,15 @@
     const stars = '✦'.repeat(it.stars || 0);            // 神铸（待开发）星星，紧跟品质右侧
     let h = '';
     // ① 顶部信息栏：品质名 + 神铸星星（同排右）；装备等级在品质下方
-    h += '<div class="etHead">'
-       +   '<div class="etIcon">' + (it.icon || '❔') + '</div>'
-       +   '<div class="etTitle">'
-       +     '<div class="etName">' + it.name + '</div>'
-       +     '<div class="etRarLine"><span class="etRar" style="color:' + r.color + '">' + r.name + '</span>'
-       +       '<span class="etStars">' + stars + '</span></div>'
-       +     '<div class="etLv">装备等级 ' + (it.level || 60) + '</div>'
-       +   '</div>'
-       + '</div>';
+      h += '<div class="etHead">'
+         +   '<div class="etTitle">'
+         +     '<div class="etName">' + it.name + '</div>'
+         +     '<div class="etRarLine"><span class="etRar" style="color:' + r.color + '">' + r.name + '</span>'
+         +       '<span class="etStars">' + stars + '</span></div>'
+         +     '<div class="etLv">装备等级 ' + (it.level || 60) + '</div>'
+         +   '</div>'
+         +   '<div class="etIcon">' + (it.icon || '❔') + '</div>'
+         + '</div>';
     // ② 主属性名 + 强度%（标签用主属性名，非固定「伤害强度」）
     const mainLabel = it.main ? it.main.label : '伤害强度';
     h += '<div class="etRow"><span class="etK">' + mainLabel + '</span><span class="etV">' + (it.dmg || 0) + '%</span></div>';
@@ -118,10 +118,9 @@
     equipTip.style.top  = y + 'px';
   }
 
-  // 背包分页数据：第 1 页放入全部简易装备，其余页为空
+  // 背包初始为空，由「增加装备 / 铸造」按钮填充
   const BAG = {};
   for (let p = 1; p <= PAGES; p++) BAG[p] = [];
-  ITEMS.forEach((it, i) => { if (i < COLS * ROWS) BAG[1][i] = it.id; });
 
   let cur = 1;
 
@@ -188,10 +187,59 @@
     buildCells();
   });
 
-  // 整理 / 分解：当前占位，仅做点击反馈（逻辑后续接入）
+  // 背包操作：整理 / 分解（待接入）+ 铸造 / 增加装备（已实现）
+  let instSeq = 0;
+  function firstEmptySlot(){
+    const ids = BAG[cur] || [];
+    for (let i = 0; i < ids.length; i++) if (!ids[i]) return i;
+    if (ids.length < COLS * ROWS) { ids.push(null); return ids.length - 1; }
+    return -1;
+  }
+  function addItem(base){
+    const slot = firstEmptySlot();
+    if (slot < 0) return;
+    const inst = Object.assign({}, base);
+    inst.id = 'inst' + (++instSeq);
+    ITEM_MAP[inst.id] = inst;          // 注册实例，属性随 attrs 真实生效
+    BAG[cur][slot] = inst.id;
+    buildCells();
+  }
+  // 铸造：按主文档《装备系统》公式随机生成一件属性真实的装备
+  const FORGE_RARS = ['magic', 'rare', 'epic'];
+  const FORGE_DEFS = [
+    {slot:'武器', main:'攻击力', pool:['攻击伤害','攻击速度','暴击率','冰霜','火焰']},
+    {slot:'护甲', main:'护甲值', pool:['护甲值','生命值','伤害减免']},
+    {slot:'饰品', main:'攻击力', pool:['暴击率','暴击伤害','法术伤害','最终伤害','精英增伤']},
+    {slot:'鞋子', main:'护甲值', pool:['攻击速度','护甲值','生命值']},
+  ];
+  const RAR_COEF  = {magic:2, rare:2.5, epic:3.5};
+  const RAR_TIER  = {magic:'T3', rare:'T2', epic:'T1'};
+  const RAR_STARS = {magic:3, rare:4, epic:5};
+  const RAR_ICON  = {武器:'🗡️', 护甲:'🛡️', 饰品:'💍', 鞋子:'👢'};
+  function forgeItem(){
+    const rarity = FORGE_RARS[Math.floor(Math.random() * FORGE_RARS.length)];
+    const sd = FORGE_DEFS[Math.floor(Math.random() * FORGE_DEFS.length)];
+    const mainVal = Math.round(10 + 10 * (60 / 10) * RAR_COEF[rarity] * (0.8 + Math.random() * 0.7));
+    const nAff = 2 + Math.floor(Math.random() * 2);
+    const pool = sd.pool.slice(); const attrs = {};
+    for (let i = 0; i < nAff && pool.length; i++){
+      const idx = Math.floor(Math.random() * pool.length);
+      const key = pool.splice(idx, 1)[0];
+      attrs[key] = Math.round(10 + Math.random() * 40);
+    }
+    return { name:'铸造·' + sd.slot, icon:RAR_ICON[sd.slot] || '❔', rarity:rarity, slot:sd.slot,
+      level:60, stars:RAR_STARS[rarity], dmg:Math.round(60 + Math.random() * 80),
+      tier:RAR_TIER[rarity], main:{label:sd.main, val:mainVal}, attrs:attrs };
+  }
   document.querySelectorAll('#bagNav .bagTool').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      // TODO: 接入背包操作（整理=按品质/类型排序；分解=批量转化为资源）
+      const act = btn.dataset.act;
+      if (act === 'add') {
+        if (ITEMS.length) addItem(ITEMS[instSeq % ITEMS.length]);
+      } else if (act === 'forge') {
+        addItem(forgeItem());
+      }
+      // 整理 / 分解：逻辑后续接入（整理=按品质/类型排序；分解=批量转化为资源）
     });
   });
 })();

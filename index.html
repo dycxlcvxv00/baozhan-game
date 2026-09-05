@@ -282,6 +282,7 @@
   .attrTip li{display:flex;justify-content:space-between;color:#e9defb;font-size:12.5px;padding:2px 0}
   .attrTip li b{color:#ffdc7a;font-weight:700}
   .attrTip .meta{font-size:11px;color:#897bb0;margin-top:8px;padding-top:6px;border-top:1px dashed rgba(255,255,255,0.12)}
+  .attrTip .srcTitle{font-size:11px;color:#897bb0;font-weight:700;margin:6px 0 2px}
 
   /* === 背包面板（装备页右侧） === */
   #bagCol{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
@@ -332,16 +333,16 @@
   /* 装备详情提示 UI（hover 背包物品触发，整框配色跟随品质：上深下浅） */
   #equipTip{position:fixed;z-index:9999;width:282px;padding:0;
     background:linear-gradient(180deg,
-      color-mix(in srgb, var(--qc) 30%, #0a0814),
-      color-mix(in srgb, var(--qc) 12%, #0a0814));
-    border:1px solid rgba(184,66,255,0.5);border-radius:10px;overflow:hidden;
+      color-mix(in srgb, var(--qc) 18%, #0a0814),
+      color-mix(in srgb, var(--qc) 6%, #0a0814));
+    border:1px solid rgba(255,255,255,0.14);border-radius:10px;overflow:hidden;
     box-shadow:0 14px 44px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04);
     color:#e9defb;font-size:12.5px;pointer-events:none;
     animation:etIn .12s ease}
   @keyframes etIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
   #equipTip .etHead{display:flex;align-items:center;gap:10px;padding:10px 12px;
     border-bottom:1px solid rgba(255,255,255,0.08);
-    background:color-mix(in srgb, var(--qc) 24%, #0a0814)}
+    background:color-mix(in srgb, var(--qc) 14%, #0a0814)}
   #equipTip .etIcon{font-size:30px;filter:drop-shadow(0 0 8px rgba(255,255,255,0.3));flex:none}
   #equipTip .etTitle{display:flex;flex-direction:column;flex:1;min-width:0}
   #equipTip .etName{font-size:14px;font-weight:700;color:#fff;line-height:1.2}
@@ -352,12 +353,12 @@
   #equipTip .etRow{display:flex;justify-content:space-between;align-items:center;
     padding:8px 12px;font-size:12.5px}
   #equipTip .etK{color:#b9a8d9}
-  #equipTip .etV{color:#ffce6a;font-weight:700}
+  #equipTip .etV{color:#e3c074;font-weight:700}
   #equipTip .etDiv{height:1px;margin:0 12px;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)}
   #equipTip .etMain{display:flex;flex-direction:column;align-items:center;padding:8px 0 6px}
-  #equipTip .etMainNum{font-size:40px;font-weight:800;color:#fff;line-height:1;
-    text-shadow:0 0 16px rgba(155,123,255,0.5)}
+  #equipTip .etMainNum{font-size:40px;font-weight:800;color:#e9e2ff;line-height:1;
+    text-shadow:0 0 10px rgba(155,123,255,0.28)}
   #equipTip .etMainLbl{font-size:11px;color:#b9a8d9;margin-top:2px}
   #equipTip .etSec{display:flex;align-items:center;padding:8px 12px 2px}
   #equipTip .etSecT{font-size:12px;font-weight:700;color:#c9b8ee;letter-spacing:1px}
@@ -453,6 +454,8 @@
             <div class="bagTools">
               <button class="bagTool" data-act="sort">整理</button>
               <button class="bagTool" data-act="split">分解</button>
+              <button class="bagTool" data-act="forge">铸造</button>
+              <button class="bagTool" data-act="add">增加装备</button>
             </div>
             <div class="bagPages" id="bagPages"></div>
           </div>
@@ -2629,14 +2632,29 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     tip.className = 'attrTip';
     document.body.appendChild(tip);
 
+    // 列出该属性来自已穿戴装备的实际加成明细（数值按真实体现）
+    function buildSrcList(k){
+      const srcs = [];
+      for (const id2 in HERO.equipped) {
+        const it = ITEM_MAP[id2];
+        if (it && it.attrs && it.attrs[k] != null) {
+          const v = it.attrs[k];
+          const d = ATTR_DEFS[k];
+          const unit = (d && d.kind === 'flat') ? '' : '%';
+          srcs.push('<li><span>' + it.name + '</span><b>+' + v + unit + '</b></li>');
+        }
+      }
+      if (!srcs.length) return '<div class="meta">暂无装备加成（当前为裸身基础值）</div>';
+      return '<ul class="src">' + srcs.join('') + '</ul>';
+    }
+
     function showTip(target){
       const k = (target.dataset.tip || '').replace(/^attr:/, '');
-      const data = ATTR_POOL[k];
-      if (!data) { tip.style.display = 'none'; return; }
+      const data = ATTR_POOL[k] || {desc:'', affixes:[]};
       tip.innerHTML =
         '<h5>' + k + '</h5>' +
-        '<div class="desc">' + data.desc + '</div>' +
-        '<ul>' + data.affixes.map(a => '<li><span>' + a + '</span><b>词缀</b></li>').join('') + '</ul>' +
+        '<div class="desc">' + (data.desc || '该属性的实际装备加成数值如下。') + '</div>' +
+        '<div class="srcTitle">装备加成明细</div>' + buildSrcList(k) +
         '<div class="meta">当前值：' + displayVal(k) + ' ｜ 同名词缀加法、异名词缀乘区</div>';
       const r = target.getBoundingClientRect();
       tip.style.display = 'block';
@@ -2970,15 +2988,15 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     const stars = '✦'.repeat(it.stars || 0);            // 神铸（待开发）星星，紧跟品质右侧
     let h = '';
     // ① 顶部信息栏：品质名 + 神铸星星（同排右）；装备等级在品质下方
-    h += '<div class="etHead">'
-       +   '<div class="etIcon">' + (it.icon || '❔') + '</div>'
-       +   '<div class="etTitle">'
-       +     '<div class="etName">' + it.name + '</div>'
-       +     '<div class="etRarLine"><span class="etRar" style="color:' + r.color + '">' + r.name + '</span>'
-       +       '<span class="etStars">' + stars + '</span></div>'
-       +     '<div class="etLv">装备等级 ' + (it.level || 60) + '</div>'
-       +   '</div>'
-       + '</div>';
+      h += '<div class="etHead">'
+         +   '<div class="etTitle">'
+         +     '<div class="etName">' + it.name + '</div>'
+         +     '<div class="etRarLine"><span class="etRar" style="color:' + r.color + '">' + r.name + '</span>'
+         +       '<span class="etStars">' + stars + '</span></div>'
+         +     '<div class="etLv">装备等级 ' + (it.level || 60) + '</div>'
+         +   '</div>'
+         +   '<div class="etIcon">' + (it.icon || '❔') + '</div>'
+         + '</div>';
     // ② 主属性名 + 强度%（标签用主属性名，非固定「伤害强度」）
     const mainLabel = it.main ? it.main.label : '伤害强度';
     h += '<div class="etRow"><span class="etK">' + mainLabel + '</span><span class="etV">' + (it.dmg || 0) + '%</span></div>';
@@ -3035,10 +3053,9 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     equipTip.style.top  = y + 'px';
   }
 
-  // 背包分页数据：第 1 页放入全部简易装备，其余页为空
+  // 背包初始为空，由「增加装备 / 铸造」按钮填充
   const BAG = {};
   for (let p = 1; p <= PAGES; p++) BAG[p] = [];
-  ITEMS.forEach((it, i) => { if (i < COLS * ROWS) BAG[1][i] = it.id; });
 
   let cur = 1;
 
@@ -3105,10 +3122,59 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     buildCells();
   });
 
-  // 整理 / 分解：当前占位，仅做点击反馈（逻辑后续接入）
+  // 背包操作：整理 / 分解（待接入）+ 铸造 / 增加装备（已实现）
+  let instSeq = 0;
+  function firstEmptySlot(){
+    const ids = BAG[cur] || [];
+    for (let i = 0; i < ids.length; i++) if (!ids[i]) return i;
+    if (ids.length < COLS * ROWS) { ids.push(null); return ids.length - 1; }
+    return -1;
+  }
+  function addItem(base){
+    const slot = firstEmptySlot();
+    if (slot < 0) return;
+    const inst = Object.assign({}, base);
+    inst.id = 'inst' + (++instSeq);
+    ITEM_MAP[inst.id] = inst;          // 注册实例，属性随 attrs 真实生效
+    BAG[cur][slot] = inst.id;
+    buildCells();
+  }
+  // 铸造：按主文档《装备系统》公式随机生成一件属性真实的装备
+  const FORGE_RARS = ['magic', 'rare', 'epic'];
+  const FORGE_DEFS = [
+    {slot:'武器', main:'攻击力', pool:['攻击伤害','攻击速度','暴击率','冰霜','火焰']},
+    {slot:'护甲', main:'护甲值', pool:['护甲值','生命值','伤害减免']},
+    {slot:'饰品', main:'攻击力', pool:['暴击率','暴击伤害','法术伤害','最终伤害','精英增伤']},
+    {slot:'鞋子', main:'护甲值', pool:['攻击速度','护甲值','生命值']},
+  ];
+  const RAR_COEF  = {magic:2, rare:2.5, epic:3.5};
+  const RAR_TIER  = {magic:'T3', rare:'T2', epic:'T1'};
+  const RAR_STARS = {magic:3, rare:4, epic:5};
+  const RAR_ICON  = {武器:'🗡️', 护甲:'🛡️', 饰品:'💍', 鞋子:'👢'};
+  function forgeItem(){
+    const rarity = FORGE_RARS[Math.floor(Math.random() * FORGE_RARS.length)];
+    const sd = FORGE_DEFS[Math.floor(Math.random() * FORGE_DEFS.length)];
+    const mainVal = Math.round(10 + 10 * (60 / 10) * RAR_COEF[rarity] * (0.8 + Math.random() * 0.7));
+    const nAff = 2 + Math.floor(Math.random() * 2);
+    const pool = sd.pool.slice(); const attrs = {};
+    for (let i = 0; i < nAff && pool.length; i++){
+      const idx = Math.floor(Math.random() * pool.length);
+      const key = pool.splice(idx, 1)[0];
+      attrs[key] = Math.round(10 + Math.random() * 40);
+    }
+    return { name:'铸造·' + sd.slot, icon:RAR_ICON[sd.slot] || '❔', rarity:rarity, slot:sd.slot,
+      level:60, stars:RAR_STARS[rarity], dmg:Math.round(60 + Math.random() * 80),
+      tier:RAR_TIER[rarity], main:{label:sd.main, val:mainVal}, attrs:attrs };
+  }
   document.querySelectorAll('#bagNav .bagTool').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      // TODO: 接入背包操作（整理=按品质/类型排序；分解=批量转化为资源）
+      const act = btn.dataset.act;
+      if (act === 'add') {
+        if (ITEMS.length) addItem(ITEMS[instSeq % ITEMS.length]);
+      } else if (act === 'forge') {
+        addItem(forgeItem());
+      }
+      // 整理 / 分解：逻辑后续接入（整理=按品质/类型排序；分解=批量转化为资源）
     });
   });
 })();
