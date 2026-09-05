@@ -3054,23 +3054,36 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   function renderTree(id) {
     const host = document.getElementById('skillTreeHost');
     if (!host) return;
-    host.innerHTML = '';
     const s = skillById(id);
+    const f = ensureFrame();
+    const TREE_SRC = 'docs/skill-tree-ice-shard.html?embed=1';
+    /* 关键修复：iframe 只挂载一次。
+     * 若每次渲染都 innerHTML='' + appendChild，iframe 从 DOM 移除再插回会触发浏览器重新导航
+     * （强制重新加载）→ 每次打开面板专精树都闪白/动画重播，看起来像"缩放一下"。
+     * 改为：已挂载则复用（零重载），占位技能时仅 display:none 隐藏 iframe。 */
+    if (f.parentNode !== host) {
+      host.innerHTML = '';
+      host.appendChild(f);
+    }
     if (s && s.id === 'iceLance') {
-      const f = ensureFrame();
-      const TREE_SRC = 'docs/skill-tree-ice-shard.html?embed=1';
       if (f.getAttribute('data-src') !== TREE_SRC) {
         f.setAttribute('data-src', TREE_SRC);
         f.src = TREE_SRC;
       }
-      host.appendChild(f);
+      const oldPh = host.querySelector('.treePlaceholder');
+      if (oldPh) oldPh.remove();
+      f.style.display = '';
       fitFrame();
     } else {
+      f.style.display = 'none';
+      let ph = host.querySelector('.treePlaceholder');
+      if (!ph) {
+        ph = document.createElement('div');
+        ph.className = 'treePlaceholder';
+        host.appendChild(ph);
+      }
       const name = s ? s.name : id;
-      const ph = document.createElement('div');
-      ph.className = 'treePlaceholder';
       ph.innerHTML = '<b>专精树开发中</b>「' + name + '」的专精树尚未设计<br>当前仅「寒冰锥刺」已接入觉醒路线文档。';
-      host.appendChild(ph);
     }
   }
 
