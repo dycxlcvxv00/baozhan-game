@@ -13,9 +13,11 @@
   /* ---------- 画布与关键坐标（战斗区局部坐标） ---------- */
   const BW = 650, BH = 300;
   const DEF_X = 58;          // 英雄 + 4 塔 所在垂直线
-  const WALL_X = 130;        // 围墙（左移：仅略宽于防御方阵）
+  const WALL_X = 120;        // 围墙左边缘
+  const WALL_W = 26;         // 围墙宽度（立体砖墙）
+  const WALL_RX = WALL_X + WALL_W; // 围墙右边缘（怪物撞墙线）
   const SPAWN_X = 648;       // 怪物生成 x（最右）
-  const LANES = [45, 105, 165, 225, 275]; // 5 条横向车道（y）
+  const LANES = [25, 61, 96, 132, 168, 204, 239, 275]; // 8 条横向车道（y）
 
   /* ---------- 第 13 章 29 项属性（全量接入） ---------- */
   const ATTR_DEFS = [
@@ -79,13 +81,13 @@
     { id: 'lightning',name: '连锁闪电', elem: 'lightning',coef: 0.24, isSpell: true,  crit: 0, cd: 1.35 },
   ];
 
-  /* 防御方阵：英雄 + 4 塔，全部落在 DEF_X 这条垂直线上，按车道分布 */
+  /* 防御方阵：英雄 + 4 塔，全部落在 DEF_X 这条垂直线上，按 8 车道分布 */
   const defenders = [
-    { id: 'hero',     name: '英雄',   x: DEF_X, y: LANES[2], skill: HERO_SKILL,    color: 0xffd54a, cd: 0 },
+    { id: 'hero',     name: '英雄',   x: DEF_X, y: LANES[4], skill: HERO_SKILL,    color: 0xffd54a, cd: 0 },
     { id: 'ice',      name: '冰锥刺', x: DEF_X, y: LANES[0], skill: TOWER_SKILLS[0], color: 0x6ad0ff, cd: 0 },
     { id: 'fire',     name: '爆裂火球', x: DEF_X, y: LANES[1], skill: TOWER_SKILLS[1], color: 0xff8a5a, cd: 0 },
-    { id: 'poison',   name: '剧毒爆弹', x: DEF_X, y: LANES[3], skill: TOWER_SKILLS[2], color: 0x9be36a, cd: 0 },
-    { id: 'lightning',name: '连锁闪电', x: DEF_X, y: LANES[4], skill: TOWER_SKILLS[3], color: 0xc89bff, cd: 0 },
+    { id: 'poison',   name: '剧毒爆弹', x: DEF_X, y: LANES[5], skill: TOWER_SKILLS[2], color: 0x9be36a, cd: 0 },
+    { id: 'lightning',name: '连锁闪电', x: DEF_X, y: LANES[7], skill: TOWER_SKILLS[3], color: 0xc89bff, cd: 0 },
   ];
 
   /* ---------- 伤害计算（对齐第 13 章） ---------- */
@@ -133,19 +135,28 @@
   const pops = [];          // 浮动伤害数字
   let level = 1, killCount = 0;
   let spawnTimer = 0, spawnInterval = 0.85;
+  let purify = 0;           // 净化值（击杀小怪/精英积攒）
+  const PURIFY_MAX = 100;   // 净化满 → 生成 BOSS
+  let bossActive = false;   // 当前场上是否有 BOSS
   const dmgLog = [];        // {t, dmg} 用于 DPS
 
   function spawnMonster() {
-    const r = Math.random();
-    const type = r < 0.78 ? 'mob' : r < 0.95 ? 'elite' : 'boss';
+    let type;
+    if (purify >= PURIFY_MAX && !bossActive) type = 'boss'; // 净化满才出 BOSS
+    else {
+      const r = Math.random();
+      type = r < 0.8 ? 'mob' : 'elite';
+    }
     const base = type === 'boss' ? 520 : type === 'elite' ? 220 : 60;
     const maxhp = Math.round(base * (1 + level * 0.16));
     const lane = LANES[(Math.random() * LANES.length) | 0];
-    monsters.push({
+    const m = {
       x: SPAWN_X, y: lane, type,
       hp: maxhp, maxhp, speed: 34 + Math.random() * 16,
       atkCd: 0, g: null, bar: null, dead: false,
-    });
+    };
+    if (type === 'boss') bossActive = true;
+    monsters.push(m);
   }
 
   function spawnBullet(src, target) {
@@ -172,32 +183,44 @@
   if (!wrap) { console.error('battleWrap 容器缺失'); return; }
   wrap.appendChild(app.view);
 
-  /* 静态层：网格 + 车道 + 围墙 */
-  const bgLayer = new PIXI.Container();
-  const dynLayer = new PIXI.Container();
-  const popLayer = new PIXI.Container();
-  app.stage.addChild(bgLayer, dynLayer, popLayer);
+  /* 静态层：砖墙 + 防御底座 */
+  const bgLayer = new PIXI.Container();   // 静态：砖墙、防御底座
+  const dynLayer = new PIXI.Container();  // 怪物、子弹
+  const popLayer = new PIXI.Container();  // 浮动伤害数字
+  const uiLayer = new PIXI.Container();   // HUD：关卡、净化条、墙血条、简报
+  app.stage.addChild(bgLayer, dynLayer, popLayer, uiLayer);
+
+  // 立体灰白砖墙（墙顶血条由 uiLayer 单独绘制）
+  function drawWall() {
+    const w = new PIXI.Graphics();
+    const x0 = WALL_X, x1 = WALL_X + WALL_W, top = 6, bot = BH - 6;
+    // 砖缝底（深灰）
+    w.beginFill(0x5b5f68); w.drawRect(x0, top, WALL_W, bot - top); w.endFill();
+    // 砖块（错缝铺排 + 高光/阴影做出立体感，限位在墙内）
+    const bh = 16;
+    let row = 0;
+    for (let y = top; y < bot; y += bh) {
+      const bx0 = x0 + 2, bx1 = x1 - 2, bw = bx1 - bx0;
+      w.beginFill(0xcfd4dc); w.drawRect(bx0, y + 2, bw, bh - 3); w.endFill();
+      w.beginFill(0xf2f5fa, 0.8); w.drawRect(bx0, y + 2, bw, 3); w.endFill();        // 顶部高光
+      w.beginFill(0x868b94, 0.8); w.drawRect(bx0, y + bh - 3, bw, 2); w.endFill();   // 底部阴影
+      // 错缝竖向砖缝（仅画墙内部分）
+      w.lineStyle(2, 0x4f535c, 0.9);
+      const off = (row % 2) ? WALL_W * 0.5 : WALL_W * 0.25;
+      let vx = x0 + off;
+      while (vx < x1 - 1) { w.moveTo(vx, y + 2); w.lineTo(vx, Math.min(y + bh - 1, bot)); vx += WALL_W * 0.5; }
+      w.lineStyle(0);
+      row++;
+    }
+    // 顶面盖板（立体顶边）
+    w.beginFill(0xeef1f6); w.drawRect(x0 - 2, top - 4, WALL_W + 4, 5); w.endFill();
+    // 右侧暗面（立体右侧）
+    w.beginFill(0x4c505a, 0.55); w.drawRect(x1, top, 4, bot - top); w.endFill();
+    bgLayer.addChild(w);
+  }
 
   (function drawStatic() {
-    const g = new PIXI.Graphics();
-    // 网格（暗青，低密度）
-    g.lineStyle(1, 0x18293f, 0.45);
-    for (let x = 0; x <= BW; x += 32) { g.moveTo(x, 0); g.lineTo(x, BH); }
-    for (let y = 0; y <= BH; y += 32) { g.moveTo(0, y); g.lineTo(BW, y); }
-    // 车道（霓虹蓝，外发光：先粗后细）
-    g.lineStyle(6, 0x214a6e, 0.18);
-    for (const ly of LANES) { g.moveTo(WALL_X, ly); g.lineTo(SPAWN_X, ly); }
-    g.lineStyle(1, 0x3a7bd0, 0.5);
-    for (const ly of LANES) { g.moveTo(WALL_X, ly); g.lineTo(SPAWN_X, ly); }
-    bgLayer.addChild(g);
-
-    // 围墙（青绿霓虹竖线，三层发光）
-    const w = new PIXI.Graphics();
-    w.lineStyle(10, 0x2fe6d0, 0.10); w.moveTo(WALL_X, 12); w.lineTo(WALL_X, BH - 12);
-    w.lineStyle(5, 0x2fe6d0, 0.45);  w.moveTo(WALL_X, 12); w.lineTo(WALL_X, BH - 12);
-    w.lineStyle(2, 0x8ffff0, 0.95);  w.moveTo(WALL_X, 12); w.lineTo(WALL_X, BH - 12);
-    bgLayer.addChild(w);
-
+    drawWall();
     // 防御方阵底座（紫色霓虹，发光）
     const d = new PIXI.Graphics();
     d.lineStyle(8, 0x9b7bff, 0.10); d.moveTo(DEF_X, 12); d.lineTo(DEF_X, BH - 12);
@@ -224,10 +247,33 @@
     return c;
   });
 
-  /* HUD 文本（关卡 / DPS / 围墙） */
-  const hud = new PIXI.Text('', { fontFamily: 'Arial', fontSize: 13, fill: 0xbcd0f0, fontWeight: '700' });
-  hud.x = 8; hud.y = 6;
-  bgLayer.addChild(hud);
+  /* ---------- HUD（顶层 uiLayer） ---------- */
+  // 关卡数（顶部中央）
+  const levelText = new PIXI.Text('第 1 关', {
+    fontFamily: 'Arial', fontSize: 19, fill: 0xfff2cc, fontWeight: '800',
+    stroke: 0x141b2e, strokeThickness: 4,
+  });
+  levelText.anchor.set(0.5, 0);
+  levelText.x = BW / 2; levelText.y = 6;
+  uiLayer.addChild(levelText);
+
+  // 净化值进度条（关卡数下方）
+  const PURIFY_BAR = { x: BW / 2 - 130, y: 34, w: 260, h: 11 };
+  const purifyBar = new PIXI.Graphics();
+  uiLayer.addChild(purifyBar);
+  const purifyLabel = new PIXI.Text('', { fontFamily: 'Arial', fontSize: 11, fill: 0x9fd0ff, fontWeight: '700' });
+  purifyLabel.anchor.set(0.5, 0);
+  purifyLabel.x = BW / 2; purifyLabel.y = PURIFY_BAR.y + PURIFY_BAR.h + 2;
+  uiLayer.addChild(purifyLabel);
+
+  // 围墙血条（镶嵌在墙顶部）
+  const wallHpBar = new PIXI.Graphics();
+  uiLayer.addChild(wallHpBar);
+
+  // 左下角简报（DPS / 击杀 / BOSS）
+  const hud = new PIXI.Text('', { fontFamily: 'Arial', fontSize: 12, fill: 0xbcd0f0, fontWeight: '600' });
+  hud.x = 8; hud.y = BH - 18;
+  uiLayer.addChild(hud);
 
   /* ---------- 主循环 ---------- */
   let frames = 0, spawned = 0;
@@ -259,13 +305,13 @@
       m.bar.beginFill(0x000000, 0.5); m.bar.drawRect(m.x - 14, m.y - 20, 28, 4); m.bar.endFill();
       m.bar.beginFill(0x6ee7a8, 0.95); m.bar.drawRect(m.x - 14, m.y - 20, 28 * (m.hp / m.maxhp), 4); m.bar.endFill();
       // 撞墙
-      if (m.x <= WALL_X + 6) {
+      if (m.x <= WALL_RX + 2) {
         m.atkCd -= dt;
         if (m.atkCd <= 0) {
           m.atkCd = 1.0;
           const raw = (m.type === 'boss' ? 60 : m.type === 'elite' ? 26 : 12) * (1 + level * 0.1);
           wallTakeDamage(raw);
-          if (wallHp <= 0) { wallHp = wallHpMax; level++; } // 破墙则推关并复位（简化）
+          if (wallHp <= 0) { wallHp = wallHpMax; } // 破墙则复位（推关改由击杀 BOSS 触发）
         }
       }
     }
@@ -274,11 +320,21 @@
     for (const d of defenders) {
       d.cd -= dt;
       if (d.cd <= 0) {
-        // 选最靠前（x 最小且 > 围墙）的怪物
+        // 选目标：BOSS 在场时全体集火 BOSS，否则选最靠前（x 最小且 > 围墙）的怪物
         let best = null;
-        for (const m of monsters) {
-          if (m.dead || m.x <= WALL_X) continue;
-          if (!best || m.x < best.x) best = m;
+        if (bossActive) {
+          let b = null;
+          for (const m of monsters) {
+            if (m.dead || m.x <= WALL_X || m.type !== 'boss') continue;
+            if (!b || m.x < b.x) b = m;
+          }
+          best = b;
+        }
+        if (!best) {
+          for (const m of monsters) {
+            if (m.dead || m.x <= WALL_X) continue;
+            if (!best || m.x < best.x) best = m;
+          }
         }
         if (best) {
           d.cd = d.skill.cd;
@@ -338,10 +394,37 @@
     const now = performance.now();
     while (dmgLog.length && now - dmgLog[0].t > 3000) dmgLog.shift();
     const dps = dmgLog.reduce((s, e) => s + e.dmg, 0) / 3;
-    hud.text = `关卡 ${level} · 击杀 ${killCount} · DPS ${Math.round(dps)} · 围墙 ${Math.round(wallHp)}/${wallHpMax} · 暴击积累 ${critBuildCfg ? critBuild + '%' : '无装备特效'}`;
+    levelText.text = `第 ${level} 关`;
+    hud.text = `DPS ${Math.round(dps)} · 击杀 ${killCount}` + (bossActive ? ' · ★ BOSS' : '');
+
+    // 净化值进度条
+    const pr = Math.max(0, Math.min(1, purify / PURIFY_MAX));
+    purifyBar.clear();
+    purifyBar.beginFill(0x0d1320, 0.72); purifyBar.drawRoundedRect(PURIFY_BAR.x, PURIFY_BAR.y, PURIFY_BAR.w, PURIFY_BAR.h, 5); purifyBar.endFill();
+    purifyBar.beginFill(pr >= 1 ? 0xffd54a : 0x49e0ff, 0.95); purifyBar.drawRoundedRect(PURIFY_BAR.x, PURIFY_BAR.y, Math.max(1, PURIFY_BAR.w * pr), PURIFY_BAR.h, 5); purifyBar.endFill();
+    purifyBar.lineStyle(1, 0x49e0ff, 0.6); purifyBar.drawRoundedRect(PURIFY_BAR.x, PURIFY_BAR.y, PURIFY_BAR.w, PURIFY_BAR.h, 5); purifyBar.lineStyle(0);
+    purifyLabel.text = pr >= 1 ? 'BOSS 来袭！' : `净化 ${Math.round(pr * 100)}%`;
+    purifyLabel.style.fill = pr >= 1 ? 0xffd54a : 0x9fd0ff;
+
+    // 围墙血条（镶嵌墙顶）
+    const wr = Math.max(0, wallHp / wallHpMax);
+    wallHpBar.clear();
+    wallHpBar.beginFill(0x10141f, 0.9); wallHpBar.drawRoundedRect(WALL_X - 1, 6, WALL_W + 2, 12, 3); wallHpBar.endFill();
+    const wcol = wr > 0.5 ? 0x6ee7a8 : wr > 0.25 ? 0xffd166 : 0xff6b81;
+    wallHpBar.beginFill(wcol, 0.96); wallHpBar.drawRoundedRect(WALL_X, 7, Math.max(1, WALL_W * wr), 10, 2); wallHpBar.endFill();
   }
 
-  function killMonster(m) { killGfx(m); killCount++; }
+  function killMonster(m) {
+    killGfx(m);
+    killCount++;
+    if (m.type === 'boss') {
+      level++; purify = 0; bossActive = false;   // 击杀 BOSS → 通关（进下一关）
+    } else if (m.type === 'mob') {
+      purify = Math.min(PURIFY_MAX, purify + 8);  // 小怪积攒净化值
+    } else if (m.type === 'elite') {
+      purify = Math.min(PURIFY_MAX, purify + 20); // 精英积攒更多
+    }
+  }
   function killGfx(o) { if (o && o.g) { try { o.g.destroy(); } catch (e) {} o.g = null; } if (o && o.bar) { try { o.bar.destroy(); } catch (e) {} o.bar = null; } }
 
   refreshAttr();
@@ -366,6 +449,9 @@
     get attr() { return attr; },
     get level() { return level; },
     get wallHp() { return wallHp; },
+    get purify() { return purify; },
+    get purifyMax() { return PURIFY_MAX; },
+    get bossActive() { return bossActive; },
     get monsterCount() { return monsters.length; },
     get frames() { return frames; },
     get spawned() { return spawned; },
