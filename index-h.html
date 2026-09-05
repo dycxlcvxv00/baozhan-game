@@ -317,25 +317,26 @@
   .bagCell .eq{position:absolute;top:3px;right:4px;font-size:9px;color:#2fe6d0;font-weight:700;
     background:rgba(0,0,0,0.55);padding:1px 4px;border-radius:4px;pointer-events:none}
 
-  /* 装备详情提示 UI（hover 背包物品触发，结构对齐设计稿） */
+  /* 装备详情提示 UI（hover 背包物品触发，整框配色跟随品质：上深下浅） */
   #equipTip{position:fixed;z-index:9999;width:282px;padding:0;
-    background:linear-gradient(180deg,#1b1430,#140f24);
+    background:linear-gradient(180deg,
+      color-mix(in srgb, var(--qc) 30%, #0a0814),
+      color-mix(in srgb, var(--qc) 12%, #0a0814));
     border:1px solid rgba(184,66,255,0.5);border-radius:10px;overflow:hidden;
     box-shadow:0 14px 44px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04);
     color:#e9defb;font-size:12.5px;pointer-events:none;
     animation:etIn .12s ease}
   @keyframes etIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-  #equipTip .etHead{display:flex;align-items:center;gap:8px;padding:10px 12px;
+  #equipTip .etHead{display:flex;align-items:center;gap:10px;padding:10px 12px;
     border-bottom:1px solid rgba(255,255,255,0.08);
-    background:rgba(255,255,255,0.04);
-    background:color-mix(in srgb, var(--qc) 20%, #1b1430)}
+    background:color-mix(in srgb, var(--qc) 24%, #0a0814)}
+  #equipTip .etIcon{font-size:30px;filter:drop-shadow(0 0 8px rgba(255,255,255,0.3));flex:none}
   #equipTip .etTitle{display:flex;flex-direction:column;flex:1;min-width:0}
   #equipTip .etName{font-size:14px;font-weight:700;color:#fff;line-height:1.2}
-  #equipTip .etRar{font-size:11px;font-weight:700;margin-top:1px}
-  #equipTip .etMeta{display:flex;flex-direction:column;align-items:flex-end;
-    font-size:10.5px;color:#b9a8d9;line-height:1.4}
-  #equipTip .etStars{color:#ffd76a;letter-spacing:1px}
-  #equipTip .etIcon{font-size:30px;filter:drop-shadow(0 0 8px rgba(255,255,255,0.3))}
+  #equipTip .etRarLine{display:flex;align-items:center;gap:6px;margin-top:2px}
+  #equipTip .etRar{font-size:11px;font-weight:700}
+  #equipTip .etStars{color:#ffd76a;letter-spacing:2px;font-size:11px}
+  #equipTip .etLv{font-size:10.5px;color:#b9a8d9;margin-top:1px}
   #equipTip .etRow{display:flex;justify-content:space-between;align-items:center;
     padding:8px 12px;font-size:12.5px}
   #equipTip .etK{color:#b9a8d9}
@@ -351,10 +352,13 @@
   #equipTip .etAff{display:flex;align-items:center;gap:6px;padding:3px 12px;font-size:12px}
   #equipTip .etTier{background:#ff3344;color:#fff;font-size:10px;font-weight:700;
     padding:1px 5px;border-radius:4px;flex:none}
-  #equipTip .etLock{opacity:.7;flex:none}
   #equipTip .etAffTxt{color:#e9defb}
-  #equipTip .etTrait{padding:4px 12px 12px;font-size:12px;color:#cfc4e8;line-height:1.55}
-  #equipTip .etTrait b{color:#5fe07a;font-weight:700}
+  #equipTip .etSocket{display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:12px}
+  #equipTip .etGem{color:#ff9bd0;font-size:13px;flex:none;
+    filter:drop-shadow(0 0 5px rgba(255,155,208,0.7))}
+  #equipTip .etHole{width:13px;height:13px;border-radius:50%;flex:none;
+    border:1px solid rgba(255,255,255,0.22);background:rgba(0,0,0,0.35)}
+  #equipTip .etTrait{padding:4px 12px 12px;font-size:12px;color:#e3d8fb;line-height:1.55}
 </style>
 </head>
 <body>

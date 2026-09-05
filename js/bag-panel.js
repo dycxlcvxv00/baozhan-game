@@ -30,55 +30,73 @@
   equipTip.style.display = 'none';
   document.body.appendChild(equipTip);
 
-  function affLine(key, val){
-    const d = ATTR_DEFS[key];
-    const isFlat = d && d.kind === 'flat';
-    const sign = val >= 0 ? '+' : '';
-    return sign + val + (isFlat ? '' : '%') + ' ' + key;
+  // 词缀名：接入主文档《伤害系统》对应属性的词缀池（取最高档词缀名）
+  function affName(key){
+    const p = (window.ATTR_POOL || {})[key];
+    if (p && p.affixes && p.affixes.length) return p.affixes[p.affixes.length - 1];
+    return key;
   }
-  function fmt(n){ return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function isFlat(key){
+    const d = ATTR_DEFS[key];
+    return !!(d && d.kind === 'flat');
+  }
+  // 基于装备 id 的稳定随机（同件装备每次一致）
+  function stableRand(seed, lo, hi){
+    let s = 0;
+    for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+    return lo + (s % (hi - lo + 1));
+  }
 
   function renderEquipTip(it){
     const r = RAR[it.rarity] || {name:it.rarity, color:'#ffffff'};
-    const stars = '⭐'.repeat(it.stars || 0);
+    equipTip.style.setProperty('--qc', r.color);        // 整框配色跟随品质
+    const stars = '✦'.repeat(it.stars || 0);            // 神铸（待开发）星星，紧跟品质右侧
     let h = '';
-    // ① 顶部信息栏（品质色）
-    h += '<div class="etHead" style="--qc:' + r.color + '">'
-       +   '<div class="etTitle"><span class="etName">' + it.name + '</span>'
-       +     '<span class="etRar" style="color:' + r.color + '">' + r.name + '</span></div>'
-       +   '<div class="etMeta"><span class="etStars">' + stars + '</span>'
-       +     '<span class="etLv">装备等级 ' + (it.level || 60) + '</span></div>'
+    // ① 顶部信息栏：品质名 + 神铸星星（同排右）；装备等级在品质下方
+    h += '<div class="etHead">'
        +   '<div class="etIcon">' + (it.icon || '❔') + '</div>'
+       +   '<div class="etTitle">'
+       +     '<div class="etName">' + it.name + '</div>'
+       +     '<div class="etRarLine"><span class="etRar" style="color:' + r.color + '">' + r.name + '</span>'
+       +       '<span class="etStars">' + stars + '</span></div>'
+       +     '<div class="etLv">装备等级 ' + (it.level || 60) + '</div>'
+       +   '</div>'
        + '</div>';
-    // ② 伤害强度
-    h += '<div class="etRow"><span class="etK">伤害强度</span><span class="etV">' + (it.dmg || 0) + '%</span></div>';
+    // ② 主属性名 + 强度%（标签用主属性名，非固定「伤害强度」）
+    const mainLabel = it.main ? it.main.label : '伤害强度';
+    h += '<div class="etRow"><span class="etK">' + mainLabel + '</span><span class="etV">' + (it.dmg || 0) + '%</span></div>';
     h += '<div class="etDiv"></div>';
-    // ③ 主属性大字
+    // ③ 主属性大字（取消千分号）
     if (it.main){
-      h += '<div class="etMain"><span class="etMainNum">' + fmt(it.main.val) + '</span>'
+      h += '<div class="etMain"><span class="etMainNum">' + it.main.val + '</span>'
          +   '<span class="etMainLbl">' + it.main.label + '</span></div>';
     }
-    // ④ 属性增幅（词缀，来自 attrs）
+    // ④ 属性增幅（词缀接入主文档，去除锁图标）
     const affs = it.attrs || {};
     h += '<div class="etSec"><span class="etSecT">属性增幅</span></div><div class="etDiv"></div>';
     Object.keys(affs).forEach(function(k){
+      const val = affs[k];
+      const unit = isFlat(k) ? '' : '%';
       h += '<div class="etAff"><span class="etTier">[' + (it.tier || 'T3') + ']</span>'
-         +   '<span class="etLock">🔒</span>'
-         +   '<span class="etAffTxt">' + affLine(k, affs[k]) + '</span></div>';
+         +   '<span class="etAffTxt">+' + val + unit + ' ' + affName(k) + '</span></div>';
     });
-    // ⑤ 附魔效果
-    if (it.enchant && it.enchant.length){
-      h += '<div class="etSec"><span class="etSecT">附魔效果</span></div><div class="etDiv"></div>';
-      it.enchant.forEach(function(e){
-        h += '<div class="etAff"><span class="etTier">[' + (e.tier || it.tier || 'T3') + ']</span>'
+    // ⑤ 附魔效果：最多 2 个凹槽（已镶嵌显示宝石，空显示凹槽）
+    const enc = it.enchant || [];
+    h += '<div class="etSec"><span class="etSecT">附魔效果</span></div><div class="etDiv"></div>';
+    for (let i = 0; i < 2; i++){
+      const e = enc[i];
+      if (e){
+        h += '<div class="etSocket filled"><span class="etGem">◆</span>'
            +   '<span class="etAffTxt">+' + e.lvl + ' [' + e.skill + '] 技能等级</span></div>';
-      });
+      } else {
+        h += '<div class="etSocket empty"><span class="etHole"></span>'
+           +   '<span class="etAffTxt" style="opacity:.5">空槽</span></div>';
+      }
     }
-    // ⑥ 装备特性
-    if (it.trait){
-      h += '<div class="etSec"><span class="etSecT">装备特性</span></div><div class="etDiv"></div>';
-      h += '<div class="etTrait"><b>【' + it.trait.name + '】</b>' + it.trait.desc + '</div>';
-    }
+    // ⑥ 装备特性（统一为增加 1-100 随机攻击力；名称·置于标题右侧）
+    const tn = stableRand(it.id, 1, 100);
+    h += '<div class="etSec"><span class="etSecT">装备特性·攻击精通</span></div><div class="etDiv"></div>';
+    h += '<div class="etTrait">增加 ' + tn + ' 攻击力</div>';
     equipTip.innerHTML = h;
     equipTip.style.borderColor = r.color;
   }

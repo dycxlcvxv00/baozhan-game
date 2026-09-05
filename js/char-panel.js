@@ -143,6 +143,7 @@
   window.EQUIP_ITEMS = EQUIP_ITEMS;
   window.ATTR_DEFS = ATTR_DEFS;
   window.RARITY = RARITY;
+  window.ATTR_POOL = ATTR_POOL;
 
   /* ---- 数值计算 ---- */
   function bonusOf(key){
