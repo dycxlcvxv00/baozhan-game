@@ -2421,31 +2421,38 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     '陷阱伤害':{base:0,kind:'pct'},'灌注伤害':{base:0,kind:'pct'},
   };
 
+  /* ---- 词缀 → 属性归属映射（供面板按维度累加 / 弹窗分维度显示）---- */
+  const AFFIX_TO_ATTR = {};
+  Object.keys(ATTR_POOL).forEach(function (a) {
+    (ATTR_POOL[a].affixes || []).forEach(function (af) { AFFIX_TO_ATTR[af] = a; });
+  });
+
   /* ---- 简易装备（供验证右键穿戴）。
-   *   attrs 为各属性「加成值」（驱动属性面板与穿戴结算）；
+   *   attrs 为「词缀维度」加成（例如 攻击力加成 / 冰霜增幅 / 暴击率），
+   *   每个词缀归属到对应主属性（AFFIX_TO_ATTR），驱动面板按维度累加；
    *   其余字段（level/stars/dmg/main/tier/enchant/trait）用于装备详情提示 UI。 ---- */
   const EQUIP_ITEMS = [
     {id:'w1', name:'寒霜短刃', icon:'🗡️', rarity:'rare', slot:'武器',
-      level:60, stars:4, dmg:96.4, tier:'T2', main:{label:'攻击力', val:1284},
-      attrs:{'攻击伤害':25,'冰霜':30,'暴击率':5},
+      level:60, stars:4, dmg:96.4, tier:'T2', main:{label:'攻击力', val:25},
+      attrs:{'攻击力加成':25,'冰霜增幅':30,'暴击率':5},
       enchant:[{tier:'T2', skill:'寒霜新星', lvl:1}],
       trait:{name:'凛冬之握', desc:'冰霜伤害提升时，额外获得 8% 攻击速度。'}},
     {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
-      level:60, stars:3, dmg:72.0, tier:'T3', main:{label:'生命值', val:1640},
-      attrs:{'生命值':220,'护甲值':12,'伤害减免':8}},
+      level:60, stars:3, dmg:72.0, tier:'T3', main:{label:'护甲值', val:12},
+      attrs:{'生命值加成':220,'护甲值加成':12,'伤害减免':8}},
     {id:'r1', name:'狂怒指环', icon:'💍', rarity:'rare', slot:'饰品',
-      level:60, stars:4, dmg:88.5, tier:'T2', main:{label:'攻击力', val:642},
+      level:60, stars:4, dmg:88.5, tier:'T2', main:{label:'攻击力', val:0},
       attrs:{'暴击率':8,'暴击伤害':25},
       trait:{name:'嗜血', desc:'暴击命中时，回复 2% 最大生命值。'}},
     {id:'b1', name:'疾风战靴', icon:'👢', rarity:'magic', slot:'鞋子',
-      level:60, stars:3, dmg:64.2, tier:'T3', main:{label:'护甲值', val:850},
+      level:60, stars:3, dmg:64.2, tier:'T3', main:{label:'护甲值', val:0},
       attrs:{'攻击速度':15}},
     {id:'c1', name:'元素护符', icon:'📿', rarity:'epic', slot:'饰品',
-      level:60, stars:5, dmg:112.8, tier:'T1', main:{label:'攻击力', val:1450},
-      attrs:{'物理':12,'混沌':12,'火焰':12,'闪电':12,'毒素':12},
+      level:60, stars:5, dmg:112.8, tier:'T1', main:{label:'攻击力', val:0},
+      attrs:{'物理增幅':12,'混沌增幅':12,'火焰增幅':12,'闪电增幅':12,'毒素增幅':12},
       enchant:[{tier:'T1', skill:'元素亲和', lvl:2}]},
     {id:'s1', name:'裂隙核心', icon:'🔮', rarity:'epic', slot:'核心',
-      level:60, stars:5, dmg:134.6, tier:'T1', main:{label:'攻击力', val:1980},
+      level:60, stars:5, dmg:134.6, tier:'T1', main:{label:'攻击力', val:0},
       attrs:{'法术伤害':30,'最终伤害':20,'精英增伤':15},
       trait:{name:'裂隙回响', desc:'释放核心技能后，下一次攻击伤害提升 15%。'}},
   ];
@@ -2482,7 +2489,10 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     let s = 0;
     for (const id in HERO.equipped) {
       const it = ITEM_MAP[id];
-      if (it && it.attrs[key]) s += it.attrs[key];
+      if (!it || !it.attrs) continue;
+      for (const ak in it.attrs) {
+        if (AFFIX_TO_ATTR[ak] === key) s += it.attrs[ak];
+      }
     }
     return s;
   }
@@ -2632,20 +2642,21 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     tip.className = 'attrTip';
     document.body.appendChild(tip);
 
-    // 列出该属性来自已穿戴装备的实际加成明细（数值按真实体现）
+    // 属性弹窗：按词缀维度（加成/增幅/强化…）列出实际数值
     function buildSrcList(k){
-      const srcs = [];
-      for (const id2 in HERO.equipped) {
-        const it = ITEM_MAP[id2];
-        if (it && it.attrs && it.attrs[k] != null) {
-          const v = it.attrs[k];
-          const d = ATTR_DEFS[k];
-          const unit = (d && d.kind === 'flat') ? '' : '%';
-          srcs.push('<li><span>' + it.name + '</span><b>+' + v + unit + '</b></li>');
+      const affs = (ATTR_POOL[k] && ATTR_POOL[k].affixes) || [];
+      if (!affs.length) return '<div class="meta">该属性暂无词缀维度</div>';
+      const d = ATTR_DEFS[k];
+      const unit = (d && d.kind === 'flat') ? '' : '%';
+      const rows = affs.map(function (af) {
+        let v = 0;
+        for (const id2 in HERO.equipped) {
+          const it = ITEM_MAP[id2];
+          if (it && it.attrs && it.attrs[af] != null) v += it.attrs[af];
         }
-      }
-      if (!srcs.length) return '<div class="meta">暂无装备加成（当前为裸身基础值）</div>';
-      return '<ul class="src">' + srcs.join('') + '</ul>';
+        return '<li><span>' + af + '</span><b>' + (v > 0 ? '+' : '') + v + unit + '</b></li>';
+      });
+      return '<ul class="src">' + rows.join('') + '</ul>';
     }
 
     function showTip(target){
@@ -2654,7 +2665,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       tip.innerHTML =
         '<h5>' + k + '</h5>' +
         '<div class="desc">' + (data.desc || '该属性的实际装备加成数值如下。') + '</div>' +
-        '<div class="srcTitle">装备加成明细</div>' + buildSrcList(k) +
+        '<div class="srcTitle">词缀明细</div>' + buildSrcList(k) +
         '<div class="meta">当前值：' + displayVal(k) + ' ｜ 同名词缀加法、异名词缀乘区</div>';
       const r = target.getBoundingClientRect();
       tip.style.display = 'block';
@@ -3012,7 +3023,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     Object.keys(affs).forEach(function(k){
       const val = affs[k];
       const unit = isFlat(k) ? '' : '%';
-      h += '<div class="etAff"><span class="etTier">[' + (it.tier || 'T3') + ']</span>'
+      h += '<div class="etAff"><span class="etTier">' + (it.tier || 'T3') + '</span>'
          +   '<span class="etAffTxt">+' + val + unit + ' ' + affName(k) + '</span></div>';
     });
     // ⑤ 附魔效果：最多 2 个凹槽（已镶嵌显示宝石，空显示凹槽）

@@ -77,7 +77,7 @@
     Object.keys(affs).forEach(function(k){
       const val = affs[k];
       const unit = isFlat(k) ? '' : '%';
-      h += '<div class="etAff"><span class="etTier">[' + (it.tier || 'T3') + ']</span>'
+      h += '<div class="etAff"><span class="etTier">' + (it.tier || 'T3') + '</span>'
          +   '<span class="etAffTxt">+' + val + unit + ' ' + affName(k) + '</span></div>';
     });
     // ⑤ 附魔效果：最多 2 个凹槽（已镶嵌显示宝石，空显示凹槽）
