@@ -2265,123 +2265,6 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
 
 </script>
 <script>
-
-  /* 装备栏顶部切换按钮（预留：装备 / 背包 / 图鉴 / 属性） */
-  (function renderEquipTabs(){
-    const wrap = document.getElementById('equipTabs');
-    if (!wrap) return;
-    const TABS = ['装备', '背包', '图鉴', '属性'];
-    TABS.forEach(function(t, i){
-      const b = document.createElement('div');
-      b.className = 'etab' + (i === 0 ? ' on' : '');
-      b.textContent = t;
-      b.addEventListener('click', function(){
-        Array.prototype.querySelectorAll.call(wrap.querySelectorAll('.etab'), function(x){ x.classList.remove('on'); });
-        b.classList.add('on');
-      });
-      wrap.appendChild(b);
-    });
-  })();
-
-  /* 英雄 10 件装备面板 —— 竖版纸娃娃布局（与 window.HERO 装备系统同步）
-   * 坐标来源：截图 963x252 像素实测（装备栏区域 x140~817 y9~244，宽 678 高 236）
-   * x/y/w/h = 相对装备栏左上角的 px；c = 该槽位框色（截图实测品质色）
-   *
-   * 同步逻辑：
-   *   - 从 window.HERO.equipped + window.ITEM_MAP 读取已穿戴装备
-   *   - 按装备的 slot 字段（武器/护甲/饰品/鞋子/核心）匹配到对应槽位
-   *   - 装备变化时（HERO.onChange）自动重绘
-   *   - 初始状态：所有槽位为空（HERO.equipped = {}）
-   */
-  (function renderEquip(){
-    var grid = document.getElementById('equipGrid');
-    if (!grid) return;
-
-    // 槽位定义：slot 名 → 布局坐标 / 颜色 / 匹配规则
-    var SLOT_DEFS = [
-      { key:'武器',   x:0,   y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['武器'] },
-      { key:'头盔',   x:139, y:0,   w:110, h:110, c:'rgb(46,81,134)',  match:['头盔'] },
-      { key:'手套',   x:139, y:125, w:110, h:110, c:'rgb(100,65,135)', match:['手套'] },
-      { key:'护甲',   x:278, y:0,   w:120, h:175, c:'rgb(129,93,45)',  match:['护甲'] },
-      { key:'腰带',   x:278, y:190, w:120, h:45,  c:'rgb(127,92,46)',  match:['腰带'] },
-      { key:'项链',   x:457, y:1,   w:50,  h:50,  c:'rgb(54,88,50)',   match:['项链'] },
-      { key:'左戒指', x:427, y:61,  w:50,  h:50,  c:'rgb(114,83,42)',  match:['饰品','左戒指'] },
-      { key:'右戒指', x:487, y:61,  w:50,  h:50,  c:'rgb(43,70,113)',  match:['饰品','右戒指'] },
-      { key:'鞋子',   x:427, y:125, w:110, h:110, c:'rgb(98,65,132)',  match:['鞋子'] },
-      { key:'副手',   x:558, y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['副手','核心'] }
-    ];
-
-    // 查找某槽位当前穿戴的装备
-    function findItemForSlot(slotDef){
-      var HERO = window.HERO;
-      var ITEM_MAP = window.ITEM_MAP;
-      if (!HERO || !ITEM_MAP) return null;
-      for (var id in HERO.equipped) {
-        if (HERO.equipped[id]) {
-          var it = ITEM_MAP[id];
-          if (it && slotDef.match.indexOf(it.slot) >= 0) return it;
-        }
-      }
-      return null;
-    }
-
-    function draw(){
-      grid.innerHTML = '';
-      SLOT_DEFS.forEach(function(sd){
-        var it = findItemForSlot(sd);
-        var on = !!it;
-        var div = document.createElement('div');
-        div.className = 'eslot' + (on ? ' on' : '');
-        div.style.left = sd.x + 'px';
-        div.style.top = sd.y + 'px';
-        div.style.width = sd.w + 'px';
-        div.style.height = sd.h + 'px';
-        div.style.borderColor = on ? sd.c : 'rgba(165,172,190,.55)';
-        div.style.fontSize = (sd.w < 60 ? 10 : (sd.w < 120 ? 12 : 14)) + 'px';
-
-        if (on) {
-          // 已穿戴：显示装备图标 + 名称 + 品质色
-          var RAR = window.RARITY || {};
-          var rc = (RAR[it.rarity] || {}).color || '#fff';
-          div.innerHTML =
-            '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:4px">'
-          +   '<span style="font-size:' + (sd.w < 60 ? '20' : '32') + 'px;line-height:1">' + (it.icon || '❔') + '</span>'
-          +   '<span class="nm" style="color:' + rc + ';font-size:' + (sd.w < 60 ? '9' : '11') + 'px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">' + it.name + '</span>'
-          + '</div>';
-          div.title = it.name + '（' + it.slot + '）· 右键卸下';
-        } else {
-          div.innerHTML = '<span class="nm">' + sd.key + '</span>';
-          div.title = sd.key + '  未穿戴';
-        }
-
-        // 右键卸下已穿戴装备
-        div.addEventListener('contextmenu', function(e){
-          e.preventDefault(); e.stopPropagation();
-          if (it && window.HERO) { window.HERO.toggle(it); }
-        });
-
-        grid.appendChild(div);
-      });
-    }
-
-    // 首次绘制
-    draw();
-
-    // 监听装备变化自动重绘
-    if (window.HERO) {
-      window.HERO.onChange(draw);
-    }
-  })();
-
-  (function blockContextMenu(){
-    var st = document.getElementById('stage') || document;
-    st.addEventListener('contextmenu', function(e){ e.preventDefault(); });
-    st.addEventListener('mousedown', function(e){ if (e.button === 2) e.preventDefault(); });
-    document.addEventListener('dragstart', function(e){ e.preventDefault(); });
-  })();
-
-</script>
-<script>
 /* === 角色属性面板（多文件版） · 数据真相源 = 裸身英雄基准 + 装备加成 ===
  *
  * 设计（按用户 2026-09-05 校准）：
@@ -2473,20 +2356,13 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     '陷阱伤害':{base:0,kind:'pct'},'灌注伤害':{base:0,kind:'pct'},
   };
 
-  /* ---- 词缀 → 属性归属映射 + 词缀类型（flat 直接加基础 / pct 百分比乘区） ---- */
+  /* ---- 词缀 → 属性归属映射（各类加成均为百分比，作用于基础值） ---- */
   const AFFIX_TO_ATTR = {};
-  const AFFIX_KIND = {};  // 'flat' = 数值型词缀(直接加基础) / 'pct' = 百分比词缀
+  const AFFIX_KIND = {};
   Object.keys(ATTR_POOL).forEach(function (a) {
-    const d = ATTR_DEFS[a];
-    const isFlatAttr = d && (d.kind === 'flat' || d.kind === 'count' || d.kind === 'charge');
     (ATTR_POOL[a].affixes || []).forEach(function (af) {
       AFFIX_TO_ATTR[af] = a;
-      // Flat 属性的"XX加成"词缀 = flat（如 攻击力加成+25 → 基础攻击力+25）；其余 = pct
-      if (isFlatAttr && af.endsWith('加成')) {
-        AFFIX_KIND[af] = 'flat';
-      } else {
-        AFFIX_KIND[af] = 'pct';
-      }
+      AFFIX_KIND[af] = 'pct';  // 所有词缀（含 攻击力加成/生命值加成）均为百分比
     });
   });
 
@@ -2548,38 +2424,28 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   window.ATTR_POOL = ATTR_POOL;
   window.AFFIX_KIND = AFFIX_KIND;
 
-  /* ---- 数值计算（区分 flat 词缀直接加基础 / pct 词缀百分比乘区） ---- */
-  // flatBonusOf: 仅累加 flat 类型词缀（如 攻击力加成+25 → +25 点基础攻击力）
-  function flatBonusOf(key){
+  /* ---- 数值计算：各类加成均为百分比，作用于基础值 ---- */
+  // bonusOf: 累加某属性上所有词缀之和（现在全为 pct 百分比）
+  function bonusOf(key){
     let s = 0;
     for (const id in HERO.equipped) {
       const it = ITEM_MAP[id];
       if (!it || !it.attrs) continue;
       for (const ak in it.attrs) {
-        if (AFFIX_TO_ATTR[ak] === key && AFFIX_KIND[ak] === 'flat') s += it.attrs[ak];
+        if (AFFIX_TO_ATTR[ak] === key) s += it.attrs[ak];
       }
     }
     return s;
   }
-  // pctBonusOf: 仅累加 pct 类型词缀（如 攻击力增幅+25% → +25% 乘区）
-  function pctBonusOf(key){
-    let s = 0;
-    for (const id in HERO.equipped) {
-      const it = ITEM_MAP[id];
-      if (!it || !it.attrs) continue;
-      for (const ak in it.attrs) {
-        if (AFFIX_TO_ATTR[ak] === key && AFFIX_KIND[ak] === 'pct') s += it.attrs[ak];
-      }
-    }
-    return s;
-  }
-  // bonusOf: 兼容旧接口，返回 flat 总和（用于显示"基础+加成"的最终数值）
-  function bonusOf(key){ return flatBonusOf(key); }
-  // getVal: 基础值 + flat 加成（这是面板上展示的"当前值"）
+  // getVal: 数值型属性 = 基础值 × (1 + 加成%/100)；pct 属性 = 基础 + 加成%
+  //   例：攻击力 100，攻击力加成+25% → 100 × 1.25 = 125（先叠加各类百分比到基础值）
   function getVal(key){
     const d = ATTR_DEFS[key];
     if (!d) return 0;
-    return d.base + flatBonusOf(key);
+    if (d.kind === 'flat' || d.kind === 'count' || d.kind === 'charge' || d.kind === 'critdmg') {
+      return d.base * (1 + bonusOf(key) / 100);
+    }
+    return d.base + bonusOf(key);  // pct 属性（基础通常 0）
   }
   function fmtNum(n){
     return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -2597,21 +2463,16 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       default:       return (v > 0 ? '+' : '') + v + '%';
     }
   }
-  // 计算用乘区：flat 属性 → (基础+flat) × (1 + pct/100)；pct 属性 → (1 + totalPct/100)
+  // 计算用乘区：数值型属性已是最终值；pct/暴击伤害属性 → 系数
   function multOf(key){
     const d = ATTR_DEFS[key];
     if (!d) return 1;
-    if (d.kind === 'pct' || d.kind === 'critdmg') {
-      // 百分比属性：基础值(通常0) + pct词缀总和 → 系数
-      return getVal(key) / 100;
-    }
-    // flat 属性（攻击力/生命值/护甲值等）：先加 flat，再乘 pct 乘区
-    const base = getVal(key);  // 基础 + flat 加成
-    const pct = pctBonusOf(key);
-    return base * (1 + pct / 100);
+    const v = getVal(key);
+    if (d.kind === 'pct' || d.kind === 'critdmg') return v / 100;
+    return v;
   }
   window.multOf = multOf; // 供战斗层后续引用
-  window.pctBonusOf = pctBonusOf; // 供 tooltip 显示 pct 明细
+  window.bonusOf = bonusOf; // 供 tooltip 显示明细
 
   /* ---- 面板分类（四分类结构保持不变） ---- */
   const ATTR_CATS = {
@@ -2802,6 +2663,126 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     document.addEventListener('DOMContentLoaded', tryInit);
   }
 })();
+
+</script>
+<script>
+
+  /* 装备栏顶部切换按钮（预留：装备 / 背包 / 图鉴 / 属性） */
+  (function renderEquipTabs(){
+    const wrap = document.getElementById('equipTabs');
+    if (!wrap) return;
+    const TABS = ['装备', '背包', '图鉴', '属性'];
+    TABS.forEach(function(t, i){
+      const b = document.createElement('div');
+      b.className = 'etab' + (i === 0 ? ' on' : '');
+      b.textContent = t;
+      b.addEventListener('click', function(){
+        Array.prototype.querySelectorAll.call(wrap.querySelectorAll('.etab'), function(x){ x.classList.remove('on'); });
+        b.classList.add('on');
+      });
+      wrap.appendChild(b);
+    });
+  })();
+
+  /* 英雄 10 件装备面板 —— 竖版纸娃娃布局（与 window.HERO 装备系统同步）
+   * 坐标来源：截图 963x252 像素实测（装备栏区域 x140~817 y9~244，宽 678 高 236）
+   * x/y/w/h = 相对装备栏左上角的 px；c = 该槽位框色（截图实测品质色）
+   *
+   * 同步逻辑：
+   *   - 从 window.HERO.equipped + window.ITEM_MAP 读取已穿戴装备
+   *   - 按装备的 slot 字段（武器/护甲/饰品/鞋子/核心）匹配到对应槽位
+   *   - 装备变化时（HERO.onChange）自动重绘
+   *   - 初始状态：所有槽位为空（HERO.equipped = {}）
+   */
+  (function renderEquip(){
+    var grid = document.getElementById('equipGrid');
+    if (!grid) return;
+
+    // 槽位定义：slot 名 → 布局坐标 / 颜色 / 匹配规则
+    var SLOT_DEFS = [
+      { key:'武器',   x:0,   y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['武器'] },
+      { key:'头盔',   x:139, y:0,   w:110, h:110, c:'rgb(46,81,134)',  match:['头盔'] },
+      { key:'手套',   x:139, y:125, w:110, h:110, c:'rgb(100,65,135)', match:['手套'] },
+      { key:'护甲',   x:278, y:0,   w:120, h:175, c:'rgb(129,93,45)',  match:['护甲'] },
+      { key:'腰带',   x:278, y:190, w:120, h:45,  c:'rgb(127,92,46)',  match:['腰带'] },
+      { key:'项链',   x:457, y:1,   w:50,  h:50,  c:'rgb(54,88,50)',   match:['项链'] },
+      { key:'左戒指', x:427, y:61,  w:50,  h:50,  c:'rgb(114,83,42)',  match:['饰品','左戒指'] },
+      { key:'右戒指', x:487, y:61,  w:50,  h:50,  c:'rgb(43,70,113)',  match:['饰品','右戒指'] },
+      { key:'鞋子',   x:427, y:125, w:110, h:110, c:'rgb(98,65,132)',  match:['鞋子'] },
+      { key:'副手',   x:558, y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['副手','核心'] }
+    ];
+
+    // 查找某槽位当前穿戴的装备
+    function findItemForSlot(slotDef){
+      var HERO = window.HERO;
+      var ITEM_MAP = window.ITEM_MAP;
+      if (!HERO || !ITEM_MAP) return null;
+      for (var id in HERO.equipped) {
+        if (HERO.equipped[id]) {
+          var it = ITEM_MAP[id];
+          if (it && slotDef.match.indexOf(it.slot) >= 0) return it;
+        }
+      }
+      return null;
+    }
+
+    function draw(){
+      grid.innerHTML = '';
+      SLOT_DEFS.forEach(function(sd){
+        var it = findItemForSlot(sd);
+        var on = !!it;
+        var div = document.createElement('div');
+        div.className = 'eslot' + (on ? ' on' : '');
+        div.style.left = sd.x + 'px';
+        div.style.top = sd.y + 'px';
+        div.style.width = sd.w + 'px';
+        div.style.height = sd.h + 'px';
+        div.style.borderColor = on ? sd.c : 'rgba(165,172,190,.55)';
+        div.style.fontSize = (sd.w < 60 ? 10 : (sd.w < 120 ? 12 : 14)) + 'px';
+
+        if (on) {
+          // 已穿戴：显示装备图标 + 名称 + 品质色
+          var RAR = window.RARITY || {};
+          var rc = (RAR[it.rarity] || {}).color || '#fff';
+          div.innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:4px">'
+          +   '<span style="font-size:' + (sd.w < 60 ? '20' : '32') + 'px;line-height:1">' + (it.icon || '❔') + '</span>'
+          +   '<span class="nm" style="color:' + rc + ';font-size:' + (sd.w < 60 ? '9' : '11') + 'px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">' + it.name + '</span>'
+          + '</div>';
+          div.title = it.name + '（' + it.slot + '）· 右键卸下';
+        } else {
+          div.innerHTML = '<span class="nm">' + sd.key + '</span>';
+          div.title = sd.key + '  未穿戴';
+        }
+
+        // 右键卸下已穿戴装备
+        div.addEventListener('contextmenu', function(e){
+          e.preventDefault(); e.stopPropagation();
+          if (it && window.HERO) { window.HERO.toggle(it); }
+        });
+
+        grid.appendChild(div);
+      });
+    }
+
+    // 绑定装备变化监听并重绘（HERO 未就绪则延迟到 DOMContentLoaded）
+    function bindAndDraw(){
+      if (window.HERO) {
+        window.HERO.onChange(draw);
+        draw();
+      } else {
+        document.addEventListener('DOMContentLoaded', bindAndDraw);
+      }
+    }
+    bindAndDraw();
+  })();
+
+  (function blockContextMenu(){
+    var st = document.getElementById('stage') || document;
+    st.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    st.addEventListener('mousedown', function(e){ if (e.button === 2) e.preventDefault(); });
+    document.addEventListener('dragstart', function(e){ e.preventDefault(); });
+  })();
 
 </script>
 <script>

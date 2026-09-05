@@ -89,20 +89,13 @@
     '陷阱伤害':{base:0,kind:'pct'},'灌注伤害':{base:0,kind:'pct'},
   };
 
-  /* ---- 词缀 → 属性归属映射 + 词缀类型（flat 直接加基础 / pct 百分比乘区） ---- */
+  /* ---- 词缀 → 属性归属映射（各类加成均为百分比，作用于基础值） ---- */
   const AFFIX_TO_ATTR = {};
-  const AFFIX_KIND = {};  // 'flat' = 数值型词缀(直接加基础) / 'pct' = 百分比词缀
+  const AFFIX_KIND = {};
   Object.keys(ATTR_POOL).forEach(function (a) {
-    const d = ATTR_DEFS[a];
-    const isFlatAttr = d && (d.kind === 'flat' || d.kind === 'count' || d.kind === 'charge');
     (ATTR_POOL[a].affixes || []).forEach(function (af) {
       AFFIX_TO_ATTR[af] = a;
-      // Flat 属性的"XX加成"词缀 = flat（如 攻击力加成+25 → 基础攻击力+25）；其余 = pct
-      if (isFlatAttr && af.endsWith('加成')) {
-        AFFIX_KIND[af] = 'flat';
-      } else {
-        AFFIX_KIND[af] = 'pct';
-      }
+      AFFIX_KIND[af] = 'pct';  // 所有词缀（含 攻击力加成/生命值加成）均为百分比
     });
   });
 
@@ -164,38 +157,28 @@
   window.ATTR_POOL = ATTR_POOL;
   window.AFFIX_KIND = AFFIX_KIND;
 
-  /* ---- 数值计算（区分 flat 词缀直接加基础 / pct 词缀百分比乘区） ---- */
-  // flatBonusOf: 仅累加 flat 类型词缀（如 攻击力加成+25 → +25 点基础攻击力）
-  function flatBonusOf(key){
+  /* ---- 数值计算：各类加成均为百分比，作用于基础值 ---- */
+  // bonusOf: 累加某属性上所有词缀之和（现在全为 pct 百分比）
+  function bonusOf(key){
     let s = 0;
     for (const id in HERO.equipped) {
       const it = ITEM_MAP[id];
       if (!it || !it.attrs) continue;
       for (const ak in it.attrs) {
-        if (AFFIX_TO_ATTR[ak] === key && AFFIX_KIND[ak] === 'flat') s += it.attrs[ak];
+        if (AFFIX_TO_ATTR[ak] === key) s += it.attrs[ak];
       }
     }
     return s;
   }
-  // pctBonusOf: 仅累加 pct 类型词缀（如 攻击力增幅+25% → +25% 乘区）
-  function pctBonusOf(key){
-    let s = 0;
-    for (const id in HERO.equipped) {
-      const it = ITEM_MAP[id];
-      if (!it || !it.attrs) continue;
-      for (const ak in it.attrs) {
-        if (AFFIX_TO_ATTR[ak] === key && AFFIX_KIND[ak] === 'pct') s += it.attrs[ak];
-      }
-    }
-    return s;
-  }
-  // bonusOf: 兼容旧接口，返回 flat 总和（用于显示"基础+加成"的最终数值）
-  function bonusOf(key){ return flatBonusOf(key); }
-  // getVal: 基础值 + flat 加成（这是面板上展示的"当前值"）
+  // getVal: 数值型属性 = 基础值 × (1 + 加成%/100)；pct 属性 = 基础 + 加成%
+  //   例：攻击力 100，攻击力加成+25% → 100 × 1.25 = 125（先叠加各类百分比到基础值）
   function getVal(key){
     const d = ATTR_DEFS[key];
     if (!d) return 0;
-    return d.base + flatBonusOf(key);
+    if (d.kind === 'flat' || d.kind === 'count' || d.kind === 'charge' || d.kind === 'critdmg') {
+      return d.base * (1 + bonusOf(key) / 100);
+    }
+    return d.base + bonusOf(key);  // pct 属性（基础通常 0）
   }
   function fmtNum(n){
     return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -213,21 +196,16 @@
       default:       return (v > 0 ? '+' : '') + v + '%';
     }
   }
-  // 计算用乘区：flat 属性 → (基础+flat) × (1 + pct/100)；pct 属性 → (1 + totalPct/100)
+  // 计算用乘区：数值型属性已是最终值；pct/暴击伤害属性 → 系数
   function multOf(key){
     const d = ATTR_DEFS[key];
     if (!d) return 1;
-    if (d.kind === 'pct' || d.kind === 'critdmg') {
-      // 百分比属性：基础值(通常0) + pct词缀总和 → 系数
-      return getVal(key) / 100;
-    }
-    // flat 属性（攻击力/生命值/护甲值等）：先加 flat，再乘 pct 乘区
-    const base = getVal(key);  // 基础 + flat 加成
-    const pct = pctBonusOf(key);
-    return base * (1 + pct / 100);
+    const v = getVal(key);
+    if (d.kind === 'pct' || d.kind === 'critdmg') return v / 100;
+    return v;
   }
   window.multOf = multOf; // 供战斗层后续引用
-  window.pctBonusOf = pctBonusOf; // 供 tooltip 显示 pct 明细
+  window.bonusOf = bonusOf; // 供 tooltip 显示明细
 
   /* ---- 面板分类（四分类结构保持不变） ---- */
   const ATTR_CATS = {

@@ -97,13 +97,16 @@
       });
     }
 
-    // 首次绘制
-    draw();
-
-    // 监听装备变化自动重绘
-    if (window.HERO) {
-      window.HERO.onChange(draw);
+    // 绑定装备变化监听并重绘（HERO 未就绪则延迟到 DOMContentLoaded）
+    function bindAndDraw(){
+      if (window.HERO) {
+        window.HERO.onChange(draw);
+        draw();
+      } else {
+        document.addEventListener('DOMContentLoaded', bindAndDraw);
+      }
     }
+    bindAndDraw();
   })();
 
   (function blockContextMenu(){
