@@ -114,14 +114,41 @@
   /* 功能视图占位（装备/宠物/铭文 等未接入面板的原型提示） */
   .phView{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--dim);font-size:17px;text-align:center;line-height:1.7}
   .phView b{color:var(--accent);font-size:24px;letter-spacing:.5px}
-  /* 技能视图：2×2 自适应网格 */
-  #skillGridHost{position:absolute;inset:0;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;align-content:start;overflow:auto}
-  .skillCell{position:relative;border:1px solid var(--line);border-radius:14px;background:var(--panel2);
-    padding:16px;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:.15s;min-height:150px}
-  .skillCell:hover{border-color:var(--accent);box-shadow:0 0 16px rgba(47,230,208,0.18)}
-  .skillCell .nm{font-weight:700;font-size:20px}
-  .skillCell .tags{font-size:13px;color:var(--mute)}
-  .skillCell .desc{font-size:14px;color:var(--dim);line-height:1.6}
+  /* 技能视图：左 技能区域（列表 + 插槽）/ 右 专精树 —— 复用 #bottom .cols/.col.l/.col.r 分栏 */
+  #skillAreaCol{display:flex}                 /* 技能区域：左列表 + 右 120 插槽 */
+  /* 左侧技能列表：图标 + 名字，正方形格 */
+  #skillList{flex:1;min-width:0;padding:14px;overflow:auto;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px;align-content:start}
+  .skillItem{position:relative;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:6px;padding:6px;border:1px solid var(--line);border-radius:12px;
+    background:var(--panel2);cursor:pointer;user-select:none;transition:.15s}
+  .skillItem:hover{border-color:var(--accent);box-shadow:0 0 14px rgba(47,230,208,.18)}
+  .skillItem.sel{border-color:var(--accent2);box-shadow:0 0 16px rgba(155,123,255,.35)}
+  .skillItem .ic{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    font-size:26px;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.12)}
+  .skillItem .nm{font-size:13px;font-weight:700;color:var(--txt);text-align:center;line-height:1.2}
+  /* 右侧上阵插槽区：宽 120 */
+  #skillSlots{width:120px;flex:none;padding:14px 10px;display:flex;flex-direction:column;gap:12px;
+    overflow:auto;border-left:1px solid var(--line)}
+  .slot{position:relative;height:96px;border:1px dashed var(--line);border-radius:12px;background:rgba(0,0,0,.22);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:.15s;overflow:hidden}
+  .slot.over{border-color:var(--accent);background:rgba(47,230,208,.08);box-shadow:inset 0 0 18px rgba(47,230,208,.15)}
+  .slot.filled{border-style:solid}
+  .slot.sel{border-color:var(--accent2);box-shadow:0 0 16px rgba(155,123,255,.35)}
+  .slot .ic{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:22px;
+    background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.14)}
+  .slot .nm{font-size:11px;color:var(--dim);text-align:center;line-height:1.1}
+  .slot .badge{position:absolute;top:3px;left:5px;font-size:10px;color:var(--accent);font-weight:700;letter-spacing:1px}
+  .slot .rm{position:absolute;top:2px;right:4px;font-size:12px;color:var(--mute);display:none}
+  .slot.filled:hover .rm{display:block}
+  .slot .ph{font-size:12px;color:var(--mute)}
+  /* 右栏专精树容器 */
+  #skillTreeHost{position:relative;flex:1;min-height:0;overflow:hidden}
+  #skillTreeHost iframe{position:absolute;top:0;left:0;border:0;transform-origin:top left;background:transparent}
+  .treePlaceholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:10px;color:var(--dim);font-size:16px;text-align:center;line-height:1.7}
+  .treePlaceholder b{color:var(--accent);font-size:22px}
 
   /* === 角色面板（严格按截图 492×798，外层 transform:scale 适配 619 内宽） === */
   #charPanel{position:relative;width:100%;height:100%;overflow:hidden}
@@ -362,9 +389,19 @@
       </div>
     </div>
 
-    <!-- 视图②：技能 -->
+    <!-- 视图②：技能（左 技能区域：列表 + 上阵插槽 / 右 专精树） -->
     <div class="bview" id="viewSkill" hidden>
-      <div id="skillGridHost"></div>
+      <div class="cols">
+        <!-- 左：技能区域 -->
+        <div class="col l" id="skillAreaCol">
+          <div id="skillList"></div>
+          <div id="skillSlots"></div>
+        </div>
+        <!-- 右：当前技能专精树 -->
+        <div class="col r" id="skillTreeCol">
+          <div id="skillTreeHost"></div>
+        </div>
+      </div>
     </div>
 
     <!-- 视图③：宠物 -->
