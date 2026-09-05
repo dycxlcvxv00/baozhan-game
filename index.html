@@ -227,13 +227,36 @@
   .attrTip li b{color:#ffdc7a;font-weight:700}
   .attrTip .meta{font-size:11px;color:#897bb0;margin-top:8px;padding-top:6px;border-top:1px dashed rgba(255,255,255,0.12)}
 
-  #bagStub{
-    flex:1;display:flex;align-items:center;justify-content:center;
-    flex-direction:column;gap:14px;color:var(--dim)}
-  #bagStub .glyph{font-size:54px;color:var(--mute);
-    text-shadow:0 0 18px rgba(155,123,255,0.35)}
-  #bagStub .msg{font-size:16px;color:var(--mute);font-weight:600}
-  #bagStub .hint{font-size:13px;color:var(--mute);max-width:420px;text-align:center;line-height:1.6}
+  /* === 背包面板（装备页右侧） === */
+  #bagCol{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+  /* 顶部导航栏：高 45px，左 整理/分解，右 页面标签 1-10 */
+  #bagNav{height:45px;flex:none;display:flex;align-items:center;gap:12px;
+    padding:0 2px;margin-bottom:10px}
+  .bagTools{display:flex;gap:8px;flex:none}
+  .bagTool{height:30px;padding:0 16px;border-radius:8px;cursor:pointer;
+    background:var(--btn);border:1px solid var(--line);color:var(--dim);
+    font-size:14px;font-weight:600;display:flex;align-items:center;transition:.12s}
+  .bagTool:hover{color:var(--txt);border-color:var(--accent);box-shadow:0 0 10px rgba(47,230,208,.2)}
+  .bagTool:active{transform:translateY(1px)}
+  .bagPages{display:flex;gap:6px;flex:1;min-width:0;overflow:hidden}
+  .bagPage{flex:1;min-width:0;height:32px;border-radius:7px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--panel2);border:1px solid var(--line);color:var(--mute);
+    font-size:14px;font-weight:700;transition:.12s}
+  .bagPage:hover{color:var(--txt);border-color:var(--accent)}
+  .bagPage.on{color:var(--txt);background:var(--equipOn);border-color:var(--accent2);
+    box-shadow:0 0 10px rgba(155,123,255,.25)}
+  /* 背包格子：铺满剩余空间、不滚动、hover 框内略微高亮 */
+  #bagGrid{flex:1;min-height:0;display:grid;
+    grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(5,1fr);
+    gap:8px;overflow:hidden}
+  .bagCell{position:relative;border:1px solid var(--line);border-radius:8px;
+    background:rgba(0,0,0,0.25);cursor:pointer;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .12s,border-color .12s,box-shadow .12s}
+  .bagCell:hover{border-color:rgba(47,230,208,0.45);
+    background:rgba(47,230,208,0.08);
+    box-shadow:inset 0 0 18px rgba(47,230,208,0.16)}
 </style>
 </head>
 <body>
@@ -275,8 +298,8 @@
   <!-- 底部信息面板：可切换视图，默认显示角色属性；点击左侧 4 个按钮切换对应功能视图 -->
   <div id="bottom" class="panel">
 
-    <!-- 视图①：角色属性（默认） -->
-    <div class="bview" id="viewChar">
+    <!-- 装备页（默认显示 + 装备按钮激活）：左 属性栏 / 右 背包栏 -->
+    <div class="bview" id="viewEquip">
       <div class="cols">
 
         <div class="col l" id="charPanel">
@@ -310,13 +333,16 @@
           </div>
         </div>
 
-        <div class="col r">
-          <span class="ttl">🎒 背包 · <b>待开发</b></span>
-          <div id="bagStub">
-            <div class="glyph">▢</div>
-            <div class="msg">背包面板等待接入</div>
-            <div class="hint">右侧空间已按左上 UI 宽度预留；后续背包 / 图鉴 / 资源等面板将挂载于此，与左侧角色属性面板并列显示。</div>
+        <!-- 右侧：背包栏 -->
+        <div class="col r" id="bagCol">
+          <div id="bagNav">
+            <div class="bagTools">
+              <button class="bagTool" data-act="sort">整理</button>
+              <button class="bagTool" data-act="split">分解</button>
+            </div>
+            <div class="bagPages" id="bagPages"></div>
           </div>
+          <div id="bagGrid"></div>
         </div>
       </div>
     </div>
@@ -326,17 +352,12 @@
       <div id="skillGridHost"></div>
     </div>
 
-    <!-- 视图③：装备 -->
-    <div class="bview" id="viewEquip" hidden>
-      <div class="phView"><b>装备面板</b>英雄 10 件装备的穿戴 / 卸下与数值总览将在此展示。<br>右侧栏纸娃娃装备槽同步显示，本视图后续接入装备详情与套装效果。</div>
-    </div>
-
-    <!-- 视图④：宠物 -->
+    <!-- 视图③：宠物 -->
     <div class="bview" id="viewPet" hidden>
       <div class="phView"><b>宠物面板</b>宠物出战、技能与养成系统（开发中）。<br>后续接入主文档宠物章节设定。</div>
     </div>
 
-    <!-- 视图⑤：铭文 -->
+    <!-- 视图④：铭文 -->
     <div class="bview" id="viewRune" hidden>
       <div class="phView"><b>铭文面板</b>铭文镶嵌、词条与共鸣系统（开发中）。<br>后续接入主文档符文 / 铭文章节设定。</div>
     </div>
@@ -2408,10 +2429,69 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
 </script>
 <script>
 /* ============================================================
+ * bag-panel.js — 背包面板（装备页右侧）
+ * 顶部导航栏：整理 / 分解 + 页面标签 1-10
+ * 下方：10×5 背包格子，铺满剩余空间、不滚动、hover 框内略微高亮
+ *
+ * 数据层（物品 / 分页数据）后续接入主文档背包章节；
+ * 当前为结构原型：格子为占位空槽，分页仅切换激活态。
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  const COLS = 10, ROWS = 5, PAGES = 10;
+
+  const grid = document.getElementById('bagGrid');
+  const pages = document.getElementById('bagPages');
+  if (!grid || !pages) return;
+
+  // 页面标签 1-10（首屏默认激活第 1 页）
+  for (let i = 1; i <= PAGES; i++) {
+    const p = document.createElement('div');
+    p.className = 'bagPage' + (i === 1 ? ' on' : '');
+    p.textContent = i;
+    p.dataset.page = i;
+    pages.appendChild(p);
+  }
+
+  // 重建当前页格子（每页独立占位，数据接入后按页渲染）
+  function buildCells() {
+    grid.innerHTML = '';
+    const n = COLS * ROWS;
+    for (let i = 0; i < n; i++) {
+      const c = document.createElement('div');
+      c.className = 'bagCell';
+      grid.appendChild(c);
+    }
+  }
+  buildCells();
+
+  // 点击页面标签：切换激活态 + 重建该页格子
+  pages.addEventListener('click', function (e) {
+    const t = e.target.closest('.bagPage');
+    if (!t) return;
+    Array.prototype.forEach.call(pages.children, function (c) {
+      c.classList.remove('on');
+    });
+    t.classList.add('on');
+    buildCells();
+  });
+
+  // 整理 / 分解：当前占位，仅做点击反馈（逻辑后续接入）
+  document.querySelectorAll('#bagNav .bagTool').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      // TODO: 接入背包操作（整理=按品质/类型排序；分解=批量转化为资源）
+    });
+  });
+})();
+
+</script>
+<script>
+/* ============================================================
  * left-tabs.js — 左侧 4 个功能按钮 ↔ 底部信息面板视图切换
  * 映射：装备→viewEquip / 技能→viewSkill / 宠物→viewPet / 铭文→viewRune
- * 默认（无按钮激活）显示 viewChar（角色属性）。
- * 再次点击已激活按钮 → 回到默认视图。
+ * 默认显示装备页 viewEquip（左 属性栏 / 右 背包栏），并激活「装备」按钮。
+ * 再次点击已激活按钮 → 回到默认视图（装备页）。
  * 2026-09-04：配合「底部面板改为可切换视图」重构。
  * ============================================================ */
 (function () {
@@ -2423,7 +2503,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     '宠物': 'viewPet',
     '铭文': 'viewRune',
   };
-  const DEFAULT_VIEW = 'viewChar';
+  const DEFAULT_VIEW = 'viewEquip';
 
   function show(id) {
     const views = document.querySelectorAll('#bottom .bview');
@@ -2436,7 +2516,11 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     window.__leftTabsReady = true;
     const btns = document.querySelectorAll('#fbtns .fbtn');
     if (!btns.length) return;
-    show(DEFAULT_VIEW); // 初始显示角色属性视图
+    show(DEFAULT_VIEW); // 初始显示装备页（左属性栏 / 右背包栏）
+    // 初始激活「装备」按钮（与默认视图一致）
+    Array.prototype.forEach.call(btns, function (b) {
+      if (b.getAttribute('data-k') === '装备') b.classList.add('on');
+    });
 
     Array.prototype.forEach.call(btns, function (btn) {
       const k = btn.getAttribute('data-k');
