@@ -257,6 +257,21 @@
   .bagCell:hover{border-color:rgba(47,230,208,0.45);
     background:rgba(47,230,208,0.08);
     box-shadow:inset 0 0 18px rgba(47,230,208,0.16)}
+  /* 背包物品格：图标 + 名称；按稀有度着色；已装备青绿高亮 */
+  .bagCell.filled{flex-direction:column;gap:2px;cursor:context-menu;
+    background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.16)}
+  .bagCell.filled .ic{font-size:30px;line-height:1;pointer-events:none;
+    filter:drop-shadow(0 0 6px rgba(255,255,255,0.25))}
+  .bagCell.filled .nm{font-size:11px;color:#e9defb;font-weight:600;text-align:center;
+    line-height:1.1;padding:0 2px;max-width:100%;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+  .bagCell.filled.r.magic{border-color:rgba(90,180,255,0.55);box-shadow:inset 0 0 12px rgba(90,180,255,0.12)}
+  .bagCell.filled.r.rare {border-color:rgba(200,140,255,0.6);box-shadow:inset 0 0 14px rgba(200,140,255,0.15)}
+  .bagCell.filled.r.epic {border-color:rgba(255,180,80,0.65);box-shadow:inset 0 0 16px rgba(255,180,80,0.18)}
+  .bagCell.filled.equipped{border-color:rgba(47,230,208,0.85);
+    box-shadow:inset 0 0 18px rgba(47,230,208,0.22),0 0 10px rgba(47,230,208,0.25)}
+  .bagCell .eq{position:absolute;top:3px;right:4px;font-size:9px;color:#2fe6d0;font-weight:700;
+    background:rgba(0,0,0,0.55);padding:1px 4px;border-radius:4px;pointer-events:none}
 </style>
 </head>
 <body>
@@ -306,22 +321,22 @@
           <div id="charScale">
             <div class="coreAttrs">
               <div class="ca hp" data-tip="attr:生命值">
-                <div class="ic">❤</div><div class="lbl">生命值</div><div class="val">186,400</div>
+                <div class="ic">❤</div><div class="lbl">生命值</div><div class="val">1,000</div>
               </div>
               <div class="ca atk" data-tip="attr:攻击力">
-                <div class="ic">⚔</div><div class="lbl">攻击力</div><div class="val">12,480</div>
+                <div class="ic">⚔</div><div class="lbl">攻击力</div><div class="val">100</div>
               </div>
               <div class="ca def" data-tip="attr:护甲值">
-                <div class="ic">🛡</div><div class="lbl">护甲值</div><div class="val">2,150</div>
+                <div class="ic">🛡</div><div class="lbl">护甲值</div><div class="val">20</div>
               </div>
             </div>
             <div class="elemGrid">
-              <div class="eg phys"   data-tip="attr:物理"><div class="lhs"><span class="ic">✶</span><span class="nm">物理</span></div><span class="vl">142%</span></div>
-              <div class="eg chaos"  data-tip="attr:混沌"><div class="lhs"><span class="ic">◈</span><span class="nm">混沌</span></div><span class="vl">138%</span></div>
-              <div class="eg frost"  data-tip="attr:冰霜"><div class="lhs"><span class="ic">❄</span><span class="nm">冰霜</span></div><span class="vl">145%</span></div>
-              <div class="eg fire"   data-tip="attr:火焰"><div class="lhs"><span class="ic">✦</span><span class="nm">火焰</span></div><span class="vl">148%</span></div>
-              <div class="eg poison" data-tip="attr:毒素"><div class="lhs"><span class="ic">☣</span><span class="nm">毒素</span></div><span class="vl">140%</span></div>
-              <div class="eg light"  data-tip="attr:闪电"><div class="lhs"><span class="ic">⚡</span><span class="nm">闪电</span></div><span class="vl">143%</span></div>
+              <div class="eg phys"   data-tip="attr:物理"><div class="lhs"><span class="ic">✶</span><span class="nm">物理</span></div><span class="vl">0%</span></div>
+              <div class="eg chaos"  data-tip="attr:混沌"><div class="lhs"><span class="ic">◈</span><span class="nm">混沌</span></div><span class="vl">0%</span></div>
+              <div class="eg frost"  data-tip="attr:冰霜"><div class="lhs"><span class="ic">❄</span><span class="nm">冰霜</span></div><span class="vl">0%</span></div>
+              <div class="eg fire"   data-tip="attr:火焰"><div class="lhs"><span class="ic">✦</span><span class="nm">火焰</span></div><span class="vl">0%</span></div>
+              <div class="eg poison" data-tip="attr:毒素"><div class="lhs"><span class="ic">☣</span><span class="nm">毒素</span></div><span class="vl">0%</span></div>
+              <div class="eg light"  data-tip="attr:闪电"><div class="lhs"><span class="ic">⚡</span><span class="nm">闪电</span></div><span class="vl">0%</span></div>
             </div>
             <div class="attrTabs" id="attrTabs">
               <div class="at on" data-cat="damage">伤害</div>

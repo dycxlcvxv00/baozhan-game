@@ -1,10 +1,17 @@
-/* === 角色属性面板（多文件版） · 来源：主文档「13. 伤害系统」属性释义 ===
- * 数值真相源 = HERO_ATTRS（Lv.60 英雄属性基线，严格遵循第 13 章「显示样式」：
- *   数值型 = 攻击力 / 生命值 / 护甲值 / 护盾值 / 多重射击 / 充能速度
- *   百分比型 = 其余增幅系数【×】（文档中以百分比展示，100% = ×1）
- *   触发类机制数值（5% / 2.5×、护盾 5000 等）直接取自第 13 章原文。
- * 面板四分类 / 顶部核心条 / 六元素均由本表驱动，不再写散落假数字。 */
+/* === 角色属性面板（多文件版） · 数据真相源 = 裸身英雄基准 + 装备加成 ===
+ *
+ * 设计（按用户 2026-09-05 校准）：
+ *   核心三围（数值型，直接展示「基础 + 加成」）：
+ *       生命值 1000 ｜ 攻击力 100 ｜ 护甲值 20
+ *   其余百分比/乘区属性（显示「装备提供的加成」，初始 0；计算基准 ×1，即 100%→×1）：
+ *       全部初始 0% —— 没有装备就没有加成
+ *   特例：暴击率初始 0；暴击伤害固定基础 150%
+ *
+ * 全局共享：window.HERO（装备状态 + 订阅）/ window.ATTR_DEFS / window.ITEM_MAP，
+ *          供背包面板（bag-panel.js）在穿戴/卸下时调用并触发本面板重渲染。
+ * ============================================================ */
 (function initCharPanel(){
+  /* ---- 属性释义（tooltip 用，取自主文档「13. 伤害系统」） ---- */
   const ATTR_POOL = {
     '生命值':{desc:'城墙所能承受的伤害值',affixes:['生命值加成','生命值强化','生命值增幅']},
     '攻击力':{desc:'所有伤害的计算基数',affixes:['攻击力加成','攻击力强化','攻击力增幅']},
@@ -17,19 +24,19 @@
     '闪电':  {desc:'造成闪电伤害时的增幅系数【×】',affixes:['闪电伤害','闪电精通','闪电增幅','闪电穿透']},
     '攻击伤害':{desc:'普攻或攻击技能造成伤害时的增幅系数【×】',affixes:['攻击伤害','攻击精通','攻击增幅','攻击强化']},
     '攻击速度':{desc:'提升普攻和攻击技能打击频率',affixes:['攻击速度','攻速加成','攻速上限']},
-    '多重射击':{desc:'可同时攻击的敌人数量',affixes:['多重射击']},
-    '粉碎打击':{desc:'攻击命中时 5% 几率触发，造成 2.5 倍伤害【×】',affixes:['粉碎打击几率','粉碎打击伤害']},
+    '多重射击':{desc:'可同时攻击的敌人数量（基础 1）',affixes:['多重射击']},
+    '粉碎打击':{desc:'攻击命中时触发，造成额外倍数伤害（需装备提供触发率）',affixes:['粉碎打击几率','粉碎打击伤害']},
     '法术伤害':{desc:'法术技能造成伤害时的增幅系数【×】',affixes:['法术伤害','法术精通','法术增幅','法术强化']},
-    '充能速度':{desc:'符文每秒充能基数为 1 点',affixes:['充能基数','充能速度']},
-    '能量回溯':{desc:'符文释放时 5% 几率触发，立即回复 20% 能量值',affixes:['能量回溯几率','能量回溯比例']},
-    '法术迸发':{desc:'法术命中时 5% 几率触发，造成 2.5 倍伤害【×】',affixes:['法术迸发几率','法术迸发伤害']},
+    '充能速度':{desc:'符文每秒充能基数（基础 1.0）',affixes:['充能基数','充能速度']},
+    '能量回溯':{desc:'符文释放时触发，回复能量值（需装备提供）',affixes:['能量回溯几率','能量回溯比例']},
+    '法术迸发':{desc:'法术命中时触发，造成额外倍数伤害（需装备提供）',affixes:['法术迸发几率','法术迸发伤害']},
     '暴击率': {desc:'造成直接伤害时，触发暴击的几率',affixes:['暴击率']},
-    '暴击伤害':{desc:'触发暴击时，本次伤害增幅系数【×】',affixes:['暴击伤害','暴击伤害增幅']},
-    '弱点暴击':{desc:'暴击时 5% 几率触发，造成 2.5 倍伤害【×】',affixes:['弱点暴击几率','弱点暴击伤害']},
-    '生命回溯':{desc:'受到伤害时 5% 几率触发，回复 1% 损失生命值',affixes:['生命回溯几率','生命回溯比例']},
-    '护盾值': {desc:'所有伤害优先扣除护盾再扣生命【混沌伤害无视护盾】',affixes:['护盾值','护盾值加成','护盾值增幅']},
-    '护盾回溯':{desc:'每隔 2 秒自动触发，10% 几率回复 1% 最大护盾值',affixes:['护盾回溯几率','护盾回溯比例']},
-    '格挡':   {desc:'受伤时 5% 几率触发格挡，降低 30% 所受伤害【×】',affixes:['格挡几率','格挡比例']},
+    '暴击伤害':{desc:'触发暴击时，本次伤害增幅系数【×】（固定基础 150%）',affixes:['暴击伤害','暴击伤害增幅']},
+    '弱点暴击':{desc:'暴击时触发，造成额外倍数伤害（需装备提供）',affixes:['弱点暴击几率','弱点暴击伤害']},
+    '生命回溯':{desc:'受到伤害时触发，回复损失生命值（需装备提供）',affixes:['生命回溯几率','生命回溯比例']},
+    '护盾值': {desc:'所有伤害优先扣除护盾再扣生命（裸身 0）',affixes:['护盾值','护盾值加成','护盾值增幅']},
+    '护盾回溯':{desc:'每隔 2 秒触发，回复最大护盾值（需装备提供）',affixes:['护盾回溯几率','护盾回溯比例']},
+    '格挡':   {desc:'受伤时触发格挡，降低所受伤害（需装备提供）',affixes:['格挡几率','格挡比例']},
     '伤害减免':{desc:'减少所受伤害的系数【×】',affixes:['伤害减免']},
     '最终减伤':{desc:'减少所受伤害的系数【×】',affixes:['最终减伤']},
     '小怪增伤':{desc:'对小怪造成伤害时的增幅系数【独立乘区】',affixes:['小怪增伤']},
@@ -53,35 +60,110 @@
     '灌注伤害':{desc:'造成灌注伤害时的增幅系数【独立乘区】',affixes:['灌注伤害']},
   };
 
-  /* 英雄属性基线（Lv.60 · 满装快照）。改动平衡只动这里。
-     数值型：纯数字；百分比型：总系数以百分比展示（100% = ×1）；
-     触发类：原文机制数值 + 设计触发率。 */
-  const HERO_ATTRS = {
-    '生命值': '186,400',
-    '攻击力': '12,480',
-    '护甲值': '2,150',
-    '护盾值': '5,000',
-    '多重射击': '3',
-    '充能速度': '1.0 / s',
-    '物理': '142%', '混沌': '138%', '冰霜': '145%', '火焰': '148%', '毒素': '140%', '闪电': '143%',
-    '攻击伤害': '188%', '攻击速度': '152%',
-    '粉碎打击': '5% / ×2.5',
-    '法术伤害': '176%',
-    '能量回溯': '5% / 20%',
-    '法术迸发': '5% / ×2.5',
-    '暴击率': '18%', '暴击伤害': '260%',
-    '弱点暴击': '5% / ×2.5',
-    '生命回溯': '5% / 1%',
-    '护盾回溯': '10% / 1%',
-    '格挡': '5% / 30%',
-    '伤害减免': '24%', '最终减伤': '12%',
-    '小怪增伤': '130%', '精英增伤': '145%', '领主增伤': '160%',
-    '伤害加成': '128%', '伤害增幅': '126%', '伤害强化': '124%', '伤害提升': '122%',
-    '伤害扩大': '120%', '全域增伤': '135%', '钞能增伤': '118%', '最终伤害': '140%',
-    '单体伤害': '130%', '范围伤害': '132%', '投射物伤害': '134%', '持续性伤害': '128%',
-    '弹射伤害': '126%', '异常伤害': '125%', '陷阱伤害': '122%', '灌注伤害': '124%',
+  /* ---- 裸身英雄属性基准（无任何装备）。改动平衡只动这里 ---- */
+  const ATTR_DEFS = {
+    // 核心三围：数值型，直接展示 基础 + 装备加成
+    '生命值':{base:1000, kind:'flat'},
+    '攻击力':{base:100,  kind:'flat'},
+    '护甲值':{base:20,   kind:'flat'},
+    '护盾值':{base:0,    kind:'flat'},
+    // 特殊计数 / 速率
+    '多重射击':{base:1,   kind:'count'},
+    '充能速度':{base:1.0, kind:'charge'},
+    // 暴击伤害：固定基础 150%（其余均从 0 起算）
+    '暴击伤害':{base:150, kind:'critdmg'},
+    // 其余全部为百分比乘区，基础 0%；计算基准 ×1
+    '物理':{base:0,kind:'pct'},'混沌':{base:0,kind:'pct'},'冰霜':{base:0,kind:'pct'},
+    '火焰':{base:0,kind:'pct'},'毒素':{base:0,kind:'pct'},'闪电':{base:0,kind:'pct'},
+    '攻击伤害':{base:0,kind:'pct'},'攻击速度':{base:0,kind:'pct'},'粉碎打击':{base:0,kind:'pct'},
+    '法术伤害':{base:0,kind:'pct'},'能量回溯':{base:0,kind:'pct'},'法术迸发':{base:0,kind:'pct'},
+    '暴击率':{base:0,kind:'pct'},'弱点暴击':{base:0,kind:'pct'},
+    '护盾回溯':{base:0,kind:'pct'},'格挡':{base:0,kind:'pct'},'生命回溯':{base:0,kind:'pct'},
+    '伤害减免':{base:0,kind:'pct'},'最终减伤':{base:0,kind:'pct'},
+    '小怪增伤':{base:0,kind:'pct'},'精英增伤':{base:0,kind:'pct'},'领主增伤':{base:0,kind:'pct'},
+    '伤害加成':{base:0,kind:'pct'},'伤害增幅':{base:0,kind:'pct'},'伤害强化':{base:0,kind:'pct'},
+    '伤害提升':{base:0,kind:'pct'},'伤害扩大':{base:0,kind:'pct'},'全域增伤':{base:0,kind:'pct'},
+    '钞能增伤':{base:0,kind:'pct'},'最终伤害':{base:0,kind:'pct'},
+    '单体伤害':{base:0,kind:'pct'},'范围伤害':{base:0,kind:'pct'},'投射物伤害':{base:0,kind:'pct'},
+    '持续性伤害':{base:0,kind:'pct'},'弹射伤害':{base:0,kind:'pct'},'异常伤害':{base:0,kind:'pct'},
+    '陷阱伤害':{base:0,kind:'pct'},'灌注伤害':{base:0,kind:'pct'},
   };
 
+  /* ---- 简易装备（供验证右键穿戴）。attr 为各属性「加成值」 ---- */
+  const EQUIP_ITEMS = [
+    {id:'w1', name:'寒霜短刃', icon:'🗡️', rarity:'rare', slot:'武器',
+      attrs:{'攻击伤害':25,'冰霜':30,'暴击率':5}},
+    {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
+      attrs:{'生命值':220,'护甲值':12,'伤害减免':8}},
+    {id:'r1', name:'狂怒指环', icon:'💍', rarity:'rare', slot:'饰品',
+      attrs:{'暴击率':8,'暴击伤害':25}},
+    {id:'b1', name:'疾风战靴', icon:'👢', rarity:'magic', slot:'鞋子',
+      attrs:{'攻击速度':15}},
+    {id:'c1', name:'元素护符', icon:'📿', rarity:'epic', slot:'饰品',
+      attrs:{'物理':12,'混沌':12,'火焰':12,'闪电':12,'毒素':12}},
+    {id:'s1', name:'裂隙核心', icon:'🔮', rarity:'epic', slot:'核心',
+      attrs:{'法术伤害':30,'最终伤害':20,'精英增伤':15}},
+  ];
+  const ITEM_MAP = {};
+  EQUIP_ITEMS.forEach(it => { ITEM_MAP[it.id] = it; });
+
+  /* ---- 共享状态：装备穿戴 / 订阅 ---- */
+  const HERO = {
+    equipped:{},
+    _subs:[],
+    isEquipped(id){ return !!this.equipped[id]; },
+    equip(it){ this.equipped[it.id] = true; this._notify(); },
+    unequip(it){ delete this.equipped[it.id]; this._notify(); },
+    toggle(it){ this.isEquipped(it.id) ? this.unequip(it) : this.equip(it); },
+    onChange(fn){ this._subs.push(fn); },
+    _notify(){ this._subs.forEach(fn => { try { fn(); } catch (e) { console.error(e); } }); },
+  };
+  window.HERO = HERO;
+  window.ITEM_MAP = ITEM_MAP;
+  window.EQUIP_ITEMS = EQUIP_ITEMS;
+  window.ATTR_DEFS = ATTR_DEFS;
+
+  /* ---- 数值计算 ---- */
+  function bonusOf(key){
+    let s = 0;
+    for (const id in HERO.equipped) {
+      const it = ITEM_MAP[id];
+      if (it && it.attrs[key]) s += it.attrs[key];
+    }
+    return s;
+  }
+  function getVal(key){
+    const d = ATTR_DEFS[key];
+    if (!d) return 0;
+    return d.base + bonusOf(key);
+  }
+  function fmtNum(n){
+    return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  function displayVal(key){
+    const d = ATTR_DEFS[key];
+    if (!d) return '—';
+    const v = getVal(key);
+    switch (d.kind) {
+      case 'flat':   return fmtNum(v);
+      case 'count':  return '' + v;
+      case 'charge': return v.toFixed(1) + ' / s';
+      case 'critdmg':return v + '%';
+      case 'pct':
+      default:       return (v > 0 ? '+' : '') + v + '%';
+    }
+  }
+  // 计算用乘区：百分比 / 暴击伤害 → 系数（基础 ×1）；数值类 → 原数
+  function multOf(key){
+    const d = ATTR_DEFS[key];
+    if (!d) return 1;
+    const v = getVal(key);
+    if (d.kind === 'pct' || d.kind === 'critdmg') return v / 100;
+    return v;
+  }
+  window.multOf = multOf; // 供战斗层后续引用
+
+  /* ---- 面板分类（四分类结构保持不变） ---- */
   const ATTR_CATS = {
     damage:{
       groups:[
@@ -128,24 +210,28 @@
   };
 
   function ready(){ return document.getElementById('attrTabs') && document.getElementById('attrBody'); }
+
+  let curCat = 'damage';
+
   function tryInit(){
     const tabsEl = document.getElementById('attrTabs');
     const bodyEl = document.getElementById('attrBody');
     if (!tabsEl || !bodyEl) return false;
 
-    // 顶部核心条（生命/攻击/护甲）+ 六元素：由 HERO_ATTRS 驱动，确保与面板同源
-    const cp = document.getElementById('charPanel');
-    if (cp) {
+    // 顶部核心条（生命/攻击/护甲）+ 六元素：由当前状态驱动
+    function updateCore(){
+      const cp = document.getElementById('charPanel');
+      if (!cp) return;
       cp.querySelectorAll('[data-tip]').forEach(el => {
         const k = (el.getAttribute('data-tip') || '').replace(/^attr:/, '');
-        const v = HERO_ATTRS[k];
-        if (!v) return;
+        if (!(k in ATTR_DEFS)) return;
         const out = el.querySelector('.val, .vl');
-        if (out) out.textContent = v;
+        if (out) out.textContent = displayVal(k);
       });
     }
 
     function render(cat){
+      curCat = cat;
       const def = ATTR_CATS[cat];
       if (!def) return;
       bodyEl.innerHTML = '';
@@ -161,12 +247,12 @@
         g.affs.forEach(a => {
           const e = document.createElement('div');
           e.className = 'aff';
-          e.dataset.tip = a.tip || ('attr:' + a.name);
+          e.dataset.tip = 'attr:' + a.name;
           const nm = document.createElement('span');
           nm.className = 'nm'; nm.textContent = a.name;
           const vl = document.createElement('span');
           vl.className = 'vl';
-          vl.textContent = HERO_ATTRS[a.name] || '—';
+          vl.textContent = displayVal(a.name);
           e.appendChild(nm); e.appendChild(vl);
           affs.appendChild(e);
         });
@@ -174,7 +260,9 @@
         bodyEl.appendChild(sg);
       });
     }
-    render('damage');
+
+    function refresh(){ updateCore(); render(curCat); }
+    refresh();
 
     tabsEl.addEventListener('click', (e) => {
       const t = e.target.closest('.at');
@@ -182,6 +270,9 @@
       tabsEl.querySelectorAll('.at').forEach(x => x.classList.toggle('on', x === t));
       render(t.dataset.cat);
     });
+
+    // 装备变化时重渲染
+    HERO.onChange(refresh);
 
     const tip = document.createElement('div');
     tip.className = 'attrTip';
@@ -195,7 +286,7 @@
         '<h5>' + k + '</h5>' +
         '<div class="desc">' + data.desc + '</div>' +
         '<ul>' + data.affixes.map(a => '<li><span>' + a + '</span><b>词缀</b></li>').join('') + '</ul>' +
-        '<div class="meta">当前值：' + (HERO_ATTRS[k] || '—') + ' ｜ 同名词缀加法、异名词缀乘区</div>';
+        '<div class="meta">当前值：' + displayVal(k) + ' ｜ 同名词缀加法、异名词缀乘区</div>';
       const r = target.getBoundingClientRect();
       tip.style.display = 'block';
       const tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -217,16 +308,6 @@
       if (t) tip.style.display = 'none';
     });
 
-    const charBtn = document.querySelector('#fbtns .fbtn[data-k="角色"]');
-    if (charBtn) {
-      charBtn.addEventListener('click', () => {
-        const c = document.getElementById('charPanel');
-        if (!c) return;
-        const visible = c.style.display !== 'none';
-        c.style.display = visible ? 'none' : 'block';
-        charBtn.classList.toggle('on', !visible);
-      });
-    }
     return true;
   }
 
