@@ -89,10 +89,21 @@
     '陷阱伤害':{base:0,kind:'pct'},'灌注伤害':{base:0,kind:'pct'},
   };
 
-  /* ---- 词缀 → 属性归属映射（供面板按维度累加 / 弹窗分维度显示）---- */
+  /* ---- 词缀 → 属性归属映射 + 词缀类型（flat 直接加基础 / pct 百分比乘区） ---- */
   const AFFIX_TO_ATTR = {};
+  const AFFIX_KIND = {};  // 'flat' = 数值型词缀(直接加基础) / 'pct' = 百分比词缀
   Object.keys(ATTR_POOL).forEach(function (a) {
-    (ATTR_POOL[a].affixes || []).forEach(function (af) { AFFIX_TO_ATTR[af] = a; });
+    const d = ATTR_DEFS[a];
+    const isFlatAttr = d && (d.kind === 'flat' || d.kind === 'count' || d.kind === 'charge');
+    (ATTR_POOL[a].affixes || []).forEach(function (af) {
+      AFFIX_TO_ATTR[af] = a;
+      // Flat 属性的"XX加成"词缀 = flat（如 攻击力加成+25 → 基础攻击力+25）；其余 = pct
+      if (isFlatAttr && af.endsWith('加成')) {
+        AFFIX_KIND[af] = 'flat';
+      } else {
+        AFFIX_KIND[af] = 'pct';
+      }
+    });
   });
 
   /* ---- 简易装备（供验证右键穿戴）。
@@ -151,23 +162,40 @@
   window.ATTR_DEFS = ATTR_DEFS;
   window.RARITY = RARITY;
   window.ATTR_POOL = ATTR_POOL;
+  window.AFFIX_KIND = AFFIX_KIND;
 
-  /* ---- 数值计算 ---- */
-  function bonusOf(key){
+  /* ---- 数值计算（区分 flat 词缀直接加基础 / pct 词缀百分比乘区） ---- */
+  // flatBonusOf: 仅累加 flat 类型词缀（如 攻击力加成+25 → +25 点基础攻击力）
+  function flatBonusOf(key){
     let s = 0;
     for (const id in HERO.equipped) {
       const it = ITEM_MAP[id];
       if (!it || !it.attrs) continue;
       for (const ak in it.attrs) {
-        if (AFFIX_TO_ATTR[ak] === key) s += it.attrs[ak];
+        if (AFFIX_TO_ATTR[ak] === key && AFFIX_KIND[ak] === 'flat') s += it.attrs[ak];
       }
     }
     return s;
   }
+  // pctBonusOf: 仅累加 pct 类型词缀（如 攻击力增幅+25% → +25% 乘区）
+  function pctBonusOf(key){
+    let s = 0;
+    for (const id in HERO.equipped) {
+      const it = ITEM_MAP[id];
+      if (!it || !it.attrs) continue;
+      for (const ak in it.attrs) {
+        if (AFFIX_TO_ATTR[ak] === key && AFFIX_KIND[ak] === 'pct') s += it.attrs[ak];
+      }
+    }
+    return s;
+  }
+  // bonusOf: 兼容旧接口，返回 flat 总和（用于显示"基础+加成"的最终数值）
+  function bonusOf(key){ return flatBonusOf(key); }
+  // getVal: 基础值 + flat 加成（这是面板上展示的"当前值"）
   function getVal(key){
     const d = ATTR_DEFS[key];
     if (!d) return 0;
-    return d.base + bonusOf(key);
+    return d.base + flatBonusOf(key);
   }
   function fmtNum(n){
     return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -185,15 +213,21 @@
       default:       return (v > 0 ? '+' : '') + v + '%';
     }
   }
-  // 计算用乘区：百分比 / 暴击伤害 → 系数（基础 ×1）；数值类 → 原数
+  // 计算用乘区：flat 属性 → (基础+flat) × (1 + pct/100)；pct 属性 → (1 + totalPct/100)
   function multOf(key){
     const d = ATTR_DEFS[key];
     if (!d) return 1;
-    const v = getVal(key);
-    if (d.kind === 'pct' || d.kind === 'critdmg') return v / 100;
-    return v;
+    if (d.kind === 'pct' || d.kind === 'critdmg') {
+      // 百分比属性：基础值(通常0) + pct词缀总和 → 系数
+      return getVal(key) / 100;
+    }
+    // flat 属性（攻击力/生命值/护甲值等）：先加 flat，再乘 pct 乘区
+    const base = getVal(key);  // 基础 + flat 加成
+    const pct = pctBonusOf(key);
+    return base * (1 + pct / 100);
   }
   window.multOf = multOf; // 供战斗层后续引用
+  window.pctBonusOf = pctBonusOf; // 供 tooltip 显示 pct 明细
 
   /* ---- 面板分类（四分类结构保持不变） ---- */
   const ATTR_CATS = {
@@ -310,18 +344,18 @@
     tip.className = 'attrTip';
     document.body.appendChild(tip);
 
-    // 属性弹窗：按词缀维度（加成/增幅/强化…）列出实际数值
+    // 属性弹窗：按词缀维度（加成/增幅/强化…）列出实际数值，flat 词缀无%号
     function buildSrcList(k){
       const affs = (ATTR_POOL[k] && ATTR_POOL[k].affixes) || [];
       if (!affs.length) return '<div class="meta">该属性暂无词缀维度</div>';
-      const d = ATTR_DEFS[k];
-      const unit = (d && d.kind === 'flat') ? '' : '%';
       const rows = affs.map(function (af) {
         let v = 0;
         for (const id2 in HERO.equipped) {
           const it = ITEM_MAP[id2];
           if (it && it.attrs && it.attrs[af] != null) v += it.attrs[af];
         }
+        // flat 词缀（如 攻击力加成）不显示 %；pct 词缀显示 %
+        const unit = (AFFIX_KIND[af] === 'flat') ? '' : '%';
         return '<li><span>' + af + '</span><b>' + (v > 0 ? '+' : '') + v + unit + '</b></li>';
       });
       return '<ul class="src">' + rows.join('') + '</ul>';

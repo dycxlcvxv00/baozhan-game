@@ -36,9 +36,11 @@
     if (p && p.affixes && p.affixes.length) return p.affixes[p.affixes.length - 1];
     return key;
   }
-  function isFlat(key){
-    const d = ATTR_DEFS[key];
-    return !!(d && d.kind === 'flat');
+  // 判断词缀是否为 flat 类型（flat 词缀不显示 % 号）
+  function isAffixFlat(key){
+    // AFFIX_KIND 由 char-panel.js 构建，通过 window 暴露
+    const ak = (window.AFFIX_KIND || {})[key];
+    return ak === 'flat';
   }
   // 基于装备 id 的稳定随机（同件装备每次一致）
   function stableRand(seed, lo, hi){
@@ -76,7 +78,7 @@
     h += '<div class="etSec"><span class="etSecT">属性增幅</span></div><div class="etDiv"></div>';
     Object.keys(affs).forEach(function(k){
       const val = affs[k];
-      const unit = isFlat(k) ? '' : '%';
+      const unit = isAffixFlat(k) ? '' : '%';
       h += '<div class="etAff"><span class="etTier">' + (it.tier || 'T3') + '</span>'
          +   '<span class="etAffTxt">+' + val + unit + ' ' + affName(k) + '</span></div>';
     });
