@@ -441,5 +441,28 @@
     get spawned() { return spawned; },
     get tickerStarted() { return app.ticker.started; },
   };
+
+  /* 技能上阵 → 战斗区即时同步（4 塔对应 4 插槽） */
+  const TOWER_DEFAULT_COLORS = defenders.slice(1).map(function (d) { return d.color; });
+  const ELEM_COLOR_MAP = { ice: 0x6ad0ff, fire: 0xff8a5a, lightning: 0xc89bff, poison: 0x9be36a, phys: 0xffd54a };
+  window.__gameH.applySkillSlots = function (defs) {
+    if (!Array.isArray(defs)) return;
+    for (let i = 0; i < 4; i++) {
+      const d = defenders[i + 1]; const g = defG[i + 1];
+      if (!d) continue;
+      const def = defs[i]; const base = TOWER_SKILLS[i];
+      d.skill = Object.assign({}, base, def ? { name: def.name, elem: def.element } : {});
+      const col = (def && ELEM_COLOR_MAP[def.element] != null) ? ELEM_COLOR_MAP[def.element] : TOWER_DEFAULT_COLORS[i];
+      d.color = col;
+      if (g) {
+        const gr = g.children[0];
+        gr.clear();
+        gr.beginFill(col, 0.16); gr.drawRoundedRect(-18, -18, 36, 36, 11); gr.endFill();
+        gr.beginFill(col, 0.82); gr.lineStyle(2, 0xffffff, 0.7); gr.drawRoundedRect(-13, -13, 26, 26, 7); gr.endFill();
+        gr.lineStyle(0); gr.beginFill(0xffffff, 0.25); gr.drawRoundedRect(-10, -11, 20, 8, 4); gr.endFill();
+        g.children[1].text = d.skill.name[0];
+      }
+    }
+  };
 })();
 

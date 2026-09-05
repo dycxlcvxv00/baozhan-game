@@ -164,8 +164,8 @@
     justify-content:center;gap:10px;color:var(--dim);font-size:16px;text-align:center;line-height:1.7}
   .treePlaceholder b{color:var(--accent);font-size:22px}
 
-  /* 技能提示弹窗：图标(顶部镶嵌) → 名字(居中) → 标签(居中) → 描述(数字着色) → 伤害/充能双栏 */
-  .skillTip{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:420px;max-width:90vw;
+  /* 技能提示弹窗：宽度降 30%（294px）+ 整体缩放 80% */
+  .skillTip{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.8);width:294px;max-width:90vw;
     background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:34px 18px 18px;z-index:9999;
     box-shadow:0 20px 60px rgba(0,0,0,.6);backdrop-filter:blur(12px);display:none}
   /* 图标镶嵌在弹窗顶部：一半在框内，一半在框外 */
@@ -177,21 +177,30 @@
   .skillTip .tipTags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:14px}
   .skillTip .tipTag{font-size:12px;color:var(--txt);padding:4px 10px;border-radius:20px;background:rgba(255,255,255,0.06);border:1px solid var(--line)}
   .skillTip .tipDesc{color:var(--dim);font-size:14px;line-height:1.7;margin-bottom:16px}
-  /* 描述数字配色 */
+  /* 描述数字配色（与属性相关） */
   .skillTip .tipNum{font-weight:800}
-  .skillTip .tipNum.pct{color:#ffcf6b}
-  .skillTip .tipNum.time{color:#9b7bff}
-  .skillTip .tipNum.gen{color:#7fd4ff}
-  /* 双栏：左 伤害(数值/分割线/伤害) / 右 充能(水平文本) */
+  .skillTip .tipNum.frost, .skillTip .tipNum.ice{color:#7fd4ff}     /* 冰霜伤害·蓝 */
+  .skillTip .tipNum.cnt,  .skillTip .tipNum.orange{color:#ff9d5c}    /* 发射数量·橙 */
+  .skillTip .tipNum.pierce,.skillTip .tipNum.green{color:#8be08b}    /* 穿透·绿 */
+  .skillTip .tipNum.slow, .skillTip .tipNum.purple{color:#c9a0ff}    /* 减速/控制·紫 */
+  .skillTip .tipNum.dur,  .skillTip .tipNum.time, .skillTip .tipNum.gold, .skillTip .tipNum.pct{color:#ffcf6b} /* 时间/百分比·金 */
+  .skillTip .tipNum.gen,  .skillTip .tipNum.cyan{color:#7fd4ff}       /* 普通数字·青 */
+  /* 三栏：左 伤害(数值/分割线/伤害) / 右 能耗+充能(上下堆叠) */
   .skillTip .tipStats{display:flex;gap:10px}
-  .skillTip .tipStat{flex:1;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.22);padding:10px}
-  .skillTip .tipStat.dmg{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .skillTip .tipStat{flex:none;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.22);padding:10px}
+  .skillTip .tipStat.dmg{flex:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
   .skillTip .tipDmgVal{font-size:24px;font-weight:800;color:var(--gold);line-height:1}
   .skillTip .tipDivider{width:78%;height:1px;background:rgba(255,255,255,.28)}
-  .skillTip .tipDmgLabel{font-size:13px;color:var(--mute);letter-spacing:3px}
-  .skillTip .tipStat.charge{display:flex;align-items:center;justify-content:center;gap:6px}
+  .skillTip .tipDmgLabel{font-size:13px;color:var(--mute);letter-spacing:3px;white-space:nowrap}
+  .skillTip .tipStatCol{flex:1;display:flex;flex-direction:column;gap:10px}
+  .skillTip .tipStat.mini{display:flex;align-items:center;justify-content:center;gap:6px}
   .skillTip .tipStatLabel{font-size:13px;color:var(--mute)}
   .skillTip .tipStatValue{font-size:18px;font-weight:800;color:var(--gold);letter-spacing:.5px}
+
+  /* 放置模式：列表技能 / 上阵格子高亮 */
+  .skillItem.arm{border-color:var(--accent);box-shadow:0 0 16px rgba(47,230,208,.4)}
+  #skillSlots.armed .slot{border-color:rgba(47,230,208,.55);box-shadow:inset 0 0 14px rgba(47,230,208,.18)}
+  .slot.arm{border-color:var(--accent);box-shadow:0 0 16px rgba(47,230,208,.45)}
 
   /* === 角色面板（严格按截图 492×798，外层 transform:scale 适配 619 内宽） === */
   #charPanel{position:relative;width:100%;height:100%;overflow:hidden}

@@ -164,8 +164,8 @@
     justify-content:center;gap:10px;color:var(--dim);font-size:16px;text-align:center;line-height:1.7}
   .treePlaceholder b{color:var(--accent);font-size:22px}
 
-  /* 技能提示弹窗：图标(顶部镶嵌) → 名字(居中) → 标签(居中) → 描述(数字着色) → 伤害/充能双栏 */
-  .skillTip{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:420px;max-width:90vw;
+  /* 技能提示弹窗：宽度降 30%（294px）+ 整体缩放 80% */
+  .skillTip{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.8);width:294px;max-width:90vw;
     background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:34px 18px 18px;z-index:9999;
     box-shadow:0 20px 60px rgba(0,0,0,.6);backdrop-filter:blur(12px);display:none}
   /* 图标镶嵌在弹窗顶部：一半在框内，一半在框外 */
@@ -177,21 +177,30 @@
   .skillTip .tipTags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:14px}
   .skillTip .tipTag{font-size:12px;color:var(--txt);padding:4px 10px;border-radius:20px;background:rgba(255,255,255,0.06);border:1px solid var(--line)}
   .skillTip .tipDesc{color:var(--dim);font-size:14px;line-height:1.7;margin-bottom:16px}
-  /* 描述数字配色 */
+  /* 描述数字配色（与属性相关） */
   .skillTip .tipNum{font-weight:800}
-  .skillTip .tipNum.pct{color:#ffcf6b}
-  .skillTip .tipNum.time{color:#9b7bff}
-  .skillTip .tipNum.gen{color:#7fd4ff}
-  /* 双栏：左 伤害(数值/分割线/伤害) / 右 充能(水平文本) */
+  .skillTip .tipNum.frost, .skillTip .tipNum.ice{color:#7fd4ff}     /* 冰霜伤害·蓝 */
+  .skillTip .tipNum.cnt,  .skillTip .tipNum.orange{color:#ff9d5c}    /* 发射数量·橙 */
+  .skillTip .tipNum.pierce,.skillTip .tipNum.green{color:#8be08b}    /* 穿透·绿 */
+  .skillTip .tipNum.slow, .skillTip .tipNum.purple{color:#c9a0ff}    /* 减速/控制·紫 */
+  .skillTip .tipNum.dur,  .skillTip .tipNum.time, .skillTip .tipNum.gold, .skillTip .tipNum.pct{color:#ffcf6b} /* 时间/百分比·金 */
+  .skillTip .tipNum.gen,  .skillTip .tipNum.cyan{color:#7fd4ff}       /* 普通数字·青 */
+  /* 三栏：左 伤害(数值/分割线/伤害) / 右 能耗+充能(上下堆叠) */
   .skillTip .tipStats{display:flex;gap:10px}
-  .skillTip .tipStat{flex:1;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.22);padding:10px}
-  .skillTip .tipStat.dmg{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .skillTip .tipStat{flex:none;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.22);padding:10px}
+  .skillTip .tipStat.dmg{flex:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
   .skillTip .tipDmgVal{font-size:24px;font-weight:800;color:var(--gold);line-height:1}
   .skillTip .tipDivider{width:78%;height:1px;background:rgba(255,255,255,.28)}
-  .skillTip .tipDmgLabel{font-size:13px;color:var(--mute);letter-spacing:3px}
-  .skillTip .tipStat.charge{display:flex;align-items:center;justify-content:center;gap:6px}
+  .skillTip .tipDmgLabel{font-size:13px;color:var(--mute);letter-spacing:3px;white-space:nowrap}
+  .skillTip .tipStatCol{flex:1;display:flex;flex-direction:column;gap:10px}
+  .skillTip .tipStat.mini{display:flex;align-items:center;justify-content:center;gap:6px}
   .skillTip .tipStatLabel{font-size:13px;color:var(--mute)}
   .skillTip .tipStatValue{font-size:18px;font-weight:800;color:var(--gold);letter-spacing:.5px}
+
+  /* 放置模式：列表技能 / 上阵格子高亮 */
+  .skillItem.arm{border-color:var(--accent);box-shadow:0 0 16px rgba(47,230,208,.4)}
+  #skillSlots.armed .slot{border-color:rgba(47,230,208,.55);box-shadow:inset 0 0 14px rgba(47,230,208,.18)}
+  .slot.arm{border-color:var(--accent);box-shadow:0 0 16px rgba(47,230,208,.45)}
 
   /* === 角色面板（严格按截图 492×798，外层 transform:scale 适配 619 内宽） === */
   #charPanel{position:relative;width:100%;height:100%;overflow:hidden}
@@ -2260,6 +2269,29 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     get spawned() { return spawned; },
     get tickerStarted() { return app.ticker.started; },
   };
+
+  /* 技能上阵 → 战斗区即时同步（4 塔对应 4 插槽） */
+  const TOWER_DEFAULT_COLORS = defenders.slice(1).map(function (d) { return d.color; });
+  const ELEM_COLOR_MAP = { ice: 0x6ad0ff, fire: 0xff8a5a, lightning: 0xc89bff, poison: 0x9be36a, phys: 0xffd54a };
+  window.__gameH.applySkillSlots = function (defs) {
+    if (!Array.isArray(defs)) return;
+    for (let i = 0; i < 4; i++) {
+      const d = defenders[i + 1]; const g = defG[i + 1];
+      if (!d) continue;
+      const def = defs[i]; const base = TOWER_SKILLS[i];
+      d.skill = Object.assign({}, base, def ? { name: def.name, elem: def.element } : {});
+      const col = (def && ELEM_COLOR_MAP[def.element] != null) ? ELEM_COLOR_MAP[def.element] : TOWER_DEFAULT_COLORS[i];
+      d.color = col;
+      if (g) {
+        const gr = g.children[0];
+        gr.clear();
+        gr.beginFill(col, 0.16); gr.drawRoundedRect(-18, -18, 36, 36, 11); gr.endFill();
+        gr.beginFill(col, 0.82); gr.lineStyle(2, 0xffffff, 0.7); gr.drawRoundedRect(-13, -13, 26, 26, 7); gr.endFill();
+        gr.lineStyle(0); gr.beginFill(0xffffff, 0.25); gr.drawRoundedRect(-10, -11, 20, 8, 4); gr.endFill();
+        g.children[1].text = d.skill.name[0];
+      }
+    }
+  };
 })();
 
 
@@ -2811,12 +2843,14 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
  * 布局（对齐装备面板左右分栏）：
  *   左栏「技能区域」再分两块：
  *     - 左：技能列表（图标 + 名字，正方形，可拖拽）
- *     - 右：120px 宽上阵插槽区（4 个插槽，拖入即上阵）
- *   右栏「专精树」：嵌入 docs/skill-tree-ice-shard.html（自动缩放适配）
+ *     - 右：120px 宽上阵插槽区（4 个插槽，点击列表技能 → 高亮 → 点格子放置）
+ *   右栏「专精树」：嵌入 docs/skill-tree-ice-shard.html（缩放 95%，上移 30px）
  *
  * 交互：
- *   - 从列表把技能拖到插槽 → 设为上阵
- *   - 点击列表技能 / 点击已上阵插槽 → 右栏展示该技能专精树（效果一致）
+ *   - 悬停列表/上阵技能 → 弹出技能提示（图标镶嵌顶部 / 名字居中 / 标签居中 / 描述数字着色 / 伤害·能耗·充能）
+ *   - 点击列表技能 → 进入「放置模式」：右侧 4 个格子高亮；再点格子 → 放置（同技能仅上阵一个，再次点可替换）
+ *   - 拖拽技能到格子同样上阵
+ *   - 技能上阵后立即同步战斗区（4 塔对应 4 插槽）
  *
  * 专精树数据源：
  *   - iceLance（寒冰锥刺）已接入 docs/skill-tree-ice-shard.html 觉醒路线
@@ -2829,17 +2863,19 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   const SKILLS = [
     { id: 'iceLance', name: '寒冰锥刺', en: 'Ice Lance',      element: 'ice',       icon: '❄',
       tags: ['法术', '冰霜', '投射物', '直射', '异常'],
-      desc: '直线发射 4 枚冰锥，造成 300% 冰霜伤害；冰锥可穿透 2 个敌人；命中时降低目标 30% 移动速度（持续 2s）。',
-      cost: 10, chargeRate: '1.5/S', damage: '300%' },
+      // 描述数字按属性着色（语义化 span），dmgCoef 用于计算释放前伤害（英雄攻击力 × coef）
+      descHTML: '直线发射 <span class="tipNum cnt">4</span> 枚冰锥，造成 <span class="tipNum frost">300%</span> 冰霜伤害；'
+        + '冰锥可穿透 <span class="tipNum pierce">2</span> 个敌人；命中时降低目标 <span class="tipNum slow">30%</span> 移动速度（持续 <span class="tipNum dur">2s</span>）。',
+      cost: 10, chargeRate: '1.5/S', dmgCoef: 3.0 },
     { id: 'fireball', name: '爆裂火球', en: 'Fireball',        element: 'fire',      icon: '🔥',
       tags: ['火焰', '范围'], desc: '（待同步）投掷爆裂火球，命中后产生范围火焰伤害。',
-      cost: 0, chargeRate: '0', damage: '—' },
+      cost: 0, chargeRate: '0' },
     { id: 'chain',    name: '连锁闪电', en: 'Chain Lightning', element: 'lightning', icon: '⚡',
       tags: ['闪电', '弹射'], desc: '（待同步）释放连锁闪电，在敌人间弹射。',
-      cost: 0, chargeRate: '0', damage: '—' },
+      cost: 0, chargeRate: '0' },
     { id: 'spore',    name: '剧毒孢子', en: 'Poison Spore',    element: 'poison',    icon: '🧪',
       tags: ['毒素', '持续'], desc: '（待同步）播撒剧毒孢子，造成持续毒素伤害。',
-      cost: 0, chargeRate: '0', damage: '—' },
+      cost: 0, chargeRate: '0' },
   ];
 
   const ELEM_COLOR = {
@@ -2850,11 +2886,20 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   const SLOT_COUNT = 4;
   const slots = new Array(SLOT_COUNT).fill(null); // 每个元素存技能 id 或 null
   let selectedId = null;
-  let treeFrame = null; // 专精树 iframe（懒创建、复用）
+  let armedId = null;     // 放置模式：当前待放置的技能
+  let treeFrame = null;   // 专精树 iframe（懒创建、复用）
 
   function skillById(id) {
     for (let i = 0; i < SKILLS.length; i++) if (SKILLS[i].id === id) return SKILLS[i];
     return null;
+  }
+
+  /* 英雄攻击力（用于计算释放前伤害值，取角色面板里的攻击力数值） */
+  function getHeroAttack() {
+    const el = document.querySelector('.ca.atk .val');
+    if (!el) return 100;
+    const n = parseInt(String(el.textContent).replace(/[^\d]/g, ''), 10);
+    return isNaN(n) ? 100 : n;
   }
 
   /* ---------- 渲染：左侧技能列表 ---------- */
@@ -2864,13 +2909,18 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     host.innerHTML = '';
     SKILLS.forEach(function (s) {
       const item = document.createElement('div');
-      item.className = 'skillItem' + (s.id === selectedId ? ' sel' : '');
+      item.className = 'skillItem' + (s.id === selectedId ? ' sel' : '') + (s.id === armedId ? ' arm' : '');
       item.setAttribute('draggable', 'true');
       item.dataset.id = s.id;
       item.innerHTML =
         '<div class="ic" style="border-color:' + (ELEM_COLOR[s.element] || 'var(--line)') + '">' + s.icon + '</div>'
         + '<div class="nm">' + s.name + '</div>';
-      item.addEventListener('click', function () { select(s.id); openSkillPopup(s); });
+      item.addEventListener('mouseenter', function () { openSkillPopup(s); });
+      item.addEventListener('mouseleave', hideSkillPopup);
+      item.addEventListener('click', function () {
+        armedId = (armedId === s.id) ? null : s.id; // 再次点击同一技能 → 取消放置模式
+        renderList(); renderSlots(); select(s.id);
+      });
       item.addEventListener('dragstart', function (e) {
         e.dataTransfer.setData('text/plain', s.id);
         e.dataTransfer.effectAllowed = 'copy';
@@ -2879,15 +2929,30 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     });
   }
 
+  /* 放置技能到插槽 i（保证同一技能只上阵一个） */
+  function placeSkill(i, id) {
+    for (let k = 0; k < SLOT_COUNT; k++) if (slots[k] === id) slots[k] = null;
+    slots[i] = id;
+  }
+
+  /* 上阵变化 → 立即同步战斗区 4 塔 */
+  function syncBattleArea() {
+    const defs = slots.map(function (id) { return id ? skillById(id) : null; });
+    if (window.__gameH && typeof window.__gameH.applySkillSlots === 'function') {
+      window.__gameH.applySkillSlots(defs);
+    }
+  }
+
   /* ---------- 渲染：右侧上阵插槽 ---------- */
   function renderSlots() {
     const host = document.getElementById('skillSlots');
     if (!host) return;
     host.innerHTML = '';
+    host.classList.toggle('armed', !!armedId); // 放置模式：格子整体高亮
     for (let i = 0; i < SLOT_COUNT; i++) {
       const id = slots[i];
       const slot = document.createElement('div');
-      slot.className = 'slot' + (id ? ' filled' : '') + (id === selectedId ? ' sel' : '');
+      slot.className = 'slot' + (id ? ' filled' : '') + (id === selectedId ? ' sel' : '') + (id === armedId ? ' arm' : '');
       slot.dataset.index = String(i);
       if (id) {
         const s = skillById(id);
@@ -2896,29 +2961,35 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
           + '<div class="ic" style="border-color:' + (ELEM_COLOR[s.element] || 'var(--line)') + '">' + s.icon + '</div>'
           + '<div class="nm">' + s.name + '</div>'
           + '<span class="rm" title="取消上阵">✕</span>';
+        slot.addEventListener('mouseenter', function () { openSkillPopup(s); });
+        slot.addEventListener('mouseleave', hideSkillPopup);
         slot.addEventListener('click', function (e) {
           if (e.target.classList.contains('rm')) {
             e.stopPropagation();
-            slots[i] = null;
-            renderSlots();
+            slots[i] = null; renderSlots(); syncBattleArea();
             return;
           }
-          select(id);
-          openSkillPopup(s);
+          if (armedId) { // 放置模式：点格子 → 放置（可替换）
+            placeSkill(i, armedId); armedId = null; renderSlots(); select(slots[i]); syncBattleArea();
+          } else {
+            select(id); openSkillPopup(s);
+          }
         });
       } else {
         slot.innerHTML = '<div class="ph">空</div>';
+        slot.addEventListener('mouseenter', function () { if (armedId) openSkillPopup(skillById(armedId)); });
+        slot.addEventListener('mouseleave', hideSkillPopup);
+        slot.addEventListener('click', function () {
+          if (armedId) { placeSkill(i, armedId); armedId = null; renderSlots(); select(slots[i]); syncBattleArea(); }
+        });
       }
       slot.addEventListener('dragover', function (e) { e.preventDefault(); slot.classList.add('over'); });
       slot.addEventListener('dragleave', function () { slot.classList.remove('over'); });
       slot.addEventListener('drop', function (e) {
-        e.preventDefault();
-        slot.classList.remove('over');
+        e.preventDefault(); slot.classList.remove('over');
         const dropped = e.dataTransfer.getData('text/plain');
         if (dropped && skillById(dropped)) {
-          slots[i] = dropped;
-          renderSlots();
-          select(dropped); // 拖入后顺便展示其专精树
+          placeSkill(i, dropped); renderSlots(); select(dropped); syncBattleArea();
         }
       });
       host.appendChild(slot);
@@ -2928,7 +2999,6 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   /* ---------- 选择技能 → 高亮 + 展示专精树 ---------- */
   function select(id) {
     selectedId = id;
-    // 更新高亮
     Array.prototype.forEach.call(document.querySelectorAll('#skillList .skillItem'), function (el) {
       el.classList.toggle('sel', el.dataset.id === id);
     });
@@ -2939,12 +3009,11 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     renderTree(id);
   }
 
-  /* ---------- 渲染：右栏专精树 ---------- */
+  /* ---------- 渲染：右栏专精树（缩放 95% + 上移 30px） ---------- */
   function ensureFrame() {
     if (treeFrame) return treeFrame;
     treeFrame = document.createElement('iframe');
     treeFrame.id = 'treeFrame';
-    // 嵌入模式仅保留 SVG 树区域（viewBox 1060×560）
     treeFrame.style.width = '1060px';
     treeFrame.style.height = '560px';
     treeFrame.onload = fitFrame;
@@ -2954,10 +3023,10 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   function fitFrame() {
     const host = document.getElementById('skillTreeHost');
     if (!treeFrame || !treeFrame.parentNode || !host) return;
-    const sc = Math.min(host.clientWidth / 1060, host.clientHeight / 560);
+    const sc = 0.95; // 固定缩放至 95%
     treeFrame.style.transform = 'scale(' + sc + ')';
     treeFrame.style.left = ((host.clientWidth - 1060 * sc) / 2) + 'px';
-    treeFrame.style.top = ((host.clientHeight - 560 * sc) / 2) + 'px';
+    treeFrame.style.top = ((host.clientHeight - 560 * sc) / 2 - 30) + 'px'; // 上移 30px
   }
 
   function renderTree(id) {
@@ -2966,7 +3035,6 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     host.innerHTML = '';
     const s = skillById(id);
     if (s && s.id === 'iceLance') {
-      // 寒冰锥刺：嵌入觉醒路线文档
       const f = ensureFrame();
       const TREE_SRC = 'docs/skill-tree-ice-shard.html?embed=1';
       if (f.getAttribute('data-src') !== TREE_SRC) {
@@ -2976,7 +3044,6 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       host.appendChild(f);
       fitFrame();
     } else {
-      // 其余技能：专精树尚未设计
       const name = s ? s.name : id;
       const ph = document.createElement('div');
       ph.className = 'treePlaceholder';
@@ -2985,7 +3052,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     }
   }
 
-  /* ---------- 技能提示弹窗（仿 Last Epoch 风格） ---------- */
+  /* ---------- 技能提示弹窗（悬停显示） ---------- */
   function skillTipEl() {
     let el = document.getElementById('skillTip');
     if (!el) {
@@ -2997,7 +3064,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     return el;
   }
 
-  /* 描述中的数字渲染：百分比(金) / 时间紫 / 普通数(青) */
+  /* 描述数字着色：语义化 class（冰霜蓝 / 数量橙 / 穿透绿 / 减速紫 / 时间金） */
   function renderDesc(text) {
     const esc = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return esc.replace(/(\d+(?:\.\d+)?)(%|\/S|s)?/g, function (m, _num, unit) {
@@ -3010,15 +3077,21 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   }
 
   function popupHTML(s) {
-    const color = ELEM_COLOR[s.element] || '#eaf0ff';
-    return '<div class="tipIcon" style="border-color:' + color + '">' + s.icon + '</div>'
+    // 左侧伤害值 = 英雄攻击力 × 系数（释放前的值）
+    const atk = getHeroAttack();
+    const dmgVal = (typeof s.dmgCoef === 'number') ? Math.round(atk * s.dmgCoef) : (s.damage || '—');
+    const desc = s.descHTML ? s.descHTML : renderDesc(s.desc);
+    return '<div class="tipIcon" style="border-color:' + (ELEM_COLOR[s.element] || '#eaf0ff') + '">' + s.icon + '</div>'
       + '<div class="tipTitle">' + s.name + '</div>'
       + '<div class="tipTags">' + s.tags.map(function (t) { return '<span class="tipTag">' + t + '</span>'; }).join('') + '</div>'
-      + '<div class="tipDesc">' + renderDesc(s.desc) + '</div>'
+      + '<div class="tipDesc">' + desc + '</div>'
       + '<div class="tipStats">'
-      + '<div class="tipStat dmg"><div class="tipDmgVal">' + (s.damage || '—') + '</div>'
-      +   '<div class="tipDivider"></div><div class="tipDmgLabel">伤害</div></div>'
-      + '<div class="tipStat charge"><div class="tipStatLabel">充能</div><div class="tipStatValue">' + s.chargeRate + '</div></div>'
+      +   '<div class="tipStat dmg"><div class="tipDmgVal">' + dmgVal + '</div>'
+      +     '<div class="tipDivider"></div><div class="tipDmgLabel">伤害</div></div>'
+      +   '<div class="tipStatCol">'
+      +     '<div class="tipStat mini"><div class="tipStatLabel">能耗</div><div class="tipStatValue">' + s.cost + '</div></div>'
+      +     '<div class="tipStat mini"><div class="tipStatLabel">充能</div><div class="tipStatValue">' + s.chargeRate + '</div></div>'
+      +   '</div>'
       + '</div>';
   }
 
@@ -3027,14 +3100,11 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     tip.innerHTML = popupHTML(s);
     tip.style.display = 'block';
     tip.onclick = function (e) { e.stopPropagation(); };
-    setTimeout(function () {
-      document.addEventListener('click', function close(e) {
-        // 点击技能项/插槽时由对应 click 监听重新打开，不要在这里关闭
-        if (e.target.closest('.skillItem, .slot')) return;
-        tip.style.display = 'none';
-        document.removeEventListener('click', close);
-      }, { once: true });
-    }, 0);
+  }
+
+  function hideSkillPopup() {
+    const tip = document.getElementById('skillTip');
+    if (tip) tip.style.display = 'none';
   }
 
   /* ---------- 入口：由 left-tabs.js 在切到「技能」视图时调用 ---------- */
@@ -3043,6 +3113,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     renderSlots();
     if (!selectedId) selectedId = 'iceLance'; // 默认展示寒冰锥刺觉醒树
     select(selectedId);
+    syncBattleArea(); // 初始同步战斗区（当前 4 槽为空 → 使用默认塔配置）
   }
 
   window.__skillRender = render;
