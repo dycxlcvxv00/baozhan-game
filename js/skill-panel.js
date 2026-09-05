@@ -137,8 +137,9 @@
     if (treeFrame) return treeFrame;
     treeFrame = document.createElement('iframe');
     treeFrame.id = 'treeFrame';
-    treeFrame.style.width = '1080px';
-    treeFrame.style.height = '1120px';
+    // 嵌入模式仅保留 SVG 树区域（viewBox 1060×560）
+    treeFrame.style.width = '1060px';
+    treeFrame.style.height = '560px';
     treeFrame.onload = fitFrame;
     return treeFrame;
   }
@@ -146,10 +147,10 @@
   function fitFrame() {
     const host = document.getElementById('skillTreeHost');
     if (!treeFrame || !treeFrame.parentNode || !host) return;
-    const sc = Math.min(host.clientWidth / 1080, host.clientHeight / 1120);
+    const sc = Math.min(host.clientWidth / 1060, host.clientHeight / 560);
     treeFrame.style.transform = 'scale(' + sc + ')';
-    treeFrame.style.left = ((host.clientWidth - 1080 * sc) / 2) + 'px';
-    treeFrame.style.top = ((host.clientHeight - 1120 * sc) / 2) + 'px';
+    treeFrame.style.left = ((host.clientWidth - 1060 * sc) / 2) + 'px';
+    treeFrame.style.top = ((host.clientHeight - 560 * sc) / 2) + 'px';
   }
 
   function renderTree(id) {
@@ -160,9 +161,10 @@
     if (s && s.id === 'iceLance') {
       // 寒冰锥刺：嵌入觉醒路线文档
       const f = ensureFrame();
-      if (f.getAttribute('data-src') !== 'docs/skill-tree-ice-shard.html') {
-        f.setAttribute('data-src', 'docs/skill-tree-ice-shard.html');
-        f.src = 'docs/skill-tree-ice-shard.html';
+      const TREE_SRC = 'docs/skill-tree-ice-shard.html?embed=1';
+      if (f.getAttribute('data-src') !== TREE_SRC) {
+        f.setAttribute('data-src', TREE_SRC);
+        f.src = TREE_SRC;
       }
       host.appendChild(f);
       fitFrame();

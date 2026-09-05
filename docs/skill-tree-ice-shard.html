@@ -82,7 +82,20 @@
     .legend-shape.dia { transform: rotate(45deg); width: 13px; height: 13px; }
     .legend-shape.circle { border-radius: 50%; }
     .route-badge { fill: var(--text-dim); font-size: 13px; font-weight: bold; }
+
+    /* === 嵌入模式：仅保留 SVG 专精树区域 === */
+    .embed body { padding: 0; min-height: auto; background: transparent; }
+    .embed .wrap { max-width: none; margin: 0; }
+    .embed h1, .embed .subtitle, .embed .base-skill, .embed .legend, .embed .detail-panel { display: none; }
+    .embed .tree-panel { border: 0; border-radius: 0; background: transparent; padding: 0; overflow: visible; backdrop-filter: none; }
   </style>
+  <script>
+    /* 供外部 iframe 调用：?embed=1 时只展示 SVG 树本身 */
+    (function () {
+      const params = new URLSearchParams(location.search);
+      if (params.get('embed') === '1') document.documentElement.classList.add('embed');
+    })();
+  </script>
 </head>
 <body>
   <div class="wrap">
