@@ -62,6 +62,10 @@
   #topbar .purbar > i{display:block;height:100%;width:0%;border-radius:8px;
     background:linear-gradient(90deg,#49e0ff,#2fe6d0);transition:width .12s linear}
   #topbar .purbar.boss > i{background:linear-gradient(90deg,#ffd54a,#ff8a5a);box-shadow:0 0 12px rgba(255,138,90,.5)}
+  /* 顶部栏居中组：关卡数 + 净化进度 绝对居中，不随左右内容偏移 */
+  #topbar .hud-center{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    display:flex; align-items:center; gap:22px; pointer-events:none}
+  #topbar .hud-center .lvl, #topbar .hud-center .purwrap{pointer-events:auto}
 
   /* 战斗区 */
   #battleWrap{position:absolute;left:635px;top:90px;width:650px;height:300px;border-radius:14px;overflow:hidden;
@@ -389,10 +393,12 @@
   <!-- 顶部栏 -->
   <div id="topbar" class="panel">
     <span class="brand">爆战丨无限弹幕</span>
-    <span class="lvl">关卡 <b id="hLevel">1</b></span>
-    <span class="purwrap">
-      <span class="lab">净化</span>
-      <span class="purbar" id="purifyBar"><i id="purifyFill"></i></span>
+    <span class="hud-center">
+      <span class="lvl">关卡 <b id="hLevel">1</b></span>
+      <span class="purwrap">
+        <span class="lab">净化</span>
+        <span class="purbar" id="purifyBar"><i id="purifyFill"></i></span>
+      </span>
     </span>
     <span class="stat">金币 <b>—</b></span>
     <span class="stat">战力 <b>—</b></span>

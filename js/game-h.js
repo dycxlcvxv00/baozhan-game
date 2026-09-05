@@ -16,6 +16,7 @@
   const WALL_X = 120;        // 围墙左边缘
   const WALL_W = 26;         // 围墙宽度（立体砖墙）
   const WALL_RX = WALL_X + WALL_W; // 围墙右边缘（怪物撞墙线）
+  const ATK_STANDOFF = 20;   // 怪物攻墙时与墙保持的距离（不贴墙）
   const SPAWN_X = 648;       // 怪物生成 x（最右）
   const LANES = [25, 61, 96, 132, 168, 204, 239, 275]; // 8 条横向车道（y）
 
@@ -278,10 +279,11 @@
     if (spawnTimer >= spawnInterval) { spawnTimer = 0; spawnMonster(); spawned++; }
 
     // 怪物移动 + 撞墙
+    let wallBroken = false;
     for (const m of monsters) {
       if (m.dead) continue;
       m.x -= m.speed * dt;
-      if (m.x < WALL_RX + 2) m.x = WALL_RX + 2;   // 被墙体阻挡（不再越过围墙）
+      if (m.x < WALL_RX + ATK_STANDOFF) m.x = WALL_RX + ATK_STANDOFF;   // 被墙体阻挡，但与墙保持距离
       if (!m.g) {
         m.g = new PIXI.Graphics();
         const col = m.type === 'boss' ? 0xff6b81 : m.type === 'elite' ? 0xffa657 : 0xff8a6b;
@@ -297,37 +299,34 @@
       m.bar.clear();
       m.bar.beginFill(0x000000, 0.5); m.bar.drawRect(m.x - 14, m.y - 20, 28, 4); m.bar.endFill();
       m.bar.beginFill(0x6ee7a8, 0.95); m.bar.drawRect(m.x - 14, m.y - 20, 28 * (m.hp / m.maxhp), 4); m.bar.endFill();
-      // 撞墙
-      if (m.x <= WALL_RX + 2) {
+      // 攻墙：贴近（保持距离）后按 1 次/秒攻击；城破 → 标记并退出
+      if (m.x <= WALL_RX + ATK_STANDOFF) {
         m.atkCd -= dt;
         if (m.atkCd <= 0) {
           m.atkCd = 1.0;
           const raw = (m.type === 'boss' ? 60 : m.type === 'elite' ? 26 : 12) * (1 + level * 0.1);
           wallTakeDamage(raw);
-          if (wallHp <= 0) { wallHp = wallHpMax; } // 破墙则复位（推关改由击杀 BOSS 触发）
+          if (wallHp <= 0) { wallBroken = true; break; } // 城破 → 后续统一清空
         }
       }
+    }
+
+    // 城破：清空全场怪物、清空进度，从当前关卡重新开始（关卡数不变，墙补满）
+    if (wallBroken) {
+      for (const m of monsters) { killGfx(m); m.dead = true; }
+      monsters.length = 0;
+      purify = 0; bossActive = false; wallHp = wallHpMax;
     }
 
     // 防御方阵开火
     for (const d of defenders) {
       d.cd -= dt;
       if (d.cd <= 0) {
-        // 选目标：BOSS 在场时全体集火 BOSS，否则选最靠前（x 最小且 > 围墙）的怪物
+        // 选目标：始终优先攻击最靠前（x 最小、未越过围墙）的敌人
         let best = null;
-        if (bossActive) {
-          let b = null;
-          for (const m of monsters) {
-            if (m.dead || m.x <= WALL_X || m.type !== 'boss') continue;
-            if (!b || m.x < b.x) b = m;
-          }
-          best = b;
-        }
-        if (!best) {
-          for (const m of monsters) {
-            if (m.dead || m.x <= WALL_X) continue;
-            if (!best || m.x < best.x) best = m;
-          }
+        for (const m of monsters) {
+          if (m.dead || m.x <= WALL_X) continue;
+          if (!best || m.x < best.x) best = m;
         }
         if (best) {
           d.cd = d.skill.cd;
@@ -388,14 +387,15 @@
     if (domPurifyFill) domPurifyFill.style.width = (pr * 100).toFixed(1) + '%';
     if (domPurifyBar) domPurifyBar.classList.toggle('boss', pr >= 1);
 
-    // 围墙血条（竖向，贴墙左侧；血量即英雄生命，护甲参与减伤）
+    // 围墙血条（竖向，贴墙左侧；血量即英雄生命，护甲参与减伤；填充锚定底部，从上向下降低）
     const wr = wallHpMax > 0 ? Math.max(0, wallHp / wallHpMax) : 0;
     const VBAR = { x: WALL_X - 9, w: 6, top: 6, bot: BH - 6 };
     const vh = VBAR.bot - VBAR.top;
     const wcol = wr > 0.5 ? 0x6ee7a8 : wr > 0.25 ? 0xffd166 : 0xff6b81;
+    const fillH = Math.max(1, vh * wr);
     wallHpBar.clear();
     wallHpBar.beginFill(0x10141f, 0.92); wallHpBar.drawRoundedRect(VBAR.x, VBAR.top, VBAR.w, vh, 3); wallHpBar.endFill();
-    wallHpBar.beginFill(wcol, 0.96); wallHpBar.drawRoundedRect(VBAR.x, VBAR.top, VBAR.w, Math.max(1, vh * wr), 3); wallHpBar.endFill();
+    wallHpBar.beginFill(wcol, 0.96); wallHpBar.drawRoundedRect(VBAR.x, VBAR.bot - fillH, VBAR.w, fillH, 3); wallHpBar.endFill();
   }
 
   function killMonster(m) {
