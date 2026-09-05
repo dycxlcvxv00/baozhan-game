@@ -24,7 +24,7 @@
     { id: 'iceLance', name: '寒冰锥刺', en: 'Ice Lance',      element: 'ice',       icon: '❄',
       tags: ['法术', '冰霜', '投射物', '直射', '异常'],
       desc: '直线发射 4 枚冰锥，造成 300% 冰霜伤害；冰锥可穿透 2 个敌人；命中时降低目标 30% 移动速度（持续 2s）。',
-      cost: 12, chargeRate: '1/S' },
+      cost: 10, chargeRate: '1.5/S' },
     { id: 'fireball', name: '爆裂火球', en: 'Fireball',        element: 'fire',      icon: '🔥',
       tags: ['火焰', '范围'], desc: '（待同步）投掷爆裂火球，命中后产生范围火焰伤害。',
       cost: 0, chargeRate: '0' },
@@ -64,7 +64,7 @@
       item.innerHTML =
         '<div class="ic" style="border-color:' + (ELEM_COLOR[s.element] || 'var(--line)') + '">' + s.icon + '</div>'
         + '<div class="nm">' + s.name + '</div>';
-      item.addEventListener('click', function () { select(s.id); });
+      item.addEventListener('click', function () { select(s.id); openSkillPopup(s); });
       item.addEventListener('dragstart', function (e) {
         e.dataTransfer.setData('text/plain', s.id);
         e.dataTransfer.effectAllowed = 'copy';
@@ -98,6 +98,7 @@
             return;
           }
           select(id);
+          openSkillPopup(s);
         });
       } else {
         slot.innerHTML = '<div class="ph">空</div>';
@@ -176,6 +177,53 @@
       ph.innerHTML = '<b>专精树开发中</b>「' + name + '」的专精树尚未设计<br>当前仅「寒冰锥刺」已接入觉醒路线文档。';
       host.appendChild(ph);
     }
+  }
+
+  /* ---------- 技能提示弹窗（仿 Last Epoch 风格） ---------- */
+  function skillTipEl() {
+    let el = document.getElementById('skillTip');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'skillTip';
+      el.className = 'skillTip';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function popupHTML(s) {
+    const color = ELEM_COLOR[s.element] || '#eaf0ff';
+    return '<div class="tipHead">'
+      + '<div class="tipIcon" style="background:linear-gradient(160deg,' + tintColor(color, 0.3) + ',' + tintColor(color, 0.1) + ');border-color:' + color + '">' + s.icon + '</div>'
+      + '<div class="tipTitle">' + s.name + ' <span>' + s.en + '</span></div>'
+      + '</div>'
+      + '<div class="tipDesc">' + s.desc + '</div>'
+      + '<div class="tipTags">' + s.tags.map(function (t) { return '<span class="tipTag">' + t + '</span>'; }).join('') + '</div>'
+      + '<div class="tipStats">'
+      + '<div class="tipStat"><div class="tipStatLabel">能耗</div><div class="tipStatValue">' + s.cost + '</div></div>'
+      + '<div class="tipStat"><div class="tipStatLabel">充能</div><div class="tipStatValue">' + s.chargeRate + '</div></div>'
+      + '</div>';
+  }
+
+  function tintColor(hex, a) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+
+  function openSkillPopup(s) {
+    const tip = skillTipEl();
+    tip.innerHTML = popupHTML(s);
+    tip.style.display = 'block';
+    tip.onclick = function (e) { e.stopPropagation(); };
+    setTimeout(function () {
+      document.addEventListener('click', function close(e) {
+        // 点击技能项/插槽时由对应 click 监听重新打开，不要在这里关闭
+        if (e.target.closest('.skillItem, .slot')) return;
+        tip.style.display = 'none';
+        document.removeEventListener('click', close);
+      }, { once: true });
+    }, 0);
   }
 
   /* ---------- 入口：由 left-tabs.js 在切到「技能」视图时调用 ---------- */
