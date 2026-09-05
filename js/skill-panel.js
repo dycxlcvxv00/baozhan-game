@@ -24,16 +24,16 @@
     { id: 'iceLance', name: '寒冰锥刺', en: 'Ice Lance',      element: 'ice',       icon: '❄',
       tags: ['法术', '冰霜', '投射物', '直射', '异常'],
       desc: '直线发射 4 枚冰锥，造成 300% 冰霜伤害；冰锥可穿透 2 个敌人；命中时降低目标 30% 移动速度（持续 2s）。',
-      cost: 10, chargeRate: '1.5/S' },
+      cost: 10, chargeRate: '1.5/S', damage: '300%' },
     { id: 'fireball', name: '爆裂火球', en: 'Fireball',        element: 'fire',      icon: '🔥',
       tags: ['火焰', '范围'], desc: '（待同步）投掷爆裂火球，命中后产生范围火焰伤害。',
-      cost: 0, chargeRate: '0' },
+      cost: 0, chargeRate: '0', damage: '—' },
     { id: 'chain',    name: '连锁闪电', en: 'Chain Lightning', element: 'lightning', icon: '⚡',
       tags: ['闪电', '弹射'], desc: '（待同步）释放连锁闪电，在敌人间弹射。',
-      cost: 0, chargeRate: '0' },
+      cost: 0, chargeRate: '0', damage: '—' },
     { id: 'spore',    name: '剧毒孢子', en: 'Poison Spore',    element: 'poison',    icon: '🧪',
       tags: ['毒素', '持续'], desc: '（待同步）播撒剧毒孢子，造成持续毒素伤害。',
-      cost: 0, chargeRate: '0' },
+      cost: 0, chargeRate: '0', damage: '—' },
   ];
 
   const ELEM_COLOR = {
@@ -191,24 +191,29 @@
     return el;
   }
 
-  function popupHTML(s) {
-    const color = ELEM_COLOR[s.element] || '#eaf0ff';
-    return '<div class="tipHead">'
-      + '<div class="tipIcon" style="background:linear-gradient(160deg,' + tintColor(color, 0.3) + ',' + tintColor(color, 0.1) + ');border-color:' + color + '">' + s.icon + '</div>'
-      + '<div class="tipTitle">' + s.name + ' <span>' + s.en + '</span></div>'
-      + '</div>'
-      + '<div class="tipDesc">' + s.desc + '</div>'
-      + '<div class="tipTags">' + s.tags.map(function (t) { return '<span class="tipTag">' + t + '</span>'; }).join('') + '</div>'
-      + '<div class="tipStats">'
-      + '<div class="tipStat"><div class="tipStatLabel">能耗</div><div class="tipStatValue">' + s.cost + '</div></div>'
-      + '<div class="tipStat"><div class="tipStatLabel">充能</div><div class="tipStatValue">' + s.chargeRate + '</div></div>'
-      + '</div>';
+  /* 描述中的数字渲染：百分比(金) / 时间紫 / 普通数(青) */
+  function renderDesc(text) {
+    const esc = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return esc.replace(/(\d+(?:\.\d+)?)(%|\/S|s)?/g, function (m, _num, unit) {
+      let cls = 'tipNum ';
+      if (unit === '%') cls += 'pct';
+      else if (unit === '/S' || unit === 's') cls += 'time';
+      else cls += 'gen';
+      return '<span class="' + cls + '">' + m + '</span>';
+    });
   }
 
-  function tintColor(hex, a) {
-    const h = hex.replace('#', '');
-    const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
-    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  function popupHTML(s) {
+    const color = ELEM_COLOR[s.element] || '#eaf0ff';
+    return '<div class="tipIcon" style="border-color:' + color + '">' + s.icon + '</div>'
+      + '<div class="tipTitle">' + s.name + '</div>'
+      + '<div class="tipTags">' + s.tags.map(function (t) { return '<span class="tipTag">' + t + '</span>'; }).join('') + '</div>'
+      + '<div class="tipDesc">' + renderDesc(s.desc) + '</div>'
+      + '<div class="tipStats">'
+      + '<div class="tipStat dmg"><div class="tipDmgVal">' + (s.damage || '—') + '</div>'
+      +   '<div class="tipDivider"></div><div class="tipDmgLabel">伤害</div></div>'
+      + '<div class="tipStat charge"><div class="tipStatLabel">充能</div><div class="tipStatValue">' + s.chargeRate + '</div></div>'
+      + '</div>';
   }
 
   function openSkillPopup(s) {
