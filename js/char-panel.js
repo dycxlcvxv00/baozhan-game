@@ -1,4 +1,9 @@
-/* === 角色属性面板（多文件版） · 来源：主文档「13. 伤害系统」属性释义 === */
+/* === 角色属性面板（多文件版） · 来源：主文档「13. 伤害系统」属性释义 ===
+ * 数值真相源 = HERO_ATTRS（Lv.60 英雄属性基线，严格遵循第 13 章「显示样式」：
+ *   数值型 = 攻击力 / 生命值 / 护甲值 / 护盾值 / 多重射击 / 充能速度
+ *   百分比型 = 其余增幅系数【×】（文档中以百分比展示，100% = ×1）
+ *   触发类机制数值（5% / 2.5×、护盾 5000 等）直接取自第 13 章原文。
+ * 面板四分类 / 顶部核心条 / 六元素均由本表驱动，不再写散落假数字。 */
 (function initCharPanel(){
   const ATTR_POOL = {
     '生命值':{desc:'城墙所能承受的伤害值',affixes:['生命值加成','生命值强化','生命值增幅']},
@@ -48,72 +53,75 @@
     '灌注伤害':{desc:'造成灌注伤害时的增幅系数【独立乘区】',affixes:['灌注伤害']},
   };
 
+  /* 英雄属性基线（Lv.60 · 满装快照）。改动平衡只动这里。
+     数值型：纯数字；百分比型：总系数以百分比展示（100% = ×1）；
+     触发类：原文机制数值 + 设计触发率。 */
+  const HERO_ATTRS = {
+    '生命值': '186,400',
+    '攻击力': '12,480',
+    '护甲值': '2,150',
+    '护盾值': '5,000',
+    '多重射击': '3',
+    '充能速度': '1.0 / s',
+    '物理': '142%', '混沌': '138%', '冰霜': '145%', '火焰': '148%', '毒素': '140%', '闪电': '143%',
+    '攻击伤害': '188%', '攻击速度': '152%',
+    '粉碎打击': '5% / ×2.5',
+    '法术伤害': '176%',
+    '能量回溯': '5% / 20%',
+    '法术迸发': '5% / ×2.5',
+    '暴击率': '18%', '暴击伤害': '260%',
+    '弱点暴击': '5% / ×2.5',
+    '生命回溯': '5% / 1%',
+    '护盾回溯': '10% / 1%',
+    '格挡': '5% / 30%',
+    '伤害减免': '24%', '最终减伤': '12%',
+    '小怪增伤': '130%', '精英增伤': '145%', '领主增伤': '160%',
+    '伤害加成': '128%', '伤害增幅': '126%', '伤害强化': '124%', '伤害提升': '122%',
+    '伤害扩大': '120%', '全域增伤': '135%', '钞能增伤': '118%', '最终伤害': '140%',
+    '单体伤害': '130%', '范围伤害': '132%', '投射物伤害': '134%', '持续性伤害': '128%',
+    '弹射伤害': '126%', '异常伤害': '125%', '陷阱伤害': '122%', '灌注伤害': '124%',
+  };
+
   const ATTR_CATS = {
     damage:{
       groups:[
         {cls:'atk',title:'攻击',affs:[
-          {name:'攻击伤害', val:'1035%', tip:'attr:攻击伤害'},
-          {name:'攻击速度', val:'1035%', tip:'attr:攻击速度'},
-          {name:'多重射击', val:'1035%', tip:'attr:多重射击'},
-          {name:'粉碎打击', val:'1035%', tip:'attr:粉碎打击'},
+          {name:'攻击伤害'}, {name:'攻击速度'}, {name:'多重射击'}, {name:'粉碎打击'},
         ]},
         {cls:'mgc',title:'法术',affs:[
-          {name:'法术伤害', val:'1035%', tip:'attr:法术伤害'},
-          {name:'充能速度', val:'1.5/S',tip:'attr:充能速度'},
-          {name:'能量回溯', val:'1035%', tip:'attr:能量回溯'},
-          {name:'法术迸发', val:'1035%', tip:'attr:法术迸发'},
+          {name:'法术伤害'}, {name:'充能速度'}, {name:'能量回溯'}, {name:'法术迸发'},
         ]},
         {cls:'crt',title:'暴击',affs:[
-          {name:'暴击率',   val:'1035%', tip:'attr:暴击率'},
-          {name:'暴击伤害', val:'1035%', tip:'attr:暴击伤害'},
-          {name:'弱点暴击', val:'1035%', tip:'attr:弱点暴击'},
+          {name:'暴击率'}, {name:'暴击伤害'}, {name:'弱点暴击'},
         ]},
       ]
     },
     defense:{
       groups:[
         {cls:'def',title:'防御',affs:[
-          {name:'护盾值',   val:'5000', tip:'attr:护盾值'},
-          {name:'护盾回溯', val:'1035%',tip:'attr:护盾回溯'},
-          {name:'格挡',     val:'1035%',tip:'attr:格挡'},
-          {name:'生命回溯', val:'1035%',tip:'attr:生命回溯'},
+          {name:'护盾值'}, {name:'护盾回溯'}, {name:'格挡'}, {name:'生命回溯'},
         ]},
         {cls:'def',title:'减伤',affs:[
-          {name:'伤害减免', val:'1035%',tip:'attr:伤害减免'},
-          {name:'最终减伤', val:'1035%',tip:'attr:最终减伤'},
+          {name:'伤害减免'}, {name:'最终减伤'},
         ]},
       ]
     },
     boost:{
       groups:[
         {cls:'bst',title:'独立乘区',affs:[
-          {name:'伤害加成', val:'1035%',tip:'attr:伤害加成'},
-          {name:'伤害增幅', val:'1035%',tip:'attr:伤害增幅'},
-          {name:'伤害强化', val:'1035%',tip:'attr:伤害强化'},
-          {name:'伤害提升', val:'1035%',tip:'attr:伤害提升'},
-          {name:'伤害扩大', val:'1035%',tip:'attr:伤害扩大'},
-          {name:'全域增伤', val:'1035%',tip:'attr:全域增伤'},
-          {name:'钞能增伤', val:'1035%',tip:'attr:钞能增伤'},
-          {name:'最终伤害', val:'1035%',tip:'attr:最终伤害'},
+          {name:'伤害加成'}, {name:'伤害增幅'}, {name:'伤害强化'}, {name:'伤害提升'},
+          {name:'伤害扩大'}, {name:'全域增伤'}, {name:'钞能增伤'}, {name:'最终伤害'},
         ]},
       ]
     },
     other:{
       groups:[
         {cls:'oth',title:'怪物类型',affs:[
-          {name:'小怪增伤', val:'1035%',tip:'attr:小怪增伤'},
-          {name:'精英增伤', val:'1035%',tip:'attr:精英增伤'},
-          {name:'领主增伤', val:'1035%',tip:'attr:领主增伤'},
+          {name:'小怪增伤'}, {name:'精英增伤'}, {name:'领主增伤'},
         ]},
         {cls:'oth',title:'伤害方式',affs:[
-          {name:'单体伤害',   val:'1035%',tip:'attr:单体伤害'},
-          {name:'范围伤害',   val:'1035%',tip:'attr:范围伤害'},
-          {name:'投射物伤害', val:'1035%',tip:'attr:投射物伤害'},
-          {name:'持续性伤害', val:'1035%',tip:'attr:持续性伤害'},
-          {name:'弹射伤害',   val:'1035%',tip:'attr:弹射伤害'},
-          {name:'异常伤害',   val:'1035%',tip:'attr:异常伤害'},
-          {name:'陷阱伤害',   val:'1035%',tip:'attr:陷阱伤害'},
-          {name:'灌注伤害',   val:'1035%',tip:'attr:灌注伤害'},
+          {name:'单体伤害'}, {name:'范围伤害'}, {name:'投射物伤害'}, {name:'持续性伤害'},
+          {name:'弹射伤害'}, {name:'异常伤害'}, {name:'陷阱伤害'}, {name:'灌注伤害'},
         ]},
       ]
     },
@@ -124,6 +132,18 @@
     const tabsEl = document.getElementById('attrTabs');
     const bodyEl = document.getElementById('attrBody');
     if (!tabsEl || !bodyEl) return false;
+
+    // 顶部核心条（生命/攻击/护甲）+ 六元素：由 HERO_ATTRS 驱动，确保与面板同源
+    const cp = document.getElementById('charPanel');
+    if (cp) {
+      cp.querySelectorAll('[data-tip]').forEach(el => {
+        const k = (el.getAttribute('data-tip') || '').replace(/^attr:/, '');
+        const v = HERO_ATTRS[k];
+        if (!v) return;
+        const out = el.querySelector('.val, .vl');
+        if (out) out.textContent = v;
+      });
+    }
 
     function render(cat){
       const def = ATTR_CATS[cat];
@@ -145,7 +165,8 @@
           const nm = document.createElement('span');
           nm.className = 'nm'; nm.textContent = a.name;
           const vl = document.createElement('span');
-          vl.className = 'vl'; vl.textContent = a.val;
+          vl.className = 'vl';
+          vl.textContent = HERO_ATTRS[a.name] || '—';
           e.appendChild(nm); e.appendChild(vl);
           affs.appendChild(e);
         });
@@ -174,7 +195,7 @@
         '<h5>' + k + '</h5>' +
         '<div class="desc">' + data.desc + '</div>' +
         '<ul>' + data.affixes.map(a => '<li><span>' + a + '</span><b>词缀</b></li>').join('') + '</ul>' +
-        '<div class="meta">同属性下同名词缀为加法，不同名词缀之间为乘区</div>';
+        '<div class="meta">当前值：' + (HERO_ATTRS[k] || '—') + ' ｜ 同名词缀加法、异名词缀乘区</div>';
       const r = target.getBoundingClientRect();
       tip.style.display = 'block';
       const tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -199,10 +220,10 @@
     const charBtn = document.querySelector('#fbtns .fbtn[data-k="角色"]');
     if (charBtn) {
       charBtn.addEventListener('click', () => {
-        const cp = document.getElementById('charPanel');
-        if (!cp) return;
-        const visible = cp.style.display !== 'none';
-        cp.style.display = visible ? 'none' : 'block';
+        const c = document.getElementById('charPanel');
+        if (!c) return;
+        const visible = c.style.display !== 'none';
+        c.style.display = visible ? 'none' : 'block';
         charBtn.classList.toggle('on', !visible);
       });
     }
