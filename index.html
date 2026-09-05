@@ -2313,7 +2313,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   /* ---- 属性释义（tooltip 用，取自主文档「13. 伤害系统」） ---- */
   const ATTR_POOL = {
     '生命值':{desc:'城墙所能承受的伤害值',affixes:['生命值加成','生命值强化','生命值增幅']},
-    '攻击力':{desc:'所有伤害的计算基数',affixes:['攻击力加成','攻击力强化','攻击力增幅']},
+    '攻击力':{desc:'所有伤害的计算基数',affixes:['攻击力加成','攻击力强化','攻击力增幅','攻击加成','攻击增幅']},
     '护甲值':{desc:'通过特定公式降低受到的伤害',affixes:['护甲值加成','护甲值强化','护甲值增幅']},
     '物理':  {desc:'造成物理伤害时的增幅系数【×】',affixes:['物理伤害','物理精通','物理增幅','物理穿透']},
     '混沌':  {desc:'造成混沌伤害时的增幅系数【×】',affixes:['混沌伤害','混沌精通','混沌增幅']},
@@ -2388,13 +2388,21 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     '陷阱伤害':{base:0,kind:'pct'},'灌注伤害':{base:0,kind:'pct'},
   };
 
-  /* ---- 词缀 → 属性归属映射（各类加成均为百分比，作用于基础值） ---- */
+  /* ---- 词缀 → 属性归属 + 类型（flat 直接加进基础值 / pct 作为乘区百分比） ----
+   *  数值型基础属性（攻击力/生命值/护甲值/护盾值/多重射击/充能速度/暴击伤害）上的词缀默认 flat，
+   *  即「先叠加进基础值」；但「攻击力」上的 攻击加成/攻击增幅 是乘区百分比（攻击力加成先加、攻击加成后乘）。
+   *  其余归属到「百分比乘区属性」的词缀一律 pct。 */
   const AFFIX_TO_ATTR = {};
   const AFFIX_KIND = {};
+  const FLAT_KINDS = {flat:1, count:1, charge:1, critdmg:1};
+  const ATK_PCT_AFFIX = {'攻击加成':1, '攻击增幅':1}; // 攻击力上的乘区词缀
   Object.keys(ATTR_POOL).forEach(function (a) {
+    const kd = (ATTR_DEFS[a] && ATTR_DEFS[a].kind) || 'pct';
     (ATTR_POOL[a].affixes || []).forEach(function (af) {
       AFFIX_TO_ATTR[af] = a;
-      AFFIX_KIND[af] = 'pct';  // 所有词缀（含 攻击力加成/生命值加成）均为百分比
+      if (a === '攻击力' && ATK_PCT_AFFIX[af]) AFFIX_KIND[af] = 'pct';
+      else if (FLAT_KINDS[kd]) AFFIX_KIND[af] = 'flat';
+      else AFFIX_KIND[af] = 'pct';
     });
   });
 
@@ -2405,7 +2413,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   const EQUIP_ITEMS = [
     {id:'w1', name:'寒霜短刃', icon:'🗡️', rarity:'rare', slot:'武器',
       level:60, stars:4, dmg:96.4, tier:'T2', main:{label:'攻击力', val:25},
-      attrs:{'攻击力加成':25,'冰霜增幅':30,'暴击率':5},
+      attrs:{'攻击力加成':25,'攻击加成':25,'冰霜增幅':30,'暴击率':5},
       enchant:[{tier:'T2', skill:'寒霜新星', lvl:1}],
       trait:{name:'凛冬之握', desc:'冰霜伤害提升时，额外获得 8% 攻击速度。'}},
     {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
@@ -2456,28 +2464,42 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   window.ATTR_POOL = ATTR_POOL;
   window.AFFIX_KIND = AFFIX_KIND;
 
-  /* ---- 数值计算：各类加成均为百分比，作用于基础值 ---- */
-  // bonusOf: 累加某属性上所有词缀之和（现在全为 pct 百分比）
-  function bonusOf(key){
+  /* ---- 数值计算：flat 词缀先加进基础值，pct 词缀作为乘区百分比（后乘） ---- */
+  // flatBonusOf: 该属性上所有 flat 词缀之和（直接加进基础值，例：攻击力加成 +25）
+  function flatBonusOf(key){
     let s = 0;
     for (const id in HERO.equipped) {
       const it = ITEM_MAP[id];
       if (!it || !it.attrs) continue;
       for (const ak in it.attrs) {
-        if (AFFIX_TO_ATTR[ak] === key) s += it.attrs[ak];
+        if (AFFIX_TO_ATTR[ak] === key && AFFIX_KIND[ak] === 'flat') s += it.attrs[ak];
       }
     }
     return s;
   }
-  // getVal: 数值型属性 = 基础值 × (1 + 加成%/100)；pct 属性 = 基础 + 加成%
-  //   例：攻击力 100，攻击力加成+25% → 100 × 1.25 = 125（先叠加各类百分比到基础值）
+  // pctBonusOf: 该属性上所有 pct 词缀之和（单位 %，作为乘区，例：攻击加成 +25%）
+  function pctBonusOf(key){
+    let s = 0;
+    for (const id in HERO.equipped) {
+      const it = ITEM_MAP[id];
+      if (!it || !it.attrs) continue;
+      for (const ak in it.attrs) {
+        if (AFFIX_TO_ATTR[ak] === key && AFFIX_KIND[ak] === 'pct') s += it.attrs[ak];
+      }
+    }
+    return s;
+  }
+  // getVal:
+  //   数值型属性 = (基础值 + Σflat) × (1 + Σpct/100)
+  //     例：攻击力 100，攻击力加成+25(flat) → 100+25=125；攻击加成+25%(pct) → 125×1.25=156.25
+  //   pct 属性 = 基础(通常0) + Σpct%（独立乘区）
   function getVal(key){
     const d = ATTR_DEFS[key];
     if (!d) return 0;
     if (d.kind === 'flat' || d.kind === 'count' || d.kind === 'charge' || d.kind === 'critdmg') {
-      return d.base * (1 + bonusOf(key) / 100);
+      return (d.base + flatBonusOf(key)) * (1 + pctBonusOf(key) / 100);
     }
-    return d.base + bonusOf(key);  // pct 属性（基础通常 0）
+    return d.base + pctBonusOf(key);  // pct 属性（基础通常 0）
   }
   // 千分位 + 最多 2 位小数（整数不补 .00）
   function fmtNum(n){
@@ -2510,7 +2532,8 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     return v;
   }
   window.multOf = multOf; // 供战斗层后续引用
-  window.bonusOf = bonusOf; // 供 tooltip 显示明细
+  window.flatBonusOf = flatBonusOf; // flat 词缀之和（直接加进基础值）
+  window.pctBonusOf = pctBonusOf;   // pct 词缀之和（乘区百分比）
 
   /* ---- 面板分类（四分类结构保持不变） ---- */
   const ATTR_CATS = {
@@ -2664,8 +2687,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       const data = ATTR_POOL[k] || {desc:'', affixes:[]};
       const baseRow = hasBaseValue(k)
         ? '<div class="srcTitle">基础值</div>'
-        + '<div class="baseRow">基础 <b>' + baseText(k) + '</b>'
-        + '<span class="sep">｜</span>当前 <b>' + displayVal(k) + '</b></div>'
+        + '<div class="baseRow"><b>' + displayVal(k) + '</b></div>'
         : '';
       tip.innerHTML =
         '<h5>' + k + '</h5>' +
