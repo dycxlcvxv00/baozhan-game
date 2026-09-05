@@ -89,21 +89,41 @@
     '陷阱伤害':{base:0,kind:'pct'},'灌注伤害':{base:0,kind:'pct'},
   };
 
-  /* ---- 简易装备（供验证右键穿戴）。attr 为各属性「加成值」 ---- */
+  /* ---- 简易装备（供验证右键穿戴）。
+   *   attrs 为各属性「加成值」（驱动属性面板与穿戴结算）；
+   *   其余字段（level/stars/dmg/main/tier/enchant/trait）用于装备详情提示 UI。 ---- */
   const EQUIP_ITEMS = [
     {id:'w1', name:'寒霜短刃', icon:'🗡️', rarity:'rare', slot:'武器',
-      attrs:{'攻击伤害':25,'冰霜':30,'暴击率':5}},
+      level:60, stars:4, dmg:96.4, tier:'T2', main:{label:'攻击力', val:1284},
+      attrs:{'攻击伤害':25,'冰霜':30,'暴击率':5},
+      enchant:[{tier:'T2', skill:'寒霜新星', lvl:1}],
+      trait:{name:'凛冬之握', desc:'冰霜伤害提升时，额外获得 8% 攻击速度。'}},
     {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
+      level:60, stars:3, dmg:72.0, tier:'T3', main:{label:'生命值', val:1640},
       attrs:{'生命值':220,'护甲值':12,'伤害减免':8}},
     {id:'r1', name:'狂怒指环', icon:'💍', rarity:'rare', slot:'饰品',
-      attrs:{'暴击率':8,'暴击伤害':25}},
+      level:60, stars:4, dmg:88.5, tier:'T2', main:{label:'攻击力', val:642},
+      attrs:{'暴击率':8,'暴击伤害':25},
+      trait:{name:'嗜血', desc:'暴击命中时，回复 2% 最大生命值。'}},
     {id:'b1', name:'疾风战靴', icon:'👢', rarity:'magic', slot:'鞋子',
+      level:60, stars:3, dmg:64.2, tier:'T3', main:{label:'护甲值', val:850},
       attrs:{'攻击速度':15}},
     {id:'c1', name:'元素护符', icon:'📿', rarity:'epic', slot:'饰品',
-      attrs:{'物理':12,'混沌':12,'火焰':12,'闪电':12,'毒素':12}},
+      level:60, stars:5, dmg:112.8, tier:'T1', main:{label:'攻击力', val:1450},
+      attrs:{'物理':12,'混沌':12,'火焰':12,'闪电':12,'毒素':12},
+      enchant:[{tier:'T1', skill:'元素亲和', lvl:2}]},
     {id:'s1', name:'裂隙核心', icon:'🔮', rarity:'epic', slot:'核心',
-      attrs:{'法术伤害':30,'最终伤害':20,'精英增伤':15}},
+      level:60, stars:5, dmg:134.6, tier:'T1', main:{label:'攻击力', val:1980},
+      attrs:{'法术伤害':30,'最终伤害':20,'精英增伤':15},
+      trait:{name:'裂隙回响', desc:'释放核心技能后，下一次攻击伤害提升 15%。'}},
   ];
+  // 品质 → 名称 / 颜色（取自主文档《装备系统》六档映射）
+  const RARITY = {
+    white:{name:'普通', color:'#FFFFFF'},
+    magic:{name:'卓越', color:'#00B0F0'},
+    rare :{name:'史诗', color:'#B842FF'},
+    epic :{name:'传说', color:'#FFC000'},
+  };
   const ITEM_MAP = {};
   EQUIP_ITEMS.forEach(it => { ITEM_MAP[it.id] = it; });
 
@@ -122,6 +142,7 @@
   window.ITEM_MAP = ITEM_MAP;
   window.EQUIP_ITEMS = EQUIP_ITEMS;
   window.ATTR_DEFS = ATTR_DEFS;
+  window.RARITY = RARITY;
 
   /* ---- 数值计算 ---- */
   function bonusOf(key){

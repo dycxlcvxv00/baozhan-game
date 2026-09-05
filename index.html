@@ -299,6 +299,45 @@
     box-shadow:inset 0 0 18px rgba(47,230,208,0.22),0 0 10px rgba(47,230,208,0.25)}
   .bagCell .eq{position:absolute;top:3px;right:4px;font-size:9px;color:#2fe6d0;font-weight:700;
     background:rgba(0,0,0,0.55);padding:1px 4px;border-radius:4px;pointer-events:none}
+
+  /* 装备详情提示 UI（hover 背包物品触发，结构对齐设计稿） */
+  #equipTip{position:fixed;z-index:9999;width:282px;padding:0;
+    background:linear-gradient(180deg,#1b1430,#140f24);
+    border:1px solid rgba(184,66,255,0.5);border-radius:10px;overflow:hidden;
+    box-shadow:0 14px 44px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04);
+    color:#e9defb;font-size:12.5px;pointer-events:none;
+    animation:etIn .12s ease}
+  @keyframes etIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  #equipTip .etHead{display:flex;align-items:center;gap:8px;padding:10px 12px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.04);
+    background:color-mix(in srgb, var(--qc) 20%, #1b1430)}
+  #equipTip .etTitle{display:flex;flex-direction:column;flex:1;min-width:0}
+  #equipTip .etName{font-size:14px;font-weight:700;color:#fff;line-height:1.2}
+  #equipTip .etRar{font-size:11px;font-weight:700;margin-top:1px}
+  #equipTip .etMeta{display:flex;flex-direction:column;align-items:flex-end;
+    font-size:10.5px;color:#b9a8d9;line-height:1.4}
+  #equipTip .etStars{color:#ffd76a;letter-spacing:1px}
+  #equipTip .etIcon{font-size:30px;filter:drop-shadow(0 0 8px rgba(255,255,255,0.3))}
+  #equipTip .etRow{display:flex;justify-content:space-between;align-items:center;
+    padding:8px 12px;font-size:12.5px}
+  #equipTip .etK{color:#b9a8d9}
+  #equipTip .etV{color:#ffce6a;font-weight:700}
+  #equipTip .etDiv{height:1px;margin:0 12px;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)}
+  #equipTip .etMain{display:flex;flex-direction:column;align-items:center;padding:8px 0 6px}
+  #equipTip .etMainNum{font-size:40px;font-weight:800;color:#fff;line-height:1;
+    text-shadow:0 0 16px rgba(155,123,255,0.5)}
+  #equipTip .etMainLbl{font-size:11px;color:#b9a8d9;margin-top:2px}
+  #equipTip .etSec{display:flex;align-items:center;padding:8px 12px 2px}
+  #equipTip .etSecT{font-size:12px;font-weight:700;color:#c9b8ee;letter-spacing:1px}
+  #equipTip .etAff{display:flex;align-items:center;gap:6px;padding:3px 12px;font-size:12px}
+  #equipTip .etTier{background:#ff3344;color:#fff;font-size:10px;font-weight:700;
+    padding:1px 5px;border-radius:4px;flex:none}
+  #equipTip .etLock{opacity:.7;flex:none}
+  #equipTip .etAffTxt{color:#e9defb}
+  #equipTip .etTrait{padding:4px 12px 12px;font-size:12px;color:#cfc4e8;line-height:1.55}
+  #equipTip .etTrait b{color:#5fe07a;font-weight:700}
 </style>
 </head>
 <body>
@@ -2260,21 +2299,41 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     '陷阱伤害':{base:0,kind:'pct'},'灌注伤害':{base:0,kind:'pct'},
   };
 
-  /* ---- 简易装备（供验证右键穿戴）。attr 为各属性「加成值」 ---- */
+  /* ---- 简易装备（供验证右键穿戴）。
+   *   attrs 为各属性「加成值」（驱动属性面板与穿戴结算）；
+   *   其余字段（level/stars/dmg/main/tier/enchant/trait）用于装备详情提示 UI。 ---- */
   const EQUIP_ITEMS = [
     {id:'w1', name:'寒霜短刃', icon:'🗡️', rarity:'rare', slot:'武器',
-      attrs:{'攻击伤害':25,'冰霜':30,'暴击率':5}},
+      level:60, stars:4, dmg:96.4, tier:'T2', main:{label:'攻击力', val:1284},
+      attrs:{'攻击伤害':25,'冰霜':30,'暴击率':5},
+      enchant:[{tier:'T2', skill:'寒霜新星', lvl:1}],
+      trait:{name:'凛冬之握', desc:'冰霜伤害提升时，额外获得 8% 攻击速度。'}},
     {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
+      level:60, stars:3, dmg:72.0, tier:'T3', main:{label:'生命值', val:1640},
       attrs:{'生命值':220,'护甲值':12,'伤害减免':8}},
     {id:'r1', name:'狂怒指环', icon:'💍', rarity:'rare', slot:'饰品',
-      attrs:{'暴击率':8,'暴击伤害':25}},
+      level:60, stars:4, dmg:88.5, tier:'T2', main:{label:'攻击力', val:642},
+      attrs:{'暴击率':8,'暴击伤害':25},
+      trait:{name:'嗜血', desc:'暴击命中时，回复 2% 最大生命值。'}},
     {id:'b1', name:'疾风战靴', icon:'👢', rarity:'magic', slot:'鞋子',
+      level:60, stars:3, dmg:64.2, tier:'T3', main:{label:'护甲值', val:850},
       attrs:{'攻击速度':15}},
     {id:'c1', name:'元素护符', icon:'📿', rarity:'epic', slot:'饰品',
-      attrs:{'物理':12,'混沌':12,'火焰':12,'闪电':12,'毒素':12}},
+      level:60, stars:5, dmg:112.8, tier:'T1', main:{label:'攻击力', val:1450},
+      attrs:{'物理':12,'混沌':12,'火焰':12,'闪电':12,'毒素':12},
+      enchant:[{tier:'T1', skill:'元素亲和', lvl:2}]},
     {id:'s1', name:'裂隙核心', icon:'🔮', rarity:'epic', slot:'核心',
-      attrs:{'法术伤害':30,'最终伤害':20,'精英增伤':15}},
+      level:60, stars:5, dmg:134.6, tier:'T1', main:{label:'攻击力', val:1980},
+      attrs:{'法术伤害':30,'最终伤害':20,'精英增伤':15},
+      trait:{name:'裂隙回响', desc:'释放核心技能后，下一次攻击伤害提升 15%。'}},
   ];
+  // 品质 → 名称 / 颜色（取自主文档《装备系统》六档映射）
+  const RARITY = {
+    white:{name:'普通', color:'#FFFFFF'},
+    magic:{name:'卓越', color:'#00B0F0'},
+    rare :{name:'史诗', color:'#B842FF'},
+    epic :{name:'传说', color:'#FFC000'},
+  };
   const ITEM_MAP = {};
   EQUIP_ITEMS.forEach(it => { ITEM_MAP[it.id] = it; });
 
@@ -2293,6 +2352,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   window.ITEM_MAP = ITEM_MAP;
   window.EQUIP_ITEMS = EQUIP_ITEMS;
   window.ATTR_DEFS = ATTR_DEFS;
+  window.RARITY = RARITY;
 
   /* ---- 数值计算 ---- */
   function bonusOf(key){
@@ -2700,6 +2760,87 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   const ITEMS = window.EQUIP_ITEMS || [];
   const ITEM_MAP = window.ITEM_MAP || {};
   const HERO = window.HERO;
+  const RAR = window.RARITY || {
+    magic:{name:'卓越', color:'#00B0F0'}, rare:{name:'史诗', color:'#B842FF'},
+    epic:{name:'传说', color:'#FFC000'}, white:{name:'普通', color:'#FFFFFF'}
+  };
+  const ATTR_DEFS = window.ATTR_DEFS || {};
+
+  /* ---- 装备详情提示 UI（hover 背包物品格触发，结构对齐设计稿） ---- */
+  const equipTip = document.createElement('div');
+  equipTip.id = 'equipTip';
+  equipTip.style.display = 'none';
+  document.body.appendChild(equipTip);
+
+  function affLine(key, val){
+    const d = ATTR_DEFS[key];
+    const isFlat = d && d.kind === 'flat';
+    const sign = val >= 0 ? '+' : '';
+    return sign + val + (isFlat ? '' : '%') + ' ' + key;
+  }
+  function fmt(n){ return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+  function renderEquipTip(it){
+    const r = RAR[it.rarity] || {name:it.rarity, color:'#ffffff'};
+    const stars = '⭐'.repeat(it.stars || 0);
+    let h = '';
+    // ① 顶部信息栏（品质色）
+    h += '<div class="etHead" style="--qc:' + r.color + '">'
+       +   '<div class="etTitle"><span class="etName">' + it.name + '</span>'
+       +     '<span class="etRar" style="color:' + r.color + '">' + r.name + '</span></div>'
+       +   '<div class="etMeta"><span class="etStars">' + stars + '</span>'
+       +     '<span class="etLv">装备等级 ' + (it.level || 60) + '</span></div>'
+       +   '<div class="etIcon">' + (it.icon || '❔') + '</div>'
+       + '</div>';
+    // ② 伤害强度
+    h += '<div class="etRow"><span class="etK">伤害强度</span><span class="etV">' + (it.dmg || 0) + '%</span></div>';
+    h += '<div class="etDiv"></div>';
+    // ③ 主属性大字
+    if (it.main){
+      h += '<div class="etMain"><span class="etMainNum">' + fmt(it.main.val) + '</span>'
+         +   '<span class="etMainLbl">' + it.main.label + '</span></div>';
+    }
+    // ④ 属性增幅（词缀，来自 attrs）
+    const affs = it.attrs || {};
+    h += '<div class="etSec"><span class="etSecT">属性增幅</span></div><div class="etDiv"></div>';
+    Object.keys(affs).forEach(function(k){
+      h += '<div class="etAff"><span class="etTier">[' + (it.tier || 'T3') + ']</span>'
+         +   '<span class="etLock">🔒</span>'
+         +   '<span class="etAffTxt">' + affLine(k, affs[k]) + '</span></div>';
+    });
+    // ⑤ 附魔效果
+    if (it.enchant && it.enchant.length){
+      h += '<div class="etSec"><span class="etSecT">附魔效果</span></div><div class="etDiv"></div>';
+      it.enchant.forEach(function(e){
+        h += '<div class="etAff"><span class="etTier">[' + (e.tier || it.tier || 'T3') + ']</span>'
+           +   '<span class="etAffTxt">+' + e.lvl + ' [' + e.skill + '] 技能等级</span></div>';
+      });
+    }
+    // ⑥ 装备特性
+    if (it.trait){
+      h += '<div class="etSec"><span class="etSecT">装备特性</span></div><div class="etDiv"></div>';
+      h += '<div class="etTrait"><b>【' + it.trait.name + '】</b>' + it.trait.desc + '</div>';
+    }
+    equipTip.innerHTML = h;
+    equipTip.style.borderColor = r.color;
+  }
+
+  function showEquipTip(cell){
+    const it = ITEM_MAP[cell.dataset.item];
+    if (!it) return;
+    renderEquipTip(it);
+    equipTip.style.display = 'block';
+    const tw = equipTip.offsetWidth, th = equipTip.offsetHeight;
+    const r = cell.getBoundingClientRect();
+    let x = r.right + 10;
+    if (x + tw > window.innerWidth - 8) x = r.left - tw - 10;
+    if (x < 8) x = 8;
+    let y = r.top + r.height / 2 - th / 2;
+    if (y + th > window.innerHeight - 8) y = window.innerHeight - th - 8;
+    if (y < 8) y = 8;
+    equipTip.style.left = x + 'px';
+    equipTip.style.top  = y + 'px';
+  }
 
   // 背包分页数据：第 1 页放入全部简易装备，其余页为空
   const BAG = {};
@@ -2739,6 +2880,16 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
         cell.addEventListener('contextmenu', function (e) {
           e.preventDefault();
           if (HERO) HERO.toggle(it);
+        });
+        // hover → 装备详情提示 UI
+        const origTitle = cell.title;
+        cell.addEventListener('mouseenter', function () {
+          cell.title = '';
+          showEquipTip(cell);
+        });
+        cell.addEventListener('mouseleave', function () {
+          cell.title = origTitle;
+          equipTip.style.display = 'none';
         });
       }
       grid.appendChild(cell);

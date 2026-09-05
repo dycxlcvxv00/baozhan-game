@@ -18,6 +18,87 @@
   const ITEMS = window.EQUIP_ITEMS || [];
   const ITEM_MAP = window.ITEM_MAP || {};
   const HERO = window.HERO;
+  const RAR = window.RARITY || {
+    magic:{name:'卓越', color:'#00B0F0'}, rare:{name:'史诗', color:'#B842FF'},
+    epic:{name:'传说', color:'#FFC000'}, white:{name:'普通', color:'#FFFFFF'}
+  };
+  const ATTR_DEFS = window.ATTR_DEFS || {};
+
+  /* ---- 装备详情提示 UI（hover 背包物品格触发，结构对齐设计稿） ---- */
+  const equipTip = document.createElement('div');
+  equipTip.id = 'equipTip';
+  equipTip.style.display = 'none';
+  document.body.appendChild(equipTip);
+
+  function affLine(key, val){
+    const d = ATTR_DEFS[key];
+    const isFlat = d && d.kind === 'flat';
+    const sign = val >= 0 ? '+' : '';
+    return sign + val + (isFlat ? '' : '%') + ' ' + key;
+  }
+  function fmt(n){ return ('' + n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+  function renderEquipTip(it){
+    const r = RAR[it.rarity] || {name:it.rarity, color:'#ffffff'};
+    const stars = '⭐'.repeat(it.stars || 0);
+    let h = '';
+    // ① 顶部信息栏（品质色）
+    h += '<div class="etHead" style="--qc:' + r.color + '">'
+       +   '<div class="etTitle"><span class="etName">' + it.name + '</span>'
+       +     '<span class="etRar" style="color:' + r.color + '">' + r.name + '</span></div>'
+       +   '<div class="etMeta"><span class="etStars">' + stars + '</span>'
+       +     '<span class="etLv">装备等级 ' + (it.level || 60) + '</span></div>'
+       +   '<div class="etIcon">' + (it.icon || '❔') + '</div>'
+       + '</div>';
+    // ② 伤害强度
+    h += '<div class="etRow"><span class="etK">伤害强度</span><span class="etV">' + (it.dmg || 0) + '%</span></div>';
+    h += '<div class="etDiv"></div>';
+    // ③ 主属性大字
+    if (it.main){
+      h += '<div class="etMain"><span class="etMainNum">' + fmt(it.main.val) + '</span>'
+         +   '<span class="etMainLbl">' + it.main.label + '</span></div>';
+    }
+    // ④ 属性增幅（词缀，来自 attrs）
+    const affs = it.attrs || {};
+    h += '<div class="etSec"><span class="etSecT">属性增幅</span></div><div class="etDiv"></div>';
+    Object.keys(affs).forEach(function(k){
+      h += '<div class="etAff"><span class="etTier">[' + (it.tier || 'T3') + ']</span>'
+         +   '<span class="etLock">🔒</span>'
+         +   '<span class="etAffTxt">' + affLine(k, affs[k]) + '</span></div>';
+    });
+    // ⑤ 附魔效果
+    if (it.enchant && it.enchant.length){
+      h += '<div class="etSec"><span class="etSecT">附魔效果</span></div><div class="etDiv"></div>';
+      it.enchant.forEach(function(e){
+        h += '<div class="etAff"><span class="etTier">[' + (e.tier || it.tier || 'T3') + ']</span>'
+           +   '<span class="etAffTxt">+' + e.lvl + ' [' + e.skill + '] 技能等级</span></div>';
+      });
+    }
+    // ⑥ 装备特性
+    if (it.trait){
+      h += '<div class="etSec"><span class="etSecT">装备特性</span></div><div class="etDiv"></div>';
+      h += '<div class="etTrait"><b>【' + it.trait.name + '】</b>' + it.trait.desc + '</div>';
+    }
+    equipTip.innerHTML = h;
+    equipTip.style.borderColor = r.color;
+  }
+
+  function showEquipTip(cell){
+    const it = ITEM_MAP[cell.dataset.item];
+    if (!it) return;
+    renderEquipTip(it);
+    equipTip.style.display = 'block';
+    const tw = equipTip.offsetWidth, th = equipTip.offsetHeight;
+    const r = cell.getBoundingClientRect();
+    let x = r.right + 10;
+    if (x + tw > window.innerWidth - 8) x = r.left - tw - 10;
+    if (x < 8) x = 8;
+    let y = r.top + r.height / 2 - th / 2;
+    if (y + th > window.innerHeight - 8) y = window.innerHeight - th - 8;
+    if (y < 8) y = 8;
+    equipTip.style.left = x + 'px';
+    equipTip.style.top  = y + 'px';
+  }
 
   // 背包分页数据：第 1 页放入全部简易装备，其余页为空
   const BAG = {};
@@ -57,6 +138,16 @@
         cell.addEventListener('contextmenu', function (e) {
           e.preventDefault();
           if (HERO) HERO.toggle(it);
+        });
+        // hover → 装备详情提示 UI
+        const origTitle = cell.title;
+        cell.addEventListener('mouseenter', function () {
+          cell.title = '';
+          showEquipTip(cell);
+        });
+        cell.addEventListener('mouseleave', function () {
+          cell.title = origTitle;
+          equipTip.style.display = 'none';
         });
       }
       grid.appendChild(cell);
