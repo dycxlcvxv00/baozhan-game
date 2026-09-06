@@ -15,7 +15,6 @@
   const pages = document.getElementById('bagPages');
   if (!grid || !pages) return;
 
-  const ITEMS = window.EQUIP_ITEMS || [];
   const ITEM_MAP = window.ITEM_MAP || {};
   const HERO = window.HERO;
   const RAR = window.RARITY || {
@@ -144,10 +143,11 @@
       const it = id ? ITEM_MAP[id] : null;
       if (it) {
         const equipped = HERO && HERO.isEquipped(id);
+        const eqSlot = equipped && HERO.equipped[id] ? HERO.equipped[id] : it.slot;   // 佩戴槽位（戒指可能落另一格）
         cell.classList.add('filled', 'r', it.rarity);
         if (equipped) cell.classList.add('equipped');
         cell.dataset.item = id;
-        cell.title = it.name + '（' + it.slot + '）· 右键' + (equipped ? '卸下' : '穿戴');
+        cell.title = it.name + '（' + eqSlot + '）· 右键' + (equipped ? '卸下' : '穿戴');
         cell.innerHTML =
           '<div class="ic">' + it.icon + '</div>' +
           '<div class="nm">' + it.name + '</div>' +
@@ -188,7 +188,7 @@
     buildCells();
   });
 
-  // 背包操作：整理 / 分解（待接入）+ 铸造 / 增加装备（已实现）
+  // 背包操作：整理 / 分解（待接入）+ 铸造 / 清空背包（已实现）
   let instSeq = 0;
   function firstEmptySlot(){
     const ids = BAG[cur] || [];
@@ -203,6 +203,19 @@
     inst.id = 'inst' + (++instSeq);
     ITEM_MAP[inst.id] = inst;          // 注册实例，属性随 attrs 真实生效
     BAG[cur][slot] = inst.id;
+    buildCells();
+    if (window.GameSave) window.GameSave.requestSave();
+  }
+  // 清空背包：移除全部未穿戴实例；已穿戴装备保留（穿在身上的不消失）
+  function clearBag(){
+    for (let p in BAG) {
+      BAG[p] = (BAG[p] || []).filter(function (id) { return !!(HERO && HERO.isEquipped(id)); });
+    }
+    const kept = {};
+    for (let p in BAG) (BAG[p] || []).forEach(function (id) { if (id) kept[id] = true; });
+    for (const k in ITEM_MAP) {
+      if (k.indexOf('inst') === 0 && !kept[k] && !(HERO && HERO.isEquipped(k))) delete ITEM_MAP[k];
+    }
     buildCells();
     if (window.GameSave) window.GameSave.requestSave();
   }
@@ -306,10 +319,10 @@
   document.querySelectorAll('#bagNav .bagTool').forEach(function (btn) {
     btn.addEventListener('click', function () {
       const act = btn.dataset.act;
-      if (act === 'add') {
-        if (ITEMS.length) addItem(ITEMS[instSeq % ITEMS.length]);
-      } else if (act === 'forge') {
+      if (act === 'forge') {
         addItem(forgeItem());
+      } else if (act === 'clear') {
+        clearBag();
       }
       // 整理 / 分解：逻辑后续接入（整理=按品质/类型排序；分解=批量转化为资源）
     });

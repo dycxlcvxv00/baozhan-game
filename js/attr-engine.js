@@ -220,21 +220,32 @@
   EQUIP_ITEMS.forEach(it => { ITEM_MAP[it.id] = it; });
 
   /* ---------- 英雄穿戴状态（唯一装备真相源） ----------
-   *  slot 精确对应 10 装备栏位：武器/头盔/手套/护甲/腰带/项链/左戒指/右戒指/鞋子/副手
-   *  同槽位互斥：穿戴新装备时自动卸下该槽位已穿的装备（替换） */
+   *  equipped: { 物品id → 佩戴槽位 }（10 栏精确名：武器/头盔/手套/护甲/腰带/项链/左戒指/右戒指/鞋子/副手）
+   *  普通装备：佩戴槽 = 物品自身 slot，同槽互斥自动替换
+   *  戒指（左/右戒指）：自动落空槽 —— 自身槽被占 → 戴到另一枚戒指格；
+   *                     两枚戒指格都满 → 才替换自身槽（左右两枚可同时佩戴） */
   const HERO = {
     equipped:{},
+    RING_SLOTS:['左戒指','右戒指'],
     _subs:[],
     isEquipped(id){ return !!this.equipped[id]; },
-    equip(it){
-      if (!it) return;
+    // 目标槽位当前占用者（可排除自身）
+    _slotOccupant(slot, exceptId){
       for (const id in this.equipped) {
-        if (id !== it.id && this.equipped[id]) {
-          const other = ITEM_MAP[id];
-          if (other && other.slot === it.slot) delete this.equipped[id];  // 同槽替换
-        }
+        if (id !== exceptId && this.equipped[id] === slot) return id;
       }
-      this.equipped[it.id] = true; this._notify();
+      return null;
+    },
+    equip(it){
+      if (!it || !it.id) return;
+      let target = it.slot;
+      if (this.RING_SLOTS.indexOf(target) >= 0 && this._slotOccupant(target, it.id)) {
+        const other = target === '左戒指' ? '右戒指' : '左戒指';
+        if (!this._slotOccupant(other, it.id)) target = other;   // 另一枚戒指格空 → 戴过去
+      }
+      const occ = this._slotOccupant(target, it.id);
+      if (occ) delete this.equipped[occ];                        // 同佩戴槽替换
+      this.equipped[it.id] = target; this._notify();
     },
     unequip(it){ delete this.equipped[it.id]; this._notify(); },
     toggle(it){ this.isEquipped(it.id) ? this.unequip(it) : this.equip(it); },
@@ -434,11 +445,20 @@
   window.flatBonusOf = function (attrKey) { return flatSum(attrKey); };
   window.pctBonusOf = function (attrKey) { return 0; };
 
-  /* 存档：注册英雄装备状态（供 save.js 持久化 / 恢复） */
+  /* 存档：注册英雄装备状态（供 save.js 持久化 / 恢复）。
+   * equipped 值为佩戴槽位名；兼容旧存档 {id:true} → 按物品自身 slot 规范化 */
   if (window.GameSave) {
     window.GameSave.register('hero',
       function () { return Object.assign({}, HERO.equipped); },
-      function (eq) { HERO.equipped = eq || {}; HERO._notify(); }
+      function (eq) {
+        HERO.equipped = {};
+        for (var id in (eq || {})) {
+          var v = eq[id];
+          if (v === true) { var it = ITEM_MAP[id]; v = it ? it.slot : ''; }
+          if (v) HERO.equipped[id] = v;
+        }
+        HERO._notify();
+      }
     );
   }
 })();

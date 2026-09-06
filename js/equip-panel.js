@@ -30,30 +30,31 @@
     var grid = document.getElementById('equipGrid');
     if (!grid) return;
 
-    // 槽位定义：slot 名 → 布局坐标 / 颜色 / 匹配规则
-    //  match 为精确匹配（装备 slot 必须等于槽位 key）；戒指分左/右，互不占用
+    // 槽位定义：slot 名 → 布局坐标 / 颜色
+    //  匹配规则：HERO.equipped[物品id] === 槽位 key（佩戴槽位精确匹配）；
+    //  戒指分左/右两格，佩戴时自动落空槽，两枚可同时佩戴
     var SLOT_DEFS = [
-      { key:'武器',   x:0,   y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['武器'] },
-      { key:'头盔',   x:139, y:0,   w:110, h:110, c:'rgb(46,81,134)',  match:['头盔'] },
-      { key:'手套',   x:139, y:125, w:110, h:110, c:'rgb(100,65,135)', match:['手套'] },
-      { key:'护甲',   x:278, y:0,   w:120, h:175, c:'rgb(129,93,45)',  match:['护甲'] },
-      { key:'腰带',   x:278, y:190, w:120, h:45,  c:'rgb(127,92,46)',  match:['腰带'] },
-      { key:'项链',   x:457, y:1,   w:50,  h:50,  c:'rgb(54,88,50)',   match:['项链'] },
-      { key:'左戒指', x:427, y:61,  w:50,  h:50,  c:'rgb(114,83,42)',  match:['左戒指'] },
-      { key:'右戒指', x:487, y:61,  w:50,  h:50,  c:'rgb(43,70,113)',  match:['右戒指'] },
-      { key:'鞋子',   x:427, y:125, w:110, h:110, c:'rgb(98,65,132)',  match:['鞋子'] },
-      { key:'副手',   x:558, y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['副手'] }
+      { key:'武器',   x:0,   y:35,  w:120, h:200, c:'rgb(128,92,45)' },
+      { key:'头盔',   x:139, y:0,   w:110, h:110, c:'rgb(46,81,134)' },
+      { key:'手套',   x:139, y:125, w:110, h:110, c:'rgb(100,65,135)' },
+      { key:'护甲',   x:278, y:0,   w:120, h:175, c:'rgb(129,93,45)' },
+      { key:'腰带',   x:278, y:190, w:120, h:45,  c:'rgb(127,92,46)' },
+      { key:'项链',   x:457, y:1,   w:50,  h:50,  c:'rgb(54,88,50)' },
+      { key:'左戒指', x:427, y:61,  w:50,  h:50,  c:'rgb(114,83,42)' },
+      { key:'右戒指', x:487, y:61,  w:50,  h:50,  c:'rgb(43,70,113)' },
+      { key:'鞋子',   x:427, y:125, w:110, h:110, c:'rgb(98,65,132)' },
+      { key:'副手',   x:558, y:35,  w:120, h:200, c:'rgb(128,92,45)' }
     ];
 
-    // 查找某槽位当前穿戴的装备
+    // 查找某槽位当前佩戴的装备（按佩戴槽位而非物品自身 slot）
     function findItemForSlot(slotDef){
       var HERO = window.HERO;
       var ITEM_MAP = window.ITEM_MAP;
       if (!HERO || !ITEM_MAP) return null;
       for (var id in HERO.equipped) {
-        if (HERO.equipped[id]) {
+        if (HERO.equipped[id] === slotDef.key) {
           var it = ITEM_MAP[id];
-          if (it && slotDef.match.indexOf(it.slot) >= 0) return it;
+          if (it) return it;
         }
       }
       return null;
