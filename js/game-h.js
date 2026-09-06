@@ -3,8 +3,10 @@
  * game-h.js — 横版战斗区原型（650×300，数值验证沙盒）
  * 布局对齐 V4：英雄 + 4 技能塔同一条垂直线（x=DEF_X），
  * 围墙左移（WALL_X=130），怪物自右侧生成向左撞墙。
- * 数据层复用 runes.js（EquipmentSystem / 暴击门控），
- * 伤害模型对齐主文档第 13 章 29 项属性。
+ * 数据层 = js/attr-engine.js（AttrEngine.combat() 统一属性快照，
+ *          背包穿戴 HERO 装备 → 属性 → 战斗 实时打通），
+ * 伤害模型严格对齐主文档第 13 章词缀乘区规则
+ * （同属性同名词缀加法、不同名词缀独立乘区）。
  * 视觉风格参照 Project idle（暗色玻璃拟态 + 青/紫霓虹）。
  * ============================================================ */
 (function () {
@@ -20,73 +22,32 @@
   const SPAWN_X = 648;       // 怪物生成 x（最右）
   const LANES = [25, 61, 96, 132, 168, 204, 239, 275]; // 8 条横向车道（y）
 
-  /* ---------- 第 13 章 29 项属性（全量接入） ---------- */
-  const ATTR_DEFS = [
-    { key: 'atk',        name: '攻击力',   cat: '基础', desc: '所有伤害的计算基数' },
-    { key: 'hp',         name: '生命值',   cat: '基础', desc: '英雄生命上限' },
-    { key: 'armor',      name: '护甲值',   cat: '防御', desc: '按 100/(100+护甲) 减伤' },
-    { key: 'phys',       name: '物理伤害', cat: '元素', desc: '物理系增伤' },
-    { key: 'chaos',      name: '混沌伤害', cat: '元素', desc: '混沌系增伤（无视护盾）' },
-    { key: 'ice',        name: '冰霜伤害', cat: '元素', desc: '冰霜系增伤' },
-    { key: 'fire',       name: '火焰伤害', cat: '元素', desc: '火焰系增伤' },
-    { key: 'poison',     name: '毒素伤害', cat: '元素', desc: '毒素系增伤' },
-    { key: 'lightning',  name: '闪电伤害', cat: '元素', desc: '闪电系增伤' },
-    { key: 'atkDmg',     name: '攻击伤害', cat: '增伤', desc: '普攻/物理技能乘区' },
-    { key: 'atkSpeed',   name: '攻击速度', cat: '节奏', desc: '缩短技能释放间隔' },
-    { key: 'multiShot',  name: '多重射击', cat: '节奏', desc: '额外弹道数' },
-    { key: 'shatter',    name: '粉碎打击', cat: '暴击', desc: '命中附加额外倍率' },
-    { key: 'spellDmg',   name: '法术伤害', cat: '增伤', desc: '法术技能乘区' },
-    { key: 'chargeSpd',  name: '充能速度', cat: '节奏', desc: '能量积攒速率' },
-    { key: 'energyRegen',name: '能量回溯', cat: '节奏', desc: '能量回复' },
-    { key: 'spellBurst', name: '法术迸发', cat: '暴击', desc: '法术额外倍率' },
-    { key: 'crit',       name: '暴击率',   cat: '暴击', desc: '基础暴击概率' },
-    { key: 'critDmg',    name: '暴击伤害', cat: '暴击', desc: '暴击倍率' },
-    { key: 'weakCrit',   name: '弱点暴击', cat: '暴击', desc: '暴击时再触发弱点' },
-    { key: 'hpRegen',    name: '生命回溯', cat: '防御', desc: '生命回复' },
-    { key: 'shield',     name: '护盾值',   cat: '防御', desc: '优先承伤的护盾' },
-    { key: 'shieldRegen',name: '护盾回溯', cat: '防御', desc: '护盾回复' },
-    { key: 'block',      name: '格挡',     cat: '防御', desc: '概率减伤 30%' },
-    { key: 'dmgReduce',  name: '伤害减免', cat: '防御', desc: '常驻减伤' },
-    { key: 'finalReduce',name: '最终减伤', cat: '防御', desc: '最后一层减伤' },
-    { key: 'mobDmg',     name: '小怪增伤', cat: '类型', desc: '对小怪增伤' },
-    { key: 'eliteDmg',   name: '精英增伤', cat: '类型', desc: '对精英增伤' },
-    { key: 'bossDmg',    name: '领主增伤', cat: '类型', desc: '对领主增伤' },
-  ];
-  const BASE_ATTR = {
-    atk: 100, hp: 1000, armor: 0,
-    phys: 0, chaos: 0, ice: 0, fire: 0, poison: 0, lightning: 0,
-    atkDmg: 0, atkSpeed: 0, multiShot: 0, shatter: 0,
-    spellDmg: 0, chargeSpd: 0, energyRegen: 0, spellBurst: 0,
-    crit: 5, critDmg: 50, weakCrit: 5,
-    hpRegen: 0, shield: 0, shieldRegen: 0, block: 0, dmgReduce: 0, finalReduce: 0,
-    mobDmg: 0, eliteDmg: 0, bossDmg: 0,
-  };
-  const attr = {};
+  /* ---------- 统一属性层（js/attr-engine.js · 第 13 章词缀乘区规则） ---------- */
+  const AE = window.AttrEngine;
+  let attr = null;          // combat() 属性快照（装备变化时刷新）
+  let debugAtk = null;      // 调试覆盖：锁定攻击力数值（供自动化验证）
   function refreshAttr() {
-    for (const k in BASE_ATTR) attr[k] = BASE_ATTR[k] + equip.attrBonus(k);
-    critBuildCfg = equip.hasOnHitCritBuild();
-    if (!critBuildCfg) critBuild = 0;           // 无装备特效 → 暴击率不积累
+    attr = AE.combat();
+    if (debugAtk != null) attr.atk = debugAtk;
     // 围墙血量即英雄生命；护甲由 wallTakeDamage 参与减伤
     wallHpMax = attr.hp;
     if (wallHp <= 0) wallHp = wallHpMax;         // 初始化 / 破墙复位 → 按英雄生命补满
     else if (wallHp > wallHpMax) wallHp = wallHpMax;
   }
-
-  /* ---------- 装备系统（复用 runes.js） ---------- */
-  const equip = new EquipmentSystem();
-  equip.equip('武器', EQUIP_PRESETS['武器']);    // 默认穿戴「烈阳长刃」→ 开启暴击积累
-  let critBuild = 0, critBuildCfg = null;
+  /* 背包穿戴/卸下 HERO 装备 → 战斗属性实时刷新（面板与战斗同一数据真相源） */
+  if (window.HERO) window.HERO.onChange(function () { refreshAttr(); });
 
   /* ---------- 技能（英雄普攻 + 4 塔），数值对齐主文档 7.4 ---------- */
-  const HERO_SKILL = { id: 'hero', name: '普攻', elem: 'phys', coef: 0.30, isSpell: false, crit: 0, cd: 0.8, kind: 'basic' };
+  const HERO_SKILL = { id: 'hero', name: '普攻', elem: 'phys', coef: 0.30, isSpell: false, crit: 0, cd: 0.8, kind: 'basic', form: 'projectile' };
 
   /* 4 技能基础效果（主文档 7.4《基础技能列表》）：伤害 = 攻击力 × coef
-   * kind 决定弹道与命中行为；slow/burn/shock/poison 为命中附带的异常/控制 */
+   * kind 决定弹道与命中行为；form 为第 13 章形态乘区标记（投射物/范围/弹射）；
+   * slow/burn/shock/poison 为命中附带的异常/控制 */
   const SKILL_PROFILES = {
-    iceLance: { id: 'iceLance', name: '寒冰锥刺', elem: 'ice',      isSpell: true,  coef: 3.0, cd: 1.00, kind: 'shards', count: 4, pierce: 2, slow: { pct: 30, dur: 2 } },
-    fireball: { id: 'fireball', name: '爆裂火球', elem: 'fire',     isSpell: true,  coef: 2.6, cd: 1.45, kind: 'ball',   aoeR: 58, burn: { stack: 1 } },
-    chain:    { id: 'chain',    name: '连锁闪电', elem: 'lightning',isSpell: true,  coef: 1.8, cd: 1.35, kind: 'chain',  bounce: 5, shock: { stack: 1 } },
-    spore:    { id: 'spore',    name: '剧毒孢子', elem: 'poison',   isSpell: true,  coef: 2.0, cd: 2.10, kind: 'spore',  aoeR: 52, poison: { stack: 1 } },
+    iceLance: { id: 'iceLance', name: '寒冰锥刺', elem: 'ice',      isSpell: true,  coef: 3.0, cd: 1.00, kind: 'shards', count: 4, pierce: 2, slow: { pct: 30, dur: 2 }, form: 'projectile' },
+    fireball: { id: 'fireball', name: '爆裂火球', elem: 'fire',     isSpell: true,  coef: 2.6, cd: 1.45, kind: 'ball',   aoeR: 58, burn: { stack: 1 }, form: 'projectile' },
+    chain:    { id: 'chain',    name: '连锁闪电', elem: 'lightning',isSpell: true,  coef: 1.8, cd: 1.35, kind: 'chain',  bounce: 5, shock: { stack: 1 }, form: 'bounce' },
+    spore:    { id: 'spore',    name: '剧毒孢子', elem: 'poison',   isSpell: true,  coef: 2.0, cd: 2.10, kind: 'spore',  aoeR: 52, poison: { stack: 1 }, form: 'aoe' },
   };
 
   /* 防御方阵：英雄(居中) + 4 塔；4 塔对应技能面板的 4 个上阵槽 */
@@ -106,26 +67,34 @@
     defenders.forEach((d, i) => { d.y = Math.round(DEF_MARGIN + i * span); });
   })();
 
-  /* ---------- 伤害计算（对齐第 13 章） ---------- */
-  const ELEM_KEY = { phys: 'phys', ice: 'ice', fire: 'fire', poison: 'poison', lightning: 'lightning', chaos: 'chaos' };
-  function computeDamage(src, skill, monster) {
+  /* ---------- 伤害计算（严格对齐第 13 章乘区链，不设加法区） ----------
+   * 直接伤害 = 攻击力 × 技能系数
+   *   × ∏元素词缀乘区（伤害/精通/增幅/穿透：同名加法、异名相乘）
+   *   ×（攻击技能 ∏攻击伤害词缀 ｜ 法术技能 ∏法术伤害词缀）
+   *   × 怪物类型独立乘区（小怪/精英/领主取一）
+   *   × ∏通用独立乘区（伤害加成/增幅/强化/提升/扩大/全域增伤/钞能增伤/最终伤害）
+   *   × 形态独立乘区（投射物/范围/弹射…按本次伤害形态取一）
+   *   × 暴击 → 弱点暴击；攻击技能 → 粉碎打击；法术技能 → 法术迸发
+   *     （几率/倍率均含文档机制基准：5% 几率 / 2.5 倍） */
+  function computeDamage(src, skill, monster, form) {
     const a = attr;
-    let dmg = a.atk * skill.coef * (1 + a.atkDmg / 100);
-    const ek = ELEM_KEY[skill.elem] || 'phys';
-    dmg *= 1 + (a[ek] || 0) / 100;                       // 元素增伤
-    dmg *= 1 + (skill.isSpell ? a.spellDmg : a.atkDmg) / 100; // 攻击/法术乘区（不重复）
-    const tKey = (monster.type === 'boss' ? 'bossDmg' : monster.type === 'elite' ? 'eliteDmg' : 'mobDmg');
-    dmg *= 1 + (a[tKey] || 0) / 100;                     // 怪物类型独立乘区
-    let rate = a.crit + (skill.crit || 0) + critBuild;   // 暴击：基础+技能+积累
+    let dmg = a.atk * skill.coef;
+    dmg *= a.elem[skill.elem] != null ? a.elem[skill.elem] : 1;   // 元素乘区
+    dmg *= skill.isSpell ? a.spellMult : a.atkMult;               // 攻击/法术乘区
+    dmg *= a.typeMult[monster.type] || a.typeMult.mob;            // 怪物类型独立乘区
+    dmg *= a.globalMult;                                          // 通用独立乘区（8 层相乘）
+    const fm = form || skill.form;                                // 形态：调用覆盖 > 技能默认
+    if (fm) dmg *= 1 + (a.formPct[fm] || 0) / 100;                // 形态独立乘区
+    let rate = a.critChance + (skill.crit || 0);                  // 暴击率（基准 0 + 装备）
     rate = Math.min(95, rate);
     let isCrit = false;
     if (Math.random() * 100 < rate) {
       isCrit = true;
-      dmg *= 1 + a.critDmg / 100;
-      if (Math.random() * 100 < a.weakCrit) dmg *= 1.5;  // 弱点暴击
+      dmg *= a.critMult;                                          // 暴击伤害（基准 150% + 增幅）
+      if (Math.random() * 100 < a.weak.chance) dmg *= a.weak.mult;   // 弱点暴击 5% → 2.5 倍
     }
-    if (!skill.isSpell && Math.random() * 100 < a.shatter) dmg *= 1.5;  // 粉碎打击
-    if (skill.isSpell && Math.random() * 100 < a.spellBurst) dmg *= 1.3; // 法术迸发
+    if (!skill.isSpell && Math.random() * 100 < a.shatter.chance) dmg *= a.shatter.mult; // 粉碎打击
+    if (skill.isSpell && Math.random() * 100 < a.burst.chance)   dmg *= a.burst.mult;    // 法术迸发
     return { dmg: Math.max(1, Math.round(dmg)), crit: isCrit };
   }
 
@@ -148,8 +117,10 @@
   /* ---------- 时间 / 全局状态 ---------- */
   let gameTime = 0;        // 累计游戏秒（减速持续判定）
   let dotTimer = 0;        // DoT 每秒结算累加器
-  const DOT_RATE = 0.08;   // 每层 DoT 每秒伤害 = 攻击力 × DOT_RATE
-  const DOT_CAP = 10;      // 单层异常叠加上限
+  /* DoT 配置（文档：buff 系数为每元素写死的常量表；层数不设上限；每秒几何衰减） */
+  const DOT_COEF = { burn: 0.08, shock: 0.08, poison: 0.08 };  // buff 系数（demo 三系同值）
+  const DOT_ELEM = { burn: 'fire', shock: 'lightning', poison: 'poison' };  // DoT 归属元素
+  const DOT_COLOR = { burn: 0xffa06a, shock: 0xc9a6ff, poison: 0x9be36a };
   const effectTotals = { burn: 0, shock: 0, poison: 0, slow: 0 }; // 调试：异常/控制命中累计
 
   /* ---------- 怪物 / 子弹 / 特效 ---------- */
@@ -205,27 +176,27 @@
     return out;
   }
 
-  /* 命中结算：伤害 + 暴击积累 + 异常/控制附带 */
-  function hitMonster(m, srcId, skill) {
+  /* 命中结算：伤害 + 异常/控制附带（form 覆盖：直击=投射物、爆炸=范围） */
+  function hitMonster(m, srcId, skill, form) {
     if (m.dead) return;
-    const res = computeDamage({ id: srcId }, skill, m);
+    const res = computeDamage({ id: srcId }, skill, m, form || skill.form);
     m.hp -= res.dmg;
     addPop(m.x, m.y - 8, res.dmg, res.crit);
-    if (critBuildCfg) critBuild = Math.min(critBuildCfg.cap, critBuild + critBuildCfg.perHit);
     applyOnHit(m, skill);
     if (m.hp <= 0) { m.dead = true; killMonster(m); }
   }
   function applyOnHit(m, skill) {
     if (skill.slow) { m.slowPct = Math.max(m.slowPct, skill.slow.pct); m.slowUntil = gameTime + skill.slow.dur; effectTotals.slow++; }
-    if (skill.burn)   { m.dot.burn   = Math.min(DOT_CAP, m.dot.burn + skill.burn.stack);   effectTotals.burn++; }
-    if (skill.shock)  { m.dot.shock  = Math.min(DOT_CAP, m.dot.shock + skill.shock.stack);  effectTotals.shock++; }
-    if (skill.poison) { m.dot.poison = Math.min(DOT_CAP, m.dot.poison + skill.poison.stack); effectTotals.poison++; }
+    /* 文档：层数不设上限，同目标重施加 = 无限累加 */
+    if (skill.burn)   { m.dot.burn   += skill.burn.stack;   effectTotals.burn++; }
+    if (skill.shock)  { m.dot.shock  += skill.shock.stack;  effectTotals.shock++; }
+    if (skill.poison) { m.dot.poison += skill.poison.stack; effectTotals.poison++; }
   }
-  /* 范围爆炸：对半径内敌人结算（direct 命中者排除，避免双倍） */
+  /* 范围爆炸：对半径内敌人结算（direct 命中者排除，避免双倍）；爆炸形态 = 范围伤害 */
   function explode(cx, cy, r, skill, direct) {
     for (const m of monsters) {
       if (m.dead || m === direct) continue;
-      if (Math.hypot(m.x - cx, m.y - cy) <= r) hitMonster(m, 'fx', skill);
+      if (Math.hypot(m.x - cx, m.y - cy) <= r) hitMonster(m, 'fx', skill, 'aoe');
     }
     const g = new PIXI.Graphics();
     g.lineStyle(3, skill.elem === 'fire' ? 0xff8a5a : 0x9be36a, 0.9);
@@ -424,21 +395,24 @@
     }
 
     // 防御方阵开火（仅已装配技能的塔；按技能 kind 分派弹道）
+    // 攻击速度：缩短普攻和攻击技能释放间隔（cd / (1 + 攻速%))
+    const aspd = 1 + attr.atkSpeedPct / 100;
     for (const d of defenders) {
       if (!d.active || !d.skill) continue;
       d.cd -= dt;
       if (d.cd > 0) continue;
       const k = d.skill.kind;
-      if (k === 'chain') { fireChain(d); d.cd = d.skill.cd; continue; }
+      if (k === 'chain') { fireChain(d); d.cd = d.skill.cd / aspd; continue; }
       const best = pickTarget(null);
       if (!best) { d.cd = 0.1; continue; }
       if (k === 'shards') fireShards(d);
       else fireProjectile(d, best);
-      // 多重射击：额外弹道
-      if (attr.multiShot > 0) {
-        for (const alt of altTargets(best, attr.multiShot | 0)) fireProjectile(d, alt);
+      // 多重射击：可同时攻击的敌人数量（基础 1）→ 额外弹道攻击其余最靠前敌人
+      const extra = Math.max(0, Math.round(attr.multiShot) - 1);
+      if (extra > 0) {
+        for (const alt of altTargets(best, extra)) fireProjectile(d, alt);
       }
-      d.cd = d.skill.cd;
+      d.cd = d.skill.cd / aspd;
     }
 
     // 子弹飞行 + 命中
@@ -493,18 +467,27 @@
     for (let i = bullets.length - 1; i >= 0; i--) if (bullets[i].done) bullets.splice(i, 1);
     for (let i = monsters.length - 1; i >= 0; i--) if (monsters[i].dead) monsters.splice(i, 1);
 
-    // DoT 每秒结算（灼烧 / 感电 / 中毒：仅叠层、不写持续，按攻击力 × 层数加成）
+    /* DoT 每秒结算（第 13 章统一规则）：
+     * 每秒伤害 = 英雄攻击力 × buff系数 × 当前层数 × (1 + 元素增伤% + 通用增伤%)
+     *   —— 元素增伤% = 该元素(伤害+精通+增幅)之和；通用增伤% = 8 通用乘区词缀之和（加法同括号）
+     *   —— 不吃暴击 / 不吃形态乘区；本秒先加层（命中即加）→ 结算 → 再衰减
+     * 衰减：每秒损失 max(1, round(层数×10%))，层数=0 移除 */
     dotTimer += dt;
     if (dotTimer >= 1) {
       dotTimer -= 1;
       for (const m of monsters) {
         if (m.dead) continue;
-        const stacks = m.dot.burn + m.dot.shock + m.dot.poison;
-        if (stacks > 0) {
-          const dmg = Math.max(1, Math.round(attr.atk * DOT_RATE * stacks));
+        for (const t of ['burn', 'shock', 'poison']) {
+          const st = m.dot[t];
+          if (!st) continue;
+          const ek = DOT_ELEM[t];
+          const pct = 1 + ((attr.dotElemPct[ek] || 0) + attr.dotGlobalPct) / 100;
+          const dmg = Math.max(1, Math.round(attr.atk * DOT_COEF[t] * st * pct));
           m.hp -= dmg;
-          addPop(m.x, m.y - 20, dmg, false, 0x8bff9b);
-          if (m.hp <= 0) { m.dead = true; killMonster(m); }
+          addPop(m.x, m.y - 20, dmg, false, DOT_COLOR[t]);
+          const dec = Math.max(1, Math.round(st * 0.1));   // 几何衰减：至少掉 1 层
+          m.dot[t] = Math.max(0, st - dec);
+          if (m.hp <= 0) { m.dead = true; killMonster(m); break; }
         }
       }
     }
@@ -571,18 +554,26 @@
   }
   window.__gameH = {
     get hasGame() { return true; },
-    get attrRows() { return ATTR_DEFS.length; },
+    get attrRows() { return Object.keys(AE.AFFIX_DEFS).length; },
     get defX() { return DEF_X; },
     get wallX() { return WALL_X; },
     get defenderXs() { return defenders.map(d => d.x); },
-    get critBuild() { return critBuild; },
-    get critBuildCfg() { return critBuildCfg; },
-    get weaponOn() { return equip.isFitted('武器'); },
-    setWeapon(on) { if (on) equip.equip('武器', EQUIP_PRESETS['武器']); else equip.unequip('武器'); refreshAttr(); },
-    equipSlot(slot) { if (EQUIP_PRESETS[slot]) { equip.equip(slot, EQUIP_PRESETS[slot]); refreshAttr(); } },
-    unequipSlot(slot) { equip.unequip(slot); refreshAttr(); },
-    toggleSlot(slot) { equip.toggle(slot); refreshAttr(); },
-    isFitted(slot) { return equip.isFitted(slot); },
+
+    /* 伤害公式直调（供自动化验证乘区链）：form 缺省取技能形态 */
+    calc(skillId, mtype, form) {
+      const prof = SKILL_PROFILES[skillId] || HERO_SKILL;
+      return computeDamage({ id: 'debug' }, prof, { type: mtype || 'mob' }, form);
+    },
+    /* DoT 公式直调（文档：攻击力 × buff系数 × 层数 × (1+元素增伤%+通用增伤%)） */
+    dotPreview(type, stacks) {
+      const ek = DOT_ELEM[type];
+      const pct = 1 + ((attr.dotElemPct[ek] || 0) + attr.dotGlobalPct) / 100;
+      return Math.max(1, Math.round(attr.atk * DOT_COEF[type] * stacks * pct));
+    },
+    /* HERO 装备联动（背包穿戴 → 属性 → 战斗）：供测试/调试快速穿戴 */
+    heroEquip(id) { const it = window.ITEM_MAP[id]; if (it) { window.HERO.equip(it); refreshAttr(); } },
+    heroUnequip(id) { const it = window.ITEM_MAP[id]; if (it) { window.HERO.unequip(it); refreshAttr(); } },
+    heroClear() { window.HERO.equipped = {}; refreshAttr(); },
 
     get attr() { return attr; },
     get level() { return level; },
@@ -602,7 +593,7 @@
     get slowMonsterCount() { return monsters.filter(m => gameTime < m.slowUntil).length; },
     get shockMonsterCount() { return monsters.filter(m => m.dot.shock > 0).length; },
     get effectTotals() { return Object.assign({}, effectTotals); },
-    debugSetAtk(v) { if (typeof v === 'number') { BASE_ATTR.atk = v; refreshAttr(); } },
+    debugSetAtk(v) { debugAtk = (typeof v === 'number') ? v : null; refreshAttr(); },
     get bulletKinds() { const c = {}; bullets.forEach(b => { c[b.kind] = (c[b.kind] || 0) + 1; }); return c; },
   };
 
