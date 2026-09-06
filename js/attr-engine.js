@@ -187,7 +187,7 @@
   const EQUIP_ITEMS = [
     {id:'w1', name:'寒霜短刃', icon:'🗡️', rarity:'rare', slot:'武器',
       level:60, stars:4, dmg:96.4, tier:'T2', main:{label:'攻击力', val:25},
-      attrs:{'攻击力加成':25,'攻击力强化':25,'冰霜增幅':30,'暴击率':5},
+      attrs:{'攻击力加成':25,'冰霜增幅':30,'暴击率':5},
       enchant:[{tier:'T2', skill:'寒霜新星', lvl:1}],
       trait:{name:'凛冬之握', desc:'冰霜伤害提升时，额外获得 8% 攻击速度。'}},
     {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
@@ -295,6 +295,11 @@
   function attrFinal(attrKey) {
     const base = ATTR_BASE[attrKey] != null ? ATTR_BASE[attrKey] : 0;
     return (base + flatSum(attrKey)) * zoneMult(attrKey);
+  }
+  // 数值型属性「基础值」= 裸身基准 + Σflat（乘区之前。例：100 + 武器25 = 125）
+  function attrBaseFinal(attrKey) {
+    const base = ATTR_BASE[attrKey] != null ? ATTR_BASE[attrKey] : 0;
+    return base + flatSum(attrKey);
   }
   // zone 类属性的总增幅%（用于面板显示：∏(1+Σ/100) - 1）
   function zonePct(attrKey) {
@@ -404,7 +409,7 @@
   window.AttrEngine = {
     AFFIX_DEFS, AFFIX_ALIAS, ATTR_POOL, ATTR_BASE, ELEM_ATTR,
     resolveAffix, sumAffix, affixVal, mainFlat, flatSum, zoneMult, zonePct,
-    attrFinal, combat, displayVal, fmtNum,
+    attrFinal, attrBaseFinal, combat, displayVal, fmtNum,
   };
   window.HERO = HERO;
   window.ITEM_MAP = ITEM_MAP;

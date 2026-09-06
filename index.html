@@ -2284,7 +2284,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   const EQUIP_ITEMS = [
     {id:'w1', name:'寒霜短刃', icon:'🗡️', rarity:'rare', slot:'武器',
       level:60, stars:4, dmg:96.4, tier:'T2', main:{label:'攻击力', val:25},
-      attrs:{'攻击力加成':25,'攻击力强化':25,'冰霜增幅':30,'暴击率':5},
+      attrs:{'攻击力加成':25,'冰霜增幅':30,'暴击率':5},
       enchant:[{tier:'T2', skill:'寒霜新星', lvl:1}],
       trait:{name:'凛冬之握', desc:'冰霜伤害提升时，额外获得 8% 攻击速度。'}},
     {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
@@ -2392,6 +2392,11 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   function attrFinal(attrKey) {
     const base = ATTR_BASE[attrKey] != null ? ATTR_BASE[attrKey] : 0;
     return (base + flatSum(attrKey)) * zoneMult(attrKey);
+  }
+  // 数值型属性「基础值」= 裸身基准 + Σflat（乘区之前。例：100 + 武器25 = 125）
+  function attrBaseFinal(attrKey) {
+    const base = ATTR_BASE[attrKey] != null ? ATTR_BASE[attrKey] : 0;
+    return base + flatSum(attrKey);
   }
   // zone 类属性的总增幅%（用于面板显示：∏(1+Σ/100) - 1）
   function zonePct(attrKey) {
@@ -2501,7 +2506,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   window.AttrEngine = {
     AFFIX_DEFS, AFFIX_ALIAS, ATTR_POOL, ATTR_BASE, ELEM_ATTR,
     resolveAffix, sumAffix, affixVal, mainFlat, flatSum, zoneMult, zonePct,
-    attrFinal, combat, displayVal, fmtNum,
+    attrFinal, attrBaseFinal, combat, displayVal, fmtNum,
   };
   window.HERO = HERO;
   window.ITEM_MAP = ITEM_MAP;
@@ -3298,7 +3303,8 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       return '<ul class="src">' + rows.join('') + '</ul>';
     }
 
-    // 基础值行（数值型属性才有裸身基准）
+    // 基础值 / 最终值行（数值型属性才有裸身基准）
+    // 基础值 = 裸身基准 + Σflat 主属性（乘区之前）；最终值 = 基础值 × ∏乘区
     function hasBaseValue(k){
       return k in AE.ATTR_BASE;
     }
@@ -3306,16 +3312,25 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     function showTip(target){
       const k = (target.dataset.tip || '').replace(/^attr:/, '');
       const data = AE.ATTR_POOL[k] || {desc:'', affixes:[]};
-      const baseRow = hasBaseValue(k)
-        ? '<div class="srcTitle">基础值</div>'
-        + '<div class="baseRow"><b>' + AE.displayVal(k) + '</b></div>'
-        : '';
+      let baseRow = '';
+      if (hasBaseValue(k)) {
+        const baseV = AE.attrBaseFinal(k);
+        const zm = AE.zoneMult(k);
+        baseRow = '<div class="srcTitle">基础值</div>'
+          + '<div class="baseRow"><b>' + AE.fmtNum(baseV) + '</b></div>'
+          + '<div class="srcTitle">最终值</div>'
+          + '<div class="baseRow"><b>' + AE.displayVal(k) + '</b>'
+          + (zm !== 1
+              ? '<span style="opacity:.7;font-weight:400;font-size:12px">（' + AE.fmtNum(baseV) + ' × ' + AE.fmtNum(zm) + '）</span>'
+              : '')
+          + '</div>';
+      }
       tip.innerHTML =
         '<h5>' + k + '</h5>' +
         '<div class="desc">' + (data.desc || '该属性的实际装备加成数值如下。') + '</div>' +
         baseRow +
         '<div class="srcTitle">词缀明细</div>' + buildSrcList(k) +
-        '<div class="meta">同名词缀加法合并，不同名词缀之间为独立乘区（第 13 章规则）</div>';
+        '<div class="meta">主属性叠加进基础值 → 词缀乘区相乘得最终值；同名词缀加法合并，不同名词缀之间为独立乘区（第 13 章规则）</div>';
       const r = target.getBoundingClientRect();
       tip.style.display = 'block';
       const tw = tip.offsetWidth, th = tip.offsetHeight;

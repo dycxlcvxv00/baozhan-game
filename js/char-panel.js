@@ -141,7 +141,8 @@
       return '<ul class="src">' + rows.join('') + '</ul>';
     }
 
-    // 基础值行（数值型属性才有裸身基准）
+    // 基础值 / 最终值行（数值型属性才有裸身基准）
+    // 基础值 = 裸身基准 + Σflat 主属性（乘区之前）；最终值 = 基础值 × ∏乘区
     function hasBaseValue(k){
       return k in AE.ATTR_BASE;
     }
@@ -149,16 +150,25 @@
     function showTip(target){
       const k = (target.dataset.tip || '').replace(/^attr:/, '');
       const data = AE.ATTR_POOL[k] || {desc:'', affixes:[]};
-      const baseRow = hasBaseValue(k)
-        ? '<div class="srcTitle">基础值</div>'
-        + '<div class="baseRow"><b>' + AE.displayVal(k) + '</b></div>'
-        : '';
+      let baseRow = '';
+      if (hasBaseValue(k)) {
+        const baseV = AE.attrBaseFinal(k);
+        const zm = AE.zoneMult(k);
+        baseRow = '<div class="srcTitle">基础值</div>'
+          + '<div class="baseRow"><b>' + AE.fmtNum(baseV) + '</b></div>'
+          + '<div class="srcTitle">最终值</div>'
+          + '<div class="baseRow"><b>' + AE.displayVal(k) + '</b>'
+          + (zm !== 1
+              ? '<span style="opacity:.7;font-weight:400;font-size:12px">（' + AE.fmtNum(baseV) + ' × ' + AE.fmtNum(zm) + '）</span>'
+              : '')
+          + '</div>';
+      }
       tip.innerHTML =
         '<h5>' + k + '</h5>' +
         '<div class="desc">' + (data.desc || '该属性的实际装备加成数值如下。') + '</div>' +
         baseRow +
         '<div class="srcTitle">词缀明细</div>' + buildSrcList(k) +
-        '<div class="meta">同名词缀加法合并，不同名词缀之间为独立乘区（第 13 章规则）</div>';
+        '<div class="meta">主属性叠加进基础值 → 词缀乘区相乘得最终值；同名词缀加法合并，不同名词缀之间为独立乘区（第 13 章规则）</div>';
       const r = target.getBoundingClientRect();
       tip.style.display = 'block';
       const tw = tip.offsetWidth, th = tip.offsetHeight;
