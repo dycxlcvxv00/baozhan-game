@@ -77,25 +77,29 @@
   equip.equip('武器', EQUIP_PRESETS['武器']);    // 默认穿戴「烈阳长刃」→ 开启暴击积累
   let critBuild = 0, critBuildCfg = null;
 
-  /* ---------- 技能（英雄普攻 + 4 塔），数值对齐竖版 demo ---------- */
-  const HERO_SKILL = { id: 'hero', name: '普攻', elem: 'phys', coef: 0.30, isSpell: false, crit: 0, cd: 0.8 };
-  const TOWER_SKILLS = [
-    { id: 'ice',      name: '冰锥刺',   elem: 'ice',      coef: 0.24, isSpell: false, crit: 0, cd: 1.0 },
-    { id: 'fire',     name: '爆裂火球', elem: 'fire',     coef: 0.36, isSpell: true,  crit: 0, cd: 1.45 },
-    { id: 'poison',   name: '剧毒爆弹', elem: 'poison',   coef: 0.16, isSpell: true,  crit: 0, cd: 2.10 },
-    { id: 'lightning',name: '连锁闪电', elem: 'lightning',coef: 0.24, isSpell: true,  crit: 0, cd: 1.35 },
-  ];
+  /* ---------- 技能（英雄普攻 + 4 塔），数值对齐主文档 7.4 ---------- */
+  const HERO_SKILL = { id: 'hero', name: '普攻', elem: 'phys', coef: 0.30, isSpell: false, crit: 0, cd: 0.8, kind: 'basic' };
 
-  /* 防御方阵：英雄 + 4 塔，全部落在 DEF_X 这条垂直线；在 [DEF_MARGIN, BH-DEF_MARGIN]
-     内均匀竖直分布，最上下端留白（英雄居中） */
+  /* 4 技能基础效果（主文档 7.4《基础技能列表》）：伤害 = 攻击力 × coef
+   * kind 决定弹道与命中行为；slow/burn/shock/poison 为命中附带的异常/控制 */
+  const SKILL_PROFILES = {
+    iceLance: { id: 'iceLance', name: '寒冰锥刺', elem: 'ice',      isSpell: true,  coef: 3.0, cd: 1.00, kind: 'shards', count: 4, pierce: 2, slow: { pct: 30, dur: 2 } },
+    fireball: { id: 'fireball', name: '爆裂火球', elem: 'fire',     isSpell: true,  coef: 2.6, cd: 1.45, kind: 'ball',   aoeR: 58, burn: { stack: 1 } },
+    chain:    { id: 'chain',    name: '连锁闪电', elem: 'lightning',isSpell: true,  coef: 1.8, cd: 1.35, kind: 'chain',  bounce: 5, shock: { stack: 1 } },
+    spore:    { id: 'spore',    name: '剧毒孢子', elem: 'poison',   isSpell: true,  coef: 2.0, cd: 2.10, kind: 'spore',  aoeR: 52, poison: { stack: 1 } },
+  };
+
+  /* 防御方阵：英雄(居中) + 4 塔；4 塔对应技能面板的 4 个上阵槽 */
   const DEF_MARGIN = 30;
   const defenders = [
-    { id: 'ice',      name: '冰锥刺', x: DEF_X, y: 0, skill: TOWER_SKILLS[0], color: 0x6ad0ff, cd: 0 },
-    { id: 'fire',     name: '爆裂火球', x: DEF_X, y: 0, skill: TOWER_SKILLS[1], color: 0xff8a5a, cd: 0 },
-    { id: 'hero',     name: '英雄',   x: DEF_X, y: 0, skill: HERO_SKILL,    color: 0xffd54a, cd: 0 },
-    { id: 'poison',   name: '剧毒爆弹', x: DEF_X, y: 0, skill: TOWER_SKILLS[2], color: 0x9be36a, cd: 0 },
-    { id: 'lightning',name: '连锁闪电', x: DEF_X, y: 0, skill: TOWER_SKILLS[3], color: 0xc89bff, cd: 0 },
+    { id: 't0', name: '冰霜塔', x: DEF_X, y: 0, skill: null, color: 0x6ad0ff, cd: 0, active: false },
+    { id: 't1', name: '火焰塔', x: DEF_X, y: 0, skill: null, color: 0xff8a5a, cd: 0, active: false },
+    { id: 'hero', name: '英雄', x: DEF_X, y: 0, skill: HERO_SKILL, color: 0xffd54a, cd: 0, active: true },
+    { id: 't2', name: '毒素塔', x: DEF_X, y: 0, skill: null, color: 0x9be36a, cd: 0, active: false },
+    { id: 't3', name: '闪电塔', x: DEF_X, y: 0, skill: null, color: 0xc89bff, cd: 0, active: false },
   ];
+  /* 技能槽 i（0..3）→ 防御方阵索引（英雄居中，4 塔环绕） */
+  const TOWER_IDX = [0, 1, 3, 4];
   (function layoutDefenders() {
     const n = defenders.length;
     const span = (BH - 2 * DEF_MARGIN) / (n - 1);
@@ -141,10 +145,18 @@
     return dmg;
   }
 
-  /* ---------- 怪物 / 子弹 ---------- */
+  /* ---------- 时间 / 全局状态 ---------- */
+  let gameTime = 0;        // 累计游戏秒（减速持续判定）
+  let dotTimer = 0;        // DoT 每秒结算累加器
+  const DOT_RATE = 0.08;   // 每层 DoT 每秒伤害 = 攻击力 × DOT_RATE
+  const DOT_CAP = 10;      // 单层异常叠加上限
+  const effectTotals = { burn: 0, shock: 0, poison: 0, slow: 0 }; // 调试：异常/控制命中累计
+
+  /* ---------- 怪物 / 子弹 / 特效 ---------- */
   const monsters = [];
   const bullets = [];
   const pops = [];          // 浮动伤害数字
+  const fx = [];            // 瞬时特效（爆炸环 / 闪电链），fade 后销毁
   let level = 1, killCount = 0;
   let spawnTimer = 0, spawnInterval = 0.85;
   let purify = 0;           // 净化值（击杀小怪/精英积攒）
@@ -165,20 +177,111 @@
       x: SPAWN_X, y: lane, type,
       hp: maxhp, maxhp, speed: (34 + Math.random() * 16) * 0.7,
       atkCd: 0, g: null, bar: null, dead: false,
+      slowPct: 0, slowUntil: 0, dot: { burn: 0, shock: 0, poison: 0 },
     };
     if (type === 'boss') bossActive = true;
     monsters.push(m);
   }
 
-  function spawnBullet(src, target) {
-    bullets.push({ x: src.x + 14, y: src.y, target, skill: src.skill, srcId: src.id, g: null });
+  /* 选最靠前（x 最小、未越过围墙）的敌人；exclude 为已排除集合 */
+  function pickTarget(exclude) {
+    let best = null;
+    for (const m of monsters) {
+      if (m.dead || m.x <= WALL_X) continue;
+      if (exclude && exclude.has(m)) continue;
+      if (!best || m.x < best.x) best = m;
+    }
+    return best;
+  }
+  /* 取除 best 外最靠前的 n 个敌人（多重射击用） */
+  function altTargets(best, n) {
+    const set = new Set(best ? [best] : []);
+    const out = [];
+    while (out.length < n) {
+      const t = pickTarget(set);
+      if (!t) break;
+      out.push(t); set.add(t);
+    }
+    return out;
   }
 
-  function addPop(x, y, dmg, crit) {
+  /* 命中结算：伤害 + 暴击积累 + 异常/控制附带 */
+  function hitMonster(m, srcId, skill) {
+    if (m.dead) return;
+    const res = computeDamage({ id: srcId }, skill, m);
+    m.hp -= res.dmg;
+    addPop(m.x, m.y - 8, res.dmg, res.crit);
+    if (critBuildCfg) critBuild = Math.min(critBuildCfg.cap, critBuild + critBuildCfg.perHit);
+    applyOnHit(m, skill);
+    if (m.hp <= 0) { m.dead = true; killMonster(m); }
+  }
+  function applyOnHit(m, skill) {
+    if (skill.slow) { m.slowPct = Math.max(m.slowPct, skill.slow.pct); m.slowUntil = gameTime + skill.slow.dur; effectTotals.slow++; }
+    if (skill.burn)   { m.dot.burn   = Math.min(DOT_CAP, m.dot.burn + skill.burn.stack);   effectTotals.burn++; }
+    if (skill.shock)  { m.dot.shock  = Math.min(DOT_CAP, m.dot.shock + skill.shock.stack);  effectTotals.shock++; }
+    if (skill.poison) { m.dot.poison = Math.min(DOT_CAP, m.dot.poison + skill.poison.stack); effectTotals.poison++; }
+  }
+  /* 范围爆炸：对半径内敌人结算（direct 命中者排除，避免双倍） */
+  function explode(cx, cy, r, skill, direct) {
+    for (const m of monsters) {
+      if (m.dead || m === direct) continue;
+      if (Math.hypot(m.x - cx, m.y - cy) <= r) hitMonster(m, 'fx', skill);
+    }
+    const g = new PIXI.Graphics();
+    g.lineStyle(3, skill.elem === 'fire' ? 0xff8a5a : 0x9be36a, 0.9);
+    g.drawCircle(0, 0, r); g.endFill();
+    g.x = cx; g.y = cy;
+    addFx(g, 0.35);
+  }
+  /* 寒冰锥刺：直线发射 count 枚冰锥（固定 y 偏移、水平飞行、穿透 pierce 个敌人） */
+  function fireShards(d) {
+    const k = d.skill;
+    const offs = k.count > 1 ? [-1.5, -0.5, 0.5, 1.5].slice(0, k.count) : [0];
+    for (let j = 0; j < k.count; j++) {
+      const y = d.y + (offs[j] || 0) * 22;
+      bullets.push({ x: d.x + 14, y: y, px: d.x + 14, vx: 380, kind: 'shards', skill: k, srcId: d.id,
+        pierce: k.pierce, hitSet: new Set(), g: null });
+    }
+  }
+  /* 单体弹道（普攻/火球/孢子）：追踪目标 */
+  function fireProjectile(d, target) {
+    bullets.push({ x: d.x + 14, y: d.y, target: target, kind: d.skill.kind, skill: d.skill, srcId: d.id, g: null });
+  }
+  /* 连锁闪电：从本塔出发在敌人间弹射最多 bounce 次，每次叠加感电 */
+  function fireChain(d) {
+    const k = d.skill;
+    const seq = [];
+    const used = new Set();
+    let cur = { x: d.x, y: d.y };
+    let t = pickTarget(used);
+    const RANGE = 175;
+    for (let hop = 0; hop <= k.bounce && t; hop++) {
+      seq.push(t); used.add(t);
+      hitMonster(t, d.id, k);
+      cur = t;
+      let nx = null, nd = RANGE;
+      for (const m of monsters) {
+        if (m.dead || used.has(m)) continue;
+        const dd = Math.hypot(m.x - cur.x, m.y - cur.y);
+        if (dd <= nd) { nd = dd; nx = m; }
+      }
+      t = nx;
+    }
+    if (seq.length) {
+      const g = new PIXI.Graphics();
+      g.lineStyle(3, 0xc89bff, 0.95);
+      g.moveTo(d.x, d.y);
+      for (const m of seq) g.lineTo(m.x, m.y);
+      addFx(g, 0.3);
+    }
+  }
+  function addFx(g, life) { fx.push({ g, life, max: life }); dynLayer.addChild(g); }
+
+  function addPop(x, y, dmg, crit, col) {
     if (pops.length > 40) return;
     const t = new PIXI.Text(String(dmg), {
       fontFamily: 'Arial', fontSize: crit ? 18 : 13,
-      fill: crit ? 0xffd54a : 0xcfe6ff, fontWeight: '700',
+      fill: (col != null) ? col : (crit ? 0xffd54a : 0xcfe6ff), fontWeight: '700',
     });
     t.anchor.set(0.5);
     t.x = x; t.y = y;
@@ -273,6 +376,7 @@
   function loop() {
     frames++;
     const dt = Math.min(0.05, app.ticker.deltaMS / 1000);
+    gameTime += dt;
 
     // 生成
     spawnTimer += dt;
@@ -282,7 +386,8 @@
     let wallBroken = false;
     for (const m of monsters) {
       if (m.dead) continue;
-      m.x -= m.speed * dt;
+      const slowF = (gameTime < m.slowUntil) ? (1 - m.slowPct / 100) : 1;
+      m.x -= m.speed * slowF * dt;
       if (m.x < WALL_RX + ATK_STANDOFF) m.x = WALL_RX + ATK_STANDOFF;   // 被墙体阻挡，但与墙保持距离
       if (!m.g) {
         m.g = new PIXI.Graphics();
@@ -318,53 +423,67 @@
       purify = 0; bossActive = false; wallHp = wallHpMax;
     }
 
-    // 防御方阵开火
+    // 防御方阵开火（仅已装配技能的塔；按技能 kind 分派弹道）
     for (const d of defenders) {
+      if (!d.active || !d.skill) continue;
       d.cd -= dt;
-      if (d.cd <= 0) {
-        // 选目标：始终优先攻击最靠前（x 最小、未越过围墙）的敌人
-        let best = null;
-        for (const m of monsters) {
-          if (m.dead || m.x <= WALL_X) continue;
-          if (!best || m.x < best.x) best = m;
-        }
-        if (best) {
-          d.cd = d.skill.cd;
-          spawnBullet(d, best);
-          // 多重射击：额外弹道
-          for (let i = 0; i < (attr.multiShot | 0); i++) {
-            let alt = null;
-            for (const m of monsters) { if (m.dead || m.x <= WALL_X || m === best) continue; if (!alt || Math.abs(m.y - d.y) < Math.abs(alt.y - d.y)) alt = m; }
-            if (alt) spawnBullet(d, alt);
-          }
-        } else {
-          d.cd = 0.1;
-        }
+      if (d.cd > 0) continue;
+      const k = d.skill.kind;
+      if (k === 'chain') { fireChain(d); d.cd = d.skill.cd; continue; }
+      const best = pickTarget(null);
+      if (!best) { d.cd = 0.1; continue; }
+      if (k === 'shards') fireShards(d);
+      else fireProjectile(d, best);
+      // 多重射击：额外弹道
+      if (attr.multiShot > 0) {
+        for (const alt of altTargets(best, attr.multiShot | 0)) fireProjectile(d, alt);
       }
+      d.cd = d.skill.cd;
     }
 
     // 子弹飞行 + 命中
     for (const b of bullets) {
       if (!b.g) {
         b.g = new PIXI.Graphics();
-        const col = b.srcId === 'hero' ? 0xffd54a : 0x9fd0ff;
-        b.g.beginFill(col, 0.25); b.g.drawCircle(0, 0, 7); b.g.endFill();
-        b.g.beginFill(col, 0.95); b.g.drawCircle(0, 0, 4); b.g.endFill();
+        const col = b.kind === 'shards' ? 0x9fe9ff : (b.srcId === 'hero' ? 0xffd54a : 0x9fd0ff);
+        b.g.beginFill(col, 0.25); b.g.drawCircle(0, 0, b.kind === 'shards' ? 5 : 7); b.g.endFill();
+        b.g.beginFill(col, 0.95); b.g.drawCircle(0, 0, b.kind === 'shards' ? 3 : 4); b.g.endFill();
         dynLayer.addChild(b.g);
       }
+      // 寒冰锥刺：直线水平飞行，碰撞同车道敌人，穿透 pierce 个
+      if (b.kind === 'shards') {
+        const px = (b.px != null) ? b.px : b.x;   // 上一帧 x，用于捕捉穿越
+        b.x += b.vx * dt;
+        b.g.x = b.x; b.g.y = b.y;
+        for (const m of monsters) {
+          if (m.dead || b.hitSet.has(m) || m.x <= WALL_X) continue;
+          // 本帧子弹 x 区间 [px, b.x] 跨越怪物 x（与帧率无关），且同车道 → 命中
+          if (Math.abs(m.y - b.y) <= 13 && m.x >= px - 6 && m.x <= b.x + 6) {
+            b.hitSet.add(m);
+            hitMonster(m, b.srcId, b.skill);
+            if (b.hitSet.size > b.pierce) { killGfx(b); b.done = true; break; }
+          }
+        }
+        b.px = b.x;
+        if (b.x > BW + 10) { killGfx(b); b.done = true; }
+        continue;
+      }
+      // 其余：追踪目标
       const t = b.target;
-      if (!t || t.dead) { killGfx(b); b.done = true; continue; }
+      if (!t || t.dead) {
+        if (b.kind === 'ball' || b.kind === 'spore') explode(b.x, b.y, b.skill.aoeR, b.skill, null);
+        killGfx(b); b.done = true; continue;
+      }
       const dx = t.x - b.x, dy = t.y - b.y, dist = Math.hypot(dx, dy);
-      const step = 360 * dt;
+      const step = 380 * dt;
       if (dist <= step + 6) {
-        // 命中
-        const res = computeDamage({ id: b.srcId }, b.skill, t);
-        t.hp -= res.dmg;
-        addPop(t.x, t.y - 8, res.dmg, res.crit);
-        if (critBuildCfg) { critBuild = Math.min(critBuildCfg.cap, critBuild + critBuildCfg.perHit); }
-        if (t.hp <= 0) { t.dead = true; killGfx(t); killGfx(b); killMonster(t); }
-        else killGfx(b);
-        b.done = true;
+        if (b.kind === 'ball' || b.kind === 'spore') {
+          hitMonster(t, b.srcId, b.skill);                 // 直接命中
+          explode(b.x, b.y, b.skill.aoeR, b.skill, t);     // 范围爆炸
+        } else {
+          hitMonster(t, b.srcId, b.skill);                 // 单体命中
+        }
+        killGfx(b); b.done = true;
       } else {
         b.x += dx / dist * step; b.y += dy / dist * step;
         b.g.x = b.x; b.g.y = b.y;
@@ -373,6 +492,29 @@
     // 清理
     for (let i = bullets.length - 1; i >= 0; i--) if (bullets[i].done) bullets.splice(i, 1);
     for (let i = monsters.length - 1; i >= 0; i--) if (monsters[i].dead) monsters.splice(i, 1);
+
+    // DoT 每秒结算（灼烧 / 感电 / 中毒：仅叠层、不写持续，按攻击力 × 层数加成）
+    dotTimer += dt;
+    if (dotTimer >= 1) {
+      dotTimer -= 1;
+      for (const m of monsters) {
+        if (m.dead) continue;
+        const stacks = m.dot.burn + m.dot.shock + m.dot.poison;
+        if (stacks > 0) {
+          const dmg = Math.max(1, Math.round(attr.atk * DOT_RATE * stacks));
+          m.hp -= dmg;
+          addPop(m.x, m.y - 20, dmg, false, 0x8bff9b);
+          if (m.hp <= 0) { m.dead = true; killMonster(m); }
+        }
+      }
+    }
+    // 瞬时特效淡出
+    for (const f of fx) {
+      f.life -= dt;
+      if (f.max) f.g.alpha = Math.max(0, f.life / f.max);
+      if (f.life <= 0) { dynLayer.removeChild(f.g); f.g.destroy(); f.done = true; }
+    }
+    for (let i = fx.length - 1; i >= 0; i--) if (fx[i].done) fx.splice(i, 1);
 
     // 浮动数字
     for (const p of pops) {
@@ -415,6 +557,18 @@
   app.ticker.add(loop);
 
   /* ---------- 暴露接口（供自动化验证 / 调试） ---------- */
+  const ELEM_COLOR_MAP = { ice: 0x6ad0ff, fire: 0xff8a5a, lightning: 0xc89bff, poison: 0x9be36a, phys: 0xffd54a };
+  function redrawDefender(gr, col, ch, empty) {
+    gr.clear();
+    if (empty) {
+      gr.lineStyle(2, 0x4a4f5e, 0.9); gr.drawRoundedRect(-13, -13, 26, 26, 7); gr.endFill();
+      gr.lineStyle(0);
+    } else {
+      gr.beginFill(col, 0.16); gr.drawRoundedRect(-18, -18, 36, 36, 11); gr.endFill();
+      gr.beginFill(col, 0.82); gr.lineStyle(2, 0xffffff, 0.7); gr.drawRoundedRect(-13, -13, 26, 26, 7); gr.endFill();
+      gr.lineStyle(0); gr.beginFill(0xffffff, 0.25); gr.drawRoundedRect(-10, -11, 20, 8, 4); gr.endFill();
+    }
+  }
   window.__gameH = {
     get hasGame() { return true; },
     get attrRows() { return ATTR_DEFS.length; },
@@ -440,29 +594,42 @@
     get frames() { return frames; },
     get spawned() { return spawned; },
     get tickerStarted() { return app.ticker.started; },
+
+    /* 调试：防御塔装配状态 / 怪物异常层数 / 弹幕种类计数 */
+    get defendersActive() { return defenders.map(d => !!d.active); },
+    get defenderSkills() { return defenders.map(d => d.skill ? d.skill.id : null); },
+    get dotMonsterCount() { return monsters.filter(m => m.dot.burn + m.dot.shock + m.dot.poison > 0).length; },
+    get slowMonsterCount() { return monsters.filter(m => gameTime < m.slowUntil).length; },
+    get shockMonsterCount() { return monsters.filter(m => m.dot.shock > 0).length; },
+    get effectTotals() { return Object.assign({}, effectTotals); },
+    debugSetAtk(v) { if (typeof v === 'number') { BASE_ATTR.atk = v; refreshAttr(); } },
+    get bulletKinds() { const c = {}; bullets.forEach(b => { c[b.kind] = (c[b.kind] || 0) + 1; }); return c; },
   };
 
-  /* 技能上阵 → 战斗区即时同步（4 塔对应 4 插槽） */
-  const TOWER_DEFAULT_COLORS = defenders.slice(1).map(function (d) { return d.color; });
-  const ELEM_COLOR_MAP = { ice: 0x6ad0ff, fire: 0xff8a5a, lightning: 0xc89bff, poison: 0x9be36a, phys: 0xffd54a };
+  /* 技能上阵 → 战斗区即时同步（4 塔对应 4 插槽；空槽 → 该塔置空不发射）
+   * defs[i] 可为技能 id 字符串，或带 .id 的技能对象（来自技能面板 syncBattleArea） */
   window.__gameH.applySkillSlots = function (defs) {
     if (!Array.isArray(defs)) return;
     for (let i = 0; i < 4; i++) {
-      const d = defenders[i + 1]; const g = defG[i + 1];
+      const di = TOWER_IDX[i];
+      const d = defenders[di]; const g = defG[di];
       if (!d) continue;
-      const def = defs[i]; const base = TOWER_SKILLS[i];
-      d.skill = Object.assign({}, base, def ? { name: def.name, elem: def.element } : {});
-      const col = (def && ELEM_COLOR_MAP[def.element] != null) ? ELEM_COLOR_MAP[def.element] : TOWER_DEFAULT_COLORS[i];
-      d.color = col;
-      if (g) {
-        const gr = g.children[0];
-        gr.clear();
-        gr.beginFill(col, 0.16); gr.drawRoundedRect(-18, -18, 36, 36, 11); gr.endFill();
-        gr.beginFill(col, 0.82); gr.lineStyle(2, 0xffffff, 0.7); gr.drawRoundedRect(-13, -13, 26, 26, 7); gr.endFill();
-        gr.lineStyle(0); gr.beginFill(0xffffff, 0.25); gr.drawRoundedRect(-10, -11, 20, 8, 4); gr.endFill();
-        g.children[1].text = d.skill.name[0];
+      const raw = defs[i];
+      const id = raw ? (raw.id || raw) : null;
+      const prof = (id && SKILL_PROFILES[id]) ? SKILL_PROFILES[id] : null;
+      if (!prof) {                                  // 空槽 → 战斗区该塔设为空（不发射）
+        d.active = false; d.skill = null;
+        if (g) { g.alpha = 0.4; redrawDefender(g.children[0], d.color, '', true); g.children[1].text = '空'; }
+        continue;
       }
+      d.active = true; d.skill = prof;
+      const col = ELEM_COLOR_MAP[prof.elem] || d.color;
+      d.color = col;
+      if (g) { g.alpha = 1; redrawDefender(g.children[0], col, prof.name[0], false); g.children[1].text = prof.name[0]; }
     }
   };
+
+  /* 默认装配：4 技能全部上阵，战斗区立即展示 4 种基础效果（用户清空槽位即对应置空） */
+  window.__gameH.applySkillSlots(['iceLance', 'fireball', 'chain', 'spore']);
 })();
 

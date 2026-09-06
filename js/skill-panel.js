@@ -21,23 +21,27 @@
 (function () {
   'use strict';
 
-  /* ---------- 技能数据（iceLance 已同步主文档 7.4；其余占位待同步） ---------- */
+  /* ---------- 技能数据（已同步主文档 7.4《基础技能列表》4 项基础效果） ---------- */
   const SKILLS = [
     { id: 'iceLance', name: '寒冰锥刺', en: 'Ice Lance',      element: 'ice',       icon: '❄',
       tags: ['法术', '冰霜', '投射物', '直射', '异常'],
-      // 描述数字按属性着色（语义化 span），dmgCoef 用于计算释放前伤害（英雄攻击力 × coef）
       descHTML: '直线发射 <span class="tipNum cnt">4</span> 枚冰锥，造成 <span class="tipNum frost">300%</span> 冰霜伤害；'
         + '冰锥可穿透 <span class="tipNum pierce">2</span> 个敌人；命中时降低目标 <span class="tipNum slow">30%</span> 移动速度（持续 <span class="tipNum dur">2s</span>）。',
-      cost: 10, chargeRate: '1.5/S', dmgCoef: 3.0 },
-    { id: 'fireball', name: '爆裂火球', en: 'Fireball',        element: 'fire',      icon: '🔥',
-      tags: ['火焰', '范围'], desc: '（待同步）投掷爆裂火球，命中后产生范围火焰伤害。',
-      cost: 0, chargeRate: '0' },
+      cost: 12, chargeRate: '1/S', dmgCoef: 3.0 },
+    { id: 'fireball', name: '爆裂火球', en: 'Explosive Fireball', element: 'fire',   icon: '🔥',
+      tags: ['法术', '火焰', '投射物', '直射', '异常'],
+      descHTML: '向前直线发射火球，触碰敌人后爆炸造成范围火焰伤害；造成 <span class="tipNum frost">260%</span> 火焰伤害；'
+        + '每次命中叠加 <span class="tipNum pierce">1</span> 层灼烧。',
+      cost: 14, chargeRate: '1/S', dmgCoef: 2.6 },
     { id: 'chain',    name: '连锁闪电', en: 'Chain Lightning', element: 'lightning', icon: '⚡',
-      tags: ['闪电', '弹射'], desc: '（待同步）释放连锁闪电，在敌人间弹射。',
-      cost: 0, chargeRate: '0' },
-    { id: 'spore',    name: '剧毒孢子', en: 'Poison Spore',    element: 'poison',    icon: '🧪',
-      tags: ['毒素', '持续'], desc: '（待同步）播撒剧毒孢子，造成持续毒素伤害。',
-      cost: 0, chargeRate: '0' },
+      tags: ['法术', '闪电', '射线', '弹射', '异常'],
+      descHTML: '发射一道闪电射线，在敌人之间弹射最多 <span class="tipNum cnt">5</span> 次；造成 <span class="tipNum frost">180%</span> 闪电伤害；'
+        + '每次命中叠加 <span class="tipNum pierce">1</span> 层感电。',
+      cost: 16, chargeRate: '1/S', dmgCoef: 1.8 },
+    { id: 'spore',    name: '剧毒孢子', en: 'Venom Spore',    element: 'poison',    icon: '🧪',
+      tags: ['法术', '毒素', '投射物', '抛射', '异常'],
+      descHTML: '抛射一枚孢子，爆炸时造成 <span class="tipNum frost">200%</span> 毒素伤害；每次命中叠加 <span class="tipNum pierce">1</span> 层中毒。',
+      cost: 15, chargeRate: '1/S', dmgCoef: 2.0 },
   ];
 
   const ELEM_COLOR = {
@@ -46,7 +50,7 @@
   };
 
   const SLOT_COUNT = 4;
-  const slots = new Array(SLOT_COUNT).fill(null); // 每个元素存技能 id 或 null
+  const slots = ['iceLance', 'fireball', 'chain', 'spore']; // 默认 4 技能全部上阵，展示基础效果（清空某槽 → 战斗区对应塔置空）
   let selectedId = null;
   let armedId = null;     // 放置模式：当前待放置的技能
   let treeFrame = null;   // 专精树 iframe（懒创建、复用）

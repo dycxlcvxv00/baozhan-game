@@ -137,9 +137,27 @@
   }
 
   function bindUI() {
-    var bar = document.getElementById('saveBar');
-    if (!bar) return;
-    bar.addEventListener('click', function (e) {
+    var chip = document.getElementById('settingsChip');
+    var pop = document.getElementById('settingsPop');
+    if (chip && pop) {
+      chip.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = pop.classList.toggle('open');
+        chip.classList.toggle('active', open);
+      });
+      var close = document.getElementById('settingsClose');
+      if (close) close.addEventListener('click', function () {
+        pop.classList.remove('open'); if (chip) chip.classList.remove('active');
+      });
+      // 点击弹窗外部关闭
+      document.addEventListener('click', function (e) {
+        if (!pop.classList.contains('open')) return;
+        if (pop.contains(e.target) || chip.contains(e.target)) return;
+        pop.classList.remove('open'); if (chip) chip.classList.remove('active');
+      });
+    }
+    if (!pop) pop = document.body;
+    pop.addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]');
       if (!b) return;
       var act = b.dataset.act;

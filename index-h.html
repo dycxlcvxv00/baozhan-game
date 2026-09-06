@@ -399,24 +399,37 @@
     border:1px solid rgba(255,255,255,0.22);background:rgba(0,0,0,0.35)}
   #equipTip .etTrait{padding:4px 12px 12px;font-size:12px;color:#e3d8fb;line-height:1.55}
 
-  /* ---------- 存档栏（固定右上角，悬于顶部栏之上） ---------- */
-  #saveBar{position:absolute;right:8px;top:74px;display:flex;align-items:center;gap:8px;
-    padding:8px 12px;border-radius:14px;z-index:50;
+  /* ---------- 设置弹窗（点击顶部栏「设置」展开） ---------- */
+  #settingsChip{cursor:pointer;transition:all .15s ease}
+  #settingsChip:hover{color:var(--txt);border-color:rgba(47,230,208,0.4)}
+  #settingsChip.active{color:var(--accent);border-color:rgba(47,230,208,0.5);
+    box-shadow:0 0 12px rgba(47,230,208,0.22)}
+  #settingsPop{position:absolute;right:8px;top:74px;z-index:60;width:248px;padding:14px;border-radius:14px;
+    display:none;
     background:var(--panel2);border:1px solid var(--line);
     backdrop-filter:blur(11px) saturate(120%);-webkit-backdrop-filter:blur(11px) saturate(120%);
-    box-shadow:0 8px 26px rgba(0,0,0,0.4),0 0 0 1px rgba(47,230,208,0.05)}
-  #saveBar .saveBtn{height:30px;padding:0 13px;border-radius:9px;cursor:pointer;
+    box-shadow:0 12px 34px rgba(0,0,0,0.45),0 0 0 1px rgba(47,230,208,0.06)}
+  #settingsPop.open{display:block;animation:popIn .15s ease}
+  @keyframes popIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+  #settingsPop .popHead{display:flex;align-items:center;justify-content:space-between;
+    font-size:15px;font-weight:700;color:var(--txt);margin-bottom:10px}
+  #settingsPop .popClose{cursor:pointer;border:none;background:transparent;color:var(--dim);
+    font-size:15px;line-height:1;padding:2px 4px;border-radius:6px}
+  #settingsPop .popClose:hover{color:var(--txt);background:rgba(255,255,255,0.08)}
+  #settingsPop .popBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #settingsPop .saveBtn{height:32px;border-radius:9px;cursor:pointer;
     font-size:13px;font-weight:600;color:var(--dim);
     background:var(--btn);border:1px solid var(--line);
     transition:all .15s ease;white-space:nowrap}
-  #saveBar .saveBtn:hover{color:var(--txt);border-color:rgba(47,230,208,0.4)}
-  #saveBar .saveBtn.on{color:var(--accent);border-color:rgba(47,230,208,0.5);
+  #settingsPop .saveBtn:hover{color:var(--txt);border-color:rgba(47,230,208,0.4)}
+  #settingsPop .saveBtn.on{color:var(--accent);border-color:rgba(47,230,208,0.5);
     box-shadow:0 0 12px rgba(47,230,208,0.22)}
-  #saveBar .saveStamp{font-size:12px;color:var(--mute);white-space:nowrap}
-  #saveBar .saveMsg{position:absolute;top:-30px;right:0;padding:5px 12px;border-radius:9px;
+  #settingsPop .popFoot{position:relative;margin-top:10px;display:flex;align-items:center;gap:8px}
+  #settingsPop .saveStamp{font-size:12px;color:var(--mute);white-space:nowrap}
+  #settingsPop .saveMsg{position:absolute;left:0;top:-30px;padding:5px 12px;border-radius:9px;
     font-size:13px;font-weight:700;color:#06231f;background:var(--accent);
     opacity:0;transform:translateY(4px);pointer-events:none;transition:all .2s ease}
-  #saveBar .saveMsg.show{opacity:1;transform:translateY(0)}
+  #settingsPop .saveMsg.show{opacity:1;transform:translateY(0)}
 </style>
 </head>
 <body>
@@ -436,20 +449,28 @@
     <span class="right">
       <span class="chip on">离线收益</span>
       <span class="chip">自动战斗</span>
-      <span class="chip">设置</span>
+      <span class="chip" id="settingsChip" data-act="settings">设置</span>
     </span>
   </div>
 
-  <!-- 存档栏：保存 / 读取 / 自动 / 导出 / 导入 / 清空 -->
-  <div id="saveBar" class="panel">
-    <button class="saveBtn" data-act="save">保存</button>
-    <button class="saveBtn" data-act="load">读取</button>
-    <button class="saveBtn on" data-act="auto">自动开</button>
-    <button class="saveBtn" data-act="export">导出</button>
-    <button class="saveBtn" data-act="import">导入</button>
-    <button class="saveBtn" data-act="clear">清空</button>
-    <span id="saveStamp" class="saveStamp">尚无存档</span>
-    <span id="saveMsg" class="saveMsg"></span>
+  <!-- 设置弹窗：保存 / 读取 / 自动 / 导出 / 导入 / 清空（点击顶部「设置」展开） -->
+  <div id="settingsPop" class="pop">
+    <div class="popHead">
+      <span>存档设置</span>
+      <button id="settingsClose" class="popClose" title="关闭">✕</button>
+    </div>
+    <div class="popBtns">
+      <button class="saveBtn" data-act="save">保存</button>
+      <button class="saveBtn" data-act="load">读取</button>
+      <button class="saveBtn on" data-act="auto">自动开</button>
+      <button class="saveBtn" data-act="export">导出</button>
+      <button class="saveBtn" data-act="import">导入</button>
+      <button class="saveBtn" data-act="clear">清空</button>
+    </div>
+    <div class="popFoot">
+      <span id="saveStamp" class="saveStamp">尚无存档</span>
+      <span id="saveMsg" class="saveMsg"></span>
+    </div>
     <input id="saveFile" type="file" accept="application/json,.json" hidden />
   </div>
 
