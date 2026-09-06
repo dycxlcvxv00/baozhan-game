@@ -165,6 +165,14 @@
   window.ATTR_POOL = ATTR_POOL;
   window.AFFIX_KIND = AFFIX_KIND;
 
+  /* 存档：注册英雄装备状态（供 save.js 持久化 / 恢复） */
+  if (window.GameSave) {
+    window.GameSave.register('hero',
+      function () { return Object.assign({}, HERO.equipped); },
+      function (eq) { HERO.equipped = eq || {}; HERO._notify(); }
+    );
+  }
+
   /* ---- 数值计算：flat 词缀先加进基础值，pct 词缀作为乘区百分比（后乘） ---- */
   // flatBonusOf: 该属性上所有 flat 词缀之和（直接加进基础值，例：攻击力加成 +25）
   function flatBonusOf(key){

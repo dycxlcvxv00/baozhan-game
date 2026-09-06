@@ -205,6 +205,7 @@
     ITEM_MAP[inst.id] = inst;          // 注册实例，属性随 attrs 真实生效
     BAG[cur][slot] = inst.id;
     buildCells();
+    if (window.GameSave) window.GameSave.requestSave();
   }
   // 铸造：按主文档《装备系统》公式随机生成一件属性真实的装备
   const FORGE_RARS = ['magic', 'rare', 'epic'];
@@ -248,4 +249,28 @@
   // 暴露装备提示 UI，供右上角装备栏（纸娃娃）复用
   window.showEquipTip = showEquipTip;   // 入参为带 dataset.item 的单元格
   window.equipTipEl = equipTip;
+
+  /* 存档：注册背包库存（实例物品 + 各页格位 + 实例序号）。
+   * 必须在 char-panel 之后恢复：实例物品先回注 ITEM_MAP，paperdoll 才能正确显示。 */
+  if (window.GameSave) {
+    window.GameSave.register('bag',
+      function () {
+        var inst = [];
+        for (var k in ITEM_MAP) { if (k.indexOf('inst') === 0) inst.push(ITEM_MAP[k]); }
+        var bag = {};
+        for (var p in BAG) bag[p] = BAG[p];
+        return { inst: inst, bag: bag, seq: instSeq };
+      },
+      function (payload) {
+        if (!payload) return;
+        // 清掉旧实例（保留基础 EQUIP_ITEMS），再回注存档中的实例
+        for (var k in ITEM_MAP) { if (k.indexOf('inst') === 0) delete ITEM_MAP[k]; }
+        (payload.inst || []).forEach(function (it) { ITEM_MAP[it.id] = it; });
+        if (payload.bag) { for (var p in payload.bag) BAG[p] = payload.bag[p]; }
+        if (typeof payload.seq === 'number') instSeq = payload.seq;
+        buildCells();
+        if (window.HERO) window.HERO._notify();
+      }
+    );
+  }
 })();

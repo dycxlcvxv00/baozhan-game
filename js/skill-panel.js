@@ -95,6 +95,7 @@
   function placeSkill(i, id) {
     for (let k = 0; k < SLOT_COUNT; k++) if (slots[k] === id) slots[k] = null;
     slots[i] = id;
+    if (window.GameSave) window.GameSave.requestSave();
   }
 
   /* 上阵变化 → 立即同步战斗区 4 塔 */
@@ -129,6 +130,7 @@
           if (e.target.classList.contains('rm')) {
             e.stopPropagation();
             slots[i] = null; renderSlots(); syncBattleArea();
+            if (window.GameSave) window.GameSave.requestSave();
             return;
           }
           if (armedId) { // 放置模式：点格子 → 放置（可替换）
@@ -292,4 +294,15 @@
   }
 
   window.__skillRender = render;
+
+  /* 存档：注册技能上阵状态（供 save.js 持久化 / 恢复） */
+  if (window.GameSave) {
+    window.GameSave.register('skill',
+      function () { return slots.slice(); },
+      function (arr) {
+        for (let i = 0; i < SLOT_COUNT; i++) slots[i] = (arr && arr[i] != null) ? arr[i] : null;
+        renderSlots(); syncBattleArea();
+      }
+    );
+  }
 })();

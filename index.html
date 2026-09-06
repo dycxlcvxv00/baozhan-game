@@ -398,6 +398,25 @@
   #equipTip .etHole{width:13px;height:13px;border-radius:50%;flex:none;
     border:1px solid rgba(255,255,255,0.22);background:rgba(0,0,0,0.35)}
   #equipTip .etTrait{padding:4px 12px 12px;font-size:12px;color:#e3d8fb;line-height:1.55}
+
+  /* ---------- 存档栏（固定右上角，悬于顶部栏之上） ---------- */
+  #saveBar{position:absolute;right:8px;top:74px;display:flex;align-items:center;gap:8px;
+    padding:8px 12px;border-radius:14px;z-index:50;
+    background:var(--panel2);border:1px solid var(--line);
+    backdrop-filter:blur(11px) saturate(120%);-webkit-backdrop-filter:blur(11px) saturate(120%);
+    box-shadow:0 8px 26px rgba(0,0,0,0.4),0 0 0 1px rgba(47,230,208,0.05)}
+  #saveBar .saveBtn{height:30px;padding:0 13px;border-radius:9px;cursor:pointer;
+    font-size:13px;font-weight:600;color:var(--dim);
+    background:var(--btn);border:1px solid var(--line);
+    transition:all .15s ease;white-space:nowrap}
+  #saveBar .saveBtn:hover{color:var(--txt);border-color:rgba(47,230,208,0.4)}
+  #saveBar .saveBtn.on{color:var(--accent);border-color:rgba(47,230,208,0.5);
+    box-shadow:0 0 12px rgba(47,230,208,0.22)}
+  #saveBar .saveStamp{font-size:12px;color:var(--mute);white-space:nowrap}
+  #saveBar .saveMsg{position:absolute;top:-30px;right:0;padding:5px 12px;border-radius:9px;
+    font-size:13px;font-weight:700;color:#06231f;background:var(--accent);
+    opacity:0;transform:translateY(4px);pointer-events:none;transition:all .2s ease}
+  #saveBar .saveMsg.show{opacity:1;transform:translateY(0)}
 </style>
 </head>
 <body>
@@ -419,6 +438,19 @@
       <span class="chip">自动战斗</span>
       <span class="chip">设置</span>
     </span>
+  </div>
+
+  <!-- 存档栏：保存 / 读取 / 自动 / 导出 / 导入 / 清空 -->
+  <div id="saveBar" class="panel">
+    <button class="saveBtn" data-act="save">保存</button>
+    <button class="saveBtn" data-act="load">读取</button>
+    <button class="saveBtn on" data-act="auto">自动开</button>
+    <button class="saveBtn" data-act="export">导出</button>
+    <button class="saveBtn" data-act="import">导入</button>
+    <button class="saveBtn" data-act="clear">清空</button>
+    <span id="saveStamp" class="saveStamp">尚无存档</span>
+    <span id="saveMsg" class="saveMsg"></span>
+    <input id="saveFile" type="file" accept="application/json,.json" hidden />
   </div>
 
   <!-- 战斗区（Pixi 注入 canvas） -->
@@ -2297,6 +2329,204 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
 
 </script>
 <script>
+
+/* ============================================================
+ * save.js — 存档系统（localStorage 持久化 + 导出/导入 JSON）
+ *
+ * 设计：各功能模块在初始化后通过 GameSave.register(id, get, set) 注册
+ * 「序列化 / 反序列化」钩子；本模块负责：收集状态、落盘、恢复、自动保存、
+ * 以及顶部「存档栏」UI。
+ *
+ * 存档范围（当前可经 UI 修改的进度）：
+ *   - hero ：英雄已穿戴装备（window.HERO.equipped）
+ *   - bag  ：背包实例物品 + 各页格位 + 实例序号（bag-panel 动态库存）
+ *   - skill：技能上阵插槽（skill-panel 4 槽）
+ *
+ * 持久化介质：localStorage（刷新/关闭后仍在）。另支持导出/导入 JSON 文件，
+ * 便于跨设备备份或把存档随仓库提交。
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var KEY = 'baozhan_save_v1';
+  var reg = {};                       // id -> { get, set }
+  var restoring = false;              // 恢复期间抑制自动保存，避免回环
+  var autoOn = true;
+  var autoTimer = null;
+
+  /* 恢复优先级：bag（含实例物品）必须先于 hero，
+   * 否则 paperdoll / 背包读 ITEM_MAP 时实例尚未注册。 */
+  var RESTORE_ORDER = ['bag', 'hero', 'skill'];
+
+  /* ---------- 注册钩子 ---------- */
+  function register(id, get, set) {
+    reg[id] = { get: get, set: set };
+  }
+
+  /* ---------- 序列化 / 反序列化 ---------- */
+  function serialize() {
+    var data = {};
+    for (var id in reg) if (reg[id].get) data[id] = reg[id].get();
+    return { v: 1, ts: Date.now(), data: data };
+  }
+
+  function deserialize(s) {
+    if (!s || !s.data) return false;
+    restoring = true;
+    var ordered = RESTORE_ORDER.filter(function (id) { return s.data[id] !== undefined && reg[id] && reg[id].set; });
+    var rest = Object.keys(s.data).filter(function (id) {
+      return RESTORE_ORDER.indexOf(id) < 0 && reg[id] && reg[id].set;
+    });
+    ordered.concat(rest).forEach(function (id) {
+      try { reg[id].set(s.data[id]); }
+      catch (e) { console.error('[save] 恢复模块失败：', id, e); }
+    });
+    restoring = false;
+    return true;
+  }
+
+  /* ---------- 落盘 / 读取 ---------- */
+  function readRaw() {
+    try { return JSON.parse(localStorage.getItem(KEY) || 'null'); }
+    catch (e) { return null; }
+  }
+  function writeRaw(obj) {
+    try { localStorage.setItem(KEY, JSON.stringify(obj)); return true; }
+    catch (e) { console.error('[save] 写入失败', e); return false; }
+  }
+
+  function save() {
+    if (restoring) return false;
+    var ok = writeRaw(serialize());
+    updateStamp();
+    flash(ok ? '已保存' : '保存失败');
+    return ok;
+  }
+  function load() {
+    var s = readRaw();
+    if (!s) { flash('无存档'); return false; }
+    var ok = deserialize(s);
+    updateStamp();
+    if (ok && window.__gameH && window.__gameH.applySkillSlots) {
+      // 技能恢复后确保战斗区 4 塔同步
+      try { window.__skillRender && window.__skillRender(); } catch (e) {}
+    }
+    flash(ok ? '已读取' : '读取失败');
+    return ok;
+  }
+  function hasSave() { return !!readRaw(); }
+  function clearSave() {
+    localStorage.removeItem(KEY); updateStamp(); flash('存档已清空');
+  }
+
+  /* ---------- 导出 / 导入 JSON 文件 ---------- */
+  function exportFile() {
+    var blob = new Blob([JSON.stringify(serialize(), null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'baozhan-save-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    flash('已导出 JSON');
+  }
+  function importFile(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var s = JSON.parse(reader.result);
+        if (deserialize(s)) { save(); flash('已导入并保存'); }
+        else flash('导入失败');
+      } catch (e) { flash('文件无效'); }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- 自动保存（防抖） ---------- */
+  function requestSave() {
+    if (restoring || !autoOn) return;
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = setTimeout(save, 500);
+  }
+
+  /* ---------- UI ---------- */
+  function flash(msg) {
+    var el = document.getElementById('saveMsg');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._tm);
+    el._tm = setTimeout(function () { el.classList.remove('show'); }, 1400);
+  }
+  function updateStamp() {
+    var el = document.getElementById('saveStamp');
+    if (!el) return;
+    var s = readRaw();
+    el.textContent = (s && s.ts)
+      ? '上次存档：' + new Date(s.ts).toLocaleString('zh-CN', { hour12: false })
+      : '尚无存档';
+  }
+
+  function bindUI() {
+    var bar = document.getElementById('saveBar');
+    if (!bar) return;
+    bar.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]');
+      if (!b) return;
+      var act = b.dataset.act;
+      if (act === 'save') save();
+      else if (act === 'load') load();
+      else if (act === 'export') exportFile();
+      else if (act === 'import') { var f = document.getElementById('saveFile'); if (f) f.click(); }
+      else if (act === 'clear') { if (confirm('确定清空本地存档？此操作不可恢复。')) clearSave(); }
+      else if (act === 'auto') {
+        autoOn = !autoOn;
+        b.classList.toggle('on', autoOn);
+        b.textContent = '自动' + (autoOn ? '开' : '关');
+        flash('自动存档' + (autoOn ? '已开启' : '已关闭'));
+      }
+    });
+    var fi = document.getElementById('saveFile');
+    if (fi) fi.addEventListener('change', function (e) {
+      if (e.target.files && e.target.files[0]) importFile(e.target.files[0]);
+      e.target.value = '';
+    });
+    updateStamp();
+  }
+
+  /* ---------- 启动：在全部面板注册完成后恢复 + 订阅变化 ---------- */
+  function boot() {
+    bindUI();
+    // 订阅英雄装备变化（属性/装备/背包面板都会随动 → 触发自动保存）
+    if (window.HERO && window.HERO.onChange) window.HERO.onChange(requestSave);
+    // 启动优先恢复已有存档
+    if (hasSave()) load();
+    else updateStamp();
+  }
+
+  /* 暴露 API（供各面板在变化时调用 requestSave） */
+  window.GameSave = {
+    register: register,
+    save: save,
+    load: load,
+    hasSave: hasSave,
+    requestSave: requestSave,
+    exportFile: exportFile,
+    importFile: importFile,
+  };
+
+  /* save.js 先于各面板加载（脚本顺序），故 window.GameSave 已可用；
+   * 用 setTimeout(0) 把 boot 排到当前 DOMContentLoaded 派发之后，
+   * 确保各面板的 register 调用已全部完成，再执行恢复。 */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 0); });
+  } else {
+    setTimeout(boot, 0);
+  }
+})();
+
+</script>
+<script>
 /* === 角色属性面板（多文件版） · 数据真相源 = 裸身英雄基准 + 装备加成 ===
  *
  * 设计（按用户 2026-09-05 校准）：
@@ -2463,6 +2693,14 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   window.RARITY = RARITY;
   window.ATTR_POOL = ATTR_POOL;
   window.AFFIX_KIND = AFFIX_KIND;
+
+  /* 存档：注册英雄装备状态（供 save.js 持久化 / 恢复） */
+  if (window.GameSave) {
+    window.GameSave.register('hero',
+      function () { return Object.assign({}, HERO.equipped); },
+      function (eq) { HERO.equipped = eq || {}; HERO._notify(); }
+    );
+  }
 
   /* ---- 数值计算：flat 词缀先加进基础值，pct 词缀作为乘区百分比（后乘） ---- */
   // flatBonusOf: 该属性上所有 flat 词缀之和（直接加进基础值，例：攻击力加成 +25）
@@ -2955,6 +3193,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   function placeSkill(i, id) {
     for (let k = 0; k < SLOT_COUNT; k++) if (slots[k] === id) slots[k] = null;
     slots[i] = id;
+    if (window.GameSave) window.GameSave.requestSave();
   }
 
   /* 上阵变化 → 立即同步战斗区 4 塔 */
@@ -2989,6 +3228,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
           if (e.target.classList.contains('rm')) {
             e.stopPropagation();
             slots[i] = null; renderSlots(); syncBattleArea();
+            if (window.GameSave) window.GameSave.requestSave();
             return;
           }
           if (armedId) { // 放置模式：点格子 → 放置（可替换）
@@ -3152,6 +3392,17 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   }
 
   window.__skillRender = render;
+
+  /* 存档：注册技能上阵状态（供 save.js 持久化 / 恢复） */
+  if (window.GameSave) {
+    window.GameSave.register('skill',
+      function () { return slots.slice(); },
+      function (arr) {
+        for (let i = 0; i < SLOT_COUNT; i++) slots[i] = (arr && arr[i] != null) ? arr[i] : null;
+        renderSlots(); syncBattleArea();
+      }
+    );
+  }
 })();
 
 </script>
@@ -3363,6 +3614,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     ITEM_MAP[inst.id] = inst;          // 注册实例，属性随 attrs 真实生效
     BAG[cur][slot] = inst.id;
     buildCells();
+    if (window.GameSave) window.GameSave.requestSave();
   }
   // 铸造：按主文档《装备系统》公式随机生成一件属性真实的装备
   const FORGE_RARS = ['magic', 'rare', 'epic'];
@@ -3406,6 +3658,30 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   // 暴露装备提示 UI，供右上角装备栏（纸娃娃）复用
   window.showEquipTip = showEquipTip;   // 入参为带 dataset.item 的单元格
   window.equipTipEl = equipTip;
+
+  /* 存档：注册背包库存（实例物品 + 各页格位 + 实例序号）。
+   * 必须在 char-panel 之后恢复：实例物品先回注 ITEM_MAP，paperdoll 才能正确显示。 */
+  if (window.GameSave) {
+    window.GameSave.register('bag',
+      function () {
+        var inst = [];
+        for (var k in ITEM_MAP) { if (k.indexOf('inst') === 0) inst.push(ITEM_MAP[k]); }
+        var bag = {};
+        for (var p in BAG) bag[p] = BAG[p];
+        return { inst: inst, bag: bag, seq: instSeq };
+      },
+      function (payload) {
+        if (!payload) return;
+        // 清掉旧实例（保留基础 EQUIP_ITEMS），再回注存档中的实例
+        for (var k in ITEM_MAP) { if (k.indexOf('inst') === 0) delete ITEM_MAP[k]; }
+        (payload.inst || []).forEach(function (it) { ITEM_MAP[it.id] = it; });
+        if (payload.bag) { for (var p in payload.bag) BAG[p] = payload.bag[p]; }
+        if (typeof payload.seq === 'number') instSeq = payload.seq;
+        buildCells();
+        if (window.HERO) window.HERO._notify();
+      }
+    );
+  }
 })();
 
 </script>

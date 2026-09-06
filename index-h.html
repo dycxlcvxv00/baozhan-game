@@ -398,6 +398,25 @@
   #equipTip .etHole{width:13px;height:13px;border-radius:50%;flex:none;
     border:1px solid rgba(255,255,255,0.22);background:rgba(0,0,0,0.35)}
   #equipTip .etTrait{padding:4px 12px 12px;font-size:12px;color:#e3d8fb;line-height:1.55}
+
+  /* ---------- 存档栏（固定右上角，悬于顶部栏之上） ---------- */
+  #saveBar{position:absolute;right:8px;top:74px;display:flex;align-items:center;gap:8px;
+    padding:8px 12px;border-radius:14px;z-index:50;
+    background:var(--panel2);border:1px solid var(--line);
+    backdrop-filter:blur(11px) saturate(120%);-webkit-backdrop-filter:blur(11px) saturate(120%);
+    box-shadow:0 8px 26px rgba(0,0,0,0.4),0 0 0 1px rgba(47,230,208,0.05)}
+  #saveBar .saveBtn{height:30px;padding:0 13px;border-radius:9px;cursor:pointer;
+    font-size:13px;font-weight:600;color:var(--dim);
+    background:var(--btn);border:1px solid var(--line);
+    transition:all .15s ease;white-space:nowrap}
+  #saveBar .saveBtn:hover{color:var(--txt);border-color:rgba(47,230,208,0.4)}
+  #saveBar .saveBtn.on{color:var(--accent);border-color:rgba(47,230,208,0.5);
+    box-shadow:0 0 12px rgba(47,230,208,0.22)}
+  #saveBar .saveStamp{font-size:12px;color:var(--mute);white-space:nowrap}
+  #saveBar .saveMsg{position:absolute;top:-30px;right:0;padding:5px 12px;border-radius:9px;
+    font-size:13px;font-weight:700;color:#06231f;background:var(--accent);
+    opacity:0;transform:translateY(4px);pointer-events:none;transition:all .2s ease}
+  #saveBar .saveMsg.show{opacity:1;transform:translateY(0)}
 </style>
 </head>
 <body>
@@ -419,6 +438,19 @@
       <span class="chip">自动战斗</span>
       <span class="chip">设置</span>
     </span>
+  </div>
+
+  <!-- 存档栏：保存 / 读取 / 自动 / 导出 / 导入 / 清空 -->
+  <div id="saveBar" class="panel">
+    <button class="saveBtn" data-act="save">保存</button>
+    <button class="saveBtn" data-act="load">读取</button>
+    <button class="saveBtn on" data-act="auto">自动开</button>
+    <button class="saveBtn" data-act="export">导出</button>
+    <button class="saveBtn" data-act="import">导入</button>
+    <button class="saveBtn" data-act="clear">清空</button>
+    <span id="saveStamp" class="saveStamp">尚无存档</span>
+    <span id="saveMsg" class="saveMsg"></span>
+    <input id="saveFile" type="file" accept="application/json,.json" hidden />
   </div>
 
   <!-- 战斗区（Pixi 注入 canvas） -->
@@ -527,6 +559,7 @@
 <script src="js/pixi.min.js"></script>
 <script src="js/runes.js"></script>
 <script src="js/game-h.js"></script>
+<script src="js/save.js"></script>
 <script src="js/char-panel.js"></script>
 <script src="js/equip-panel.js"></script>
 <script src="js/skill-panel.js"></script>
