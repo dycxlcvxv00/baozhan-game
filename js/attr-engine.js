@@ -193,18 +193,18 @@
     {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
       level:60, stars:3, dmg:72.0, tier:'T3', main:{label:'生命值', val:220},
       attrs:{'护甲值加成':10,'伤害减免':8}},
-    {id:'r1', name:'狂怒指环', icon:'💍', rarity:'rare', slot:'饰品',
+    {id:'r1', name:'狂怒指环', icon:'💍', rarity:'rare', slot:'左戒指',
       level:60, stars:4, dmg:88.5, tier:'T2', main:{label:'攻击力', val:15},
       attrs:{'暴击率':8,'暴击伤害':25},
       trait:{name:'嗜血', desc:'暴击命中时，回复 2% 最大生命值。'}},
     {id:'b1', name:'疾风战靴', icon:'👢', rarity:'magic', slot:'鞋子',
       level:60, stars:3, dmg:64.2, tier:'T3', main:{label:'护甲值', val:6},
       attrs:{'攻击速度':15}},
-    {id:'c1', name:'元素护符', icon:'📿', rarity:'epic', slot:'饰品',
+    {id:'c1', name:'元素护符', icon:'📿', rarity:'epic', slot:'项链',
       level:60, stars:5, dmg:112.8, tier:'T1', main:{label:'攻击力', val:10},
       attrs:{'物理增幅':12,'混沌增幅':12,'火焰增幅':12,'闪电增幅':12,'毒素增幅':12},
       enchant:[{tier:'T1', skill:'元素亲和', lvl:2}]},
-    {id:'s1', name:'裂隙核心', icon:'🔮', rarity:'epic', slot:'核心',
+    {id:'s1', name:'裂隙核心', icon:'🔮', rarity:'epic', slot:'副手',
       level:60, stars:5, dmg:134.6, tier:'T1', main:{label:'攻击力', val:20},
       attrs:{'法术伤害':30,'最终伤害':20,'精英增伤':15},
       trait:{name:'裂隙回响', desc:'释放核心技能后，下一次攻击伤害提升 15%。'}},
@@ -219,12 +219,23 @@
   const ITEM_MAP = {};
   EQUIP_ITEMS.forEach(it => { ITEM_MAP[it.id] = it; });
 
-  /* ---------- 英雄穿戴状态（唯一装备真相源） ---------- */
+  /* ---------- 英雄穿戴状态（唯一装备真相源） ----------
+   *  slot 精确对应 10 装备栏位：武器/头盔/手套/护甲/腰带/项链/左戒指/右戒指/鞋子/副手
+   *  同槽位互斥：穿戴新装备时自动卸下该槽位已穿的装备（替换） */
   const HERO = {
     equipped:{},
     _subs:[],
     isEquipped(id){ return !!this.equipped[id]; },
-    equip(it){ this.equipped[it.id] = true; this._notify(); },
+    equip(it){
+      if (!it) return;
+      for (const id in this.equipped) {
+        if (id !== it.id && this.equipped[id]) {
+          const other = ITEM_MAP[id];
+          if (other && other.slot === it.slot) delete this.equipped[id];  // 同槽替换
+        }
+      }
+      this.equipped[it.id] = true; this._notify();
+    },
     unequip(it){ delete this.equipped[it.id]; this._notify(); },
     toggle(it){ this.isEquipped(it.id) ? this.unequip(it) : this.equip(it); },
     onChange(fn){ this._subs.push(fn); },

@@ -2290,18 +2290,18 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     {id:'a1', name:'守誓胸甲', icon:'🛡️', rarity:'magic', slot:'护甲',
       level:60, stars:3, dmg:72.0, tier:'T3', main:{label:'生命值', val:220},
       attrs:{'护甲值加成':10,'伤害减免':8}},
-    {id:'r1', name:'狂怒指环', icon:'💍', rarity:'rare', slot:'饰品',
+    {id:'r1', name:'狂怒指环', icon:'💍', rarity:'rare', slot:'左戒指',
       level:60, stars:4, dmg:88.5, tier:'T2', main:{label:'攻击力', val:15},
       attrs:{'暴击率':8,'暴击伤害':25},
       trait:{name:'嗜血', desc:'暴击命中时，回复 2% 最大生命值。'}},
     {id:'b1', name:'疾风战靴', icon:'👢', rarity:'magic', slot:'鞋子',
       level:60, stars:3, dmg:64.2, tier:'T3', main:{label:'护甲值', val:6},
       attrs:{'攻击速度':15}},
-    {id:'c1', name:'元素护符', icon:'📿', rarity:'epic', slot:'饰品',
+    {id:'c1', name:'元素护符', icon:'📿', rarity:'epic', slot:'项链',
       level:60, stars:5, dmg:112.8, tier:'T1', main:{label:'攻击力', val:10},
       attrs:{'物理增幅':12,'混沌增幅':12,'火焰增幅':12,'闪电增幅':12,'毒素增幅':12},
       enchant:[{tier:'T1', skill:'元素亲和', lvl:2}]},
-    {id:'s1', name:'裂隙核心', icon:'🔮', rarity:'epic', slot:'核心',
+    {id:'s1', name:'裂隙核心', icon:'🔮', rarity:'epic', slot:'副手',
       level:60, stars:5, dmg:134.6, tier:'T1', main:{label:'攻击力', val:20},
       attrs:{'法术伤害':30,'最终伤害':20,'精英增伤':15},
       trait:{name:'裂隙回响', desc:'释放核心技能后，下一次攻击伤害提升 15%。'}},
@@ -2316,12 +2316,23 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   const ITEM_MAP = {};
   EQUIP_ITEMS.forEach(it => { ITEM_MAP[it.id] = it; });
 
-  /* ---------- 英雄穿戴状态（唯一装备真相源） ---------- */
+  /* ---------- 英雄穿戴状态（唯一装备真相源） ----------
+   *  slot 精确对应 10 装备栏位：武器/头盔/手套/护甲/腰带/项链/左戒指/右戒指/鞋子/副手
+   *  同槽位互斥：穿戴新装备时自动卸下该槽位已穿的装备（替换） */
   const HERO = {
     equipped:{},
     _subs:[],
     isEquipped(id){ return !!this.equipped[id]; },
-    equip(it){ this.equipped[it.id] = true; this._notify(); },
+    equip(it){
+      if (!it) return;
+      for (const id in this.equipped) {
+        if (id !== it.id && this.equipped[id]) {
+          const other = ITEM_MAP[id];
+          if (other && other.slot === it.slot) delete this.equipped[id];  // 同槽替换
+        }
+      }
+      this.equipped[it.id] = true; this._notify();
+    },
     unequip(it){ delete this.equipped[it.id]; this._notify(); },
     toggle(it){ this.isEquipped(it.id) ? this.unequip(it) : this.equip(it); },
     onChange(fn){ this._subs.push(fn); },
@@ -3395,6 +3406,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     if (!grid) return;
 
     // 槽位定义：slot 名 → 布局坐标 / 颜色 / 匹配规则
+    //  match 为精确匹配（装备 slot 必须等于槽位 key）；戒指分左/右，互不占用
     var SLOT_DEFS = [
       { key:'武器',   x:0,   y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['武器'] },
       { key:'头盔',   x:139, y:0,   w:110, h:110, c:'rgb(46,81,134)',  match:['头盔'] },
@@ -3402,10 +3414,10 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
       { key:'护甲',   x:278, y:0,   w:120, h:175, c:'rgb(129,93,45)',  match:['护甲'] },
       { key:'腰带',   x:278, y:190, w:120, h:45,  c:'rgb(127,92,46)',  match:['腰带'] },
       { key:'项链',   x:457, y:1,   w:50,  h:50,  c:'rgb(54,88,50)',   match:['项链'] },
-      { key:'左戒指', x:427, y:61,  w:50,  h:50,  c:'rgb(114,83,42)',  match:['饰品','左戒指'] },
-      { key:'右戒指', x:487, y:61,  w:50,  h:50,  c:'rgb(43,70,113)',  match:['饰品','右戒指'] },
+      { key:'左戒指', x:427, y:61,  w:50,  h:50,  c:'rgb(114,83,42)',  match:['左戒指'] },
+      { key:'右戒指', x:487, y:61,  w:50,  h:50,  c:'rgb(43,70,113)',  match:['右戒指'] },
       { key:'鞋子',   x:427, y:125, w:110, h:110, c:'rgb(98,65,132)',  match:['鞋子'] },
-      { key:'副手',   x:558, y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['副手','核心'] }
+      { key:'副手',   x:558, y:35,  w:120, h:200, c:'rgb(128,92,45)',  match:['副手'] }
     ];
 
     // 查找某槽位当前穿戴的装备
@@ -3841,7 +3853,7 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   equipTip.style.display = 'none';
   document.body.appendChild(equipTip);
 
-  // 词缀名：接入主文档《伤害系统》对应属性的词缀池（取最高档词缀名）
+  // 词缀名：attrs 的 key 已是第 13 章正式词缀名，直接展示
   function affName(key){
     const p = (window.ATTR_POOL || {})[key];
     if (p && p.affixes && p.affixes.length) return p.affixes[p.affixes.length - 1];
@@ -3849,9 +3861,8 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
   }
   // 判断词缀是否为 flat 类型（flat 词缀不显示 % 号）
   function isAffixFlat(key){
-    // AFFIX_KIND 由 char-panel.js 构建，通过 window 暴露
-    const ak = (window.AFFIX_KIND || {})[key];
-    return ak === 'flat';
+    const def = window.AttrEngine && window.AttrEngine.resolveAffix(key);
+    return !!def && def.role === 'flat';
   }
   // 基于装备 id 的稳定随机（同件装备每次一致）
   function stableRand(seed, lo, hi){
@@ -4018,33 +4029,103 @@ window.EQUIP_PRESETS = EQUIP_PRESETS;
     buildCells();
     if (window.GameSave) window.GameSave.requestSave();
   }
-  // 铸造：按主文档《装备系统》公式随机生成一件属性真实的装备
-  const FORGE_RARS = ['magic', 'rare', 'epic'];
-  const FORGE_DEFS = [
-    {slot:'武器', main:'攻击力', pool:['攻击伤害','攻击速度','暴击率','冰霜','火焰']},
-    {slot:'护甲', main:'护甲值', pool:['护甲值','生命值','伤害减免']},
-    {slot:'饰品', main:'攻击力', pool:['暴击率','暴击伤害','法术伤害','最终伤害','精英增伤']},
-    {slot:'鞋子', main:'护甲值', pool:['攻击速度','护甲值','生命值']},
+  /* ============================================================
+   * 铸造系统（随机属性装备生成，「铸造」按钮触发）
+   *  - 10 装备槽位全覆盖，词缀严格取自主文档第 13 章词缀表
+   *    （AttrEngine.AFFIX_DEFS 全部可解析，穿戴后真实生效）
+   *  - 品质：卓越 50% / 史诗 35% / 传说 15%；词缀条数 2 / 3 / 4
+   *  - 主属性（flat）+ 词条词缀（% 乘区），属性计算走 AttrEngine
+   * ============================================================ */
+  const AFFIX_GROUPS = {
+    atkPower: ['攻击力加成','攻击力强化','攻击力增幅'],
+    atkDmg:   ['攻击伤害','攻击精通','攻击增幅','攻击强化'],
+    elem:     ['物理伤害','物理精通','物理增幅','物理穿透',
+               '混沌伤害','混沌精通','混沌增幅',
+               '冰霜伤害','冰霜精通','冰霜增幅','冰霜穿透',
+               '火焰伤害','火焰精通','火焰增幅','火焰穿透',
+               '毒素伤害','毒素精通','毒素增幅','毒素穿透',
+               '闪电伤害','闪电精通','闪电增幅','闪电穿透'],
+    crit:     ['暴击率','暴击伤害','暴击伤害增幅','弱点暴击几率','弱点暴击伤害'],
+    shatter:  ['粉碎打击几率','粉碎打击伤害'],
+    burst:    ['法术迸发几率','法术迸发伤害'],
+    spellDmg: ['法术伤害','法术精通','法术增幅','法术强化'],
+    global:   ['伤害加成','伤害增幅','伤害强化','伤害提升','伤害扩大','全域增伤','钞能增伤','最终伤害'],
+    typeDmg:  ['小怪增伤','精英增伤','领主增伤'],
+    form:     ['单体伤害','范围伤害','投射物伤害','持续性伤害','弹射伤害','异常伤害','陷阱伤害','灌注伤害'],
+    defense:  ['生命值加成','生命值强化','生命值增幅','护甲值加成','护甲值强化','护甲值增幅'],
+    shield:   ['护盾值加成','护盾值增幅'],
+    reduce:   ['伤害减免','最终减伤'],
+    block:    ['格挡几率','格挡比例'],
+    regen:    ['生命回溯几率','生命回溯比例','护盾回溯几率','护盾回溯比例'],
+    speed:    ['攻击速度','攻速加成','攻速上限'],
+    multi:    ['多重射击'],
+    charge:   ['充能基数','充能速度'],
+    energy:   ['能量回溯几率','能量回溯比例'],
+  };
+  // 10 槽位定义：主属性候选 + 允许出现的词缀组 + 图标 / 部件名
+  const FORGE_SLOTS = [
+    { slot:'武器',   main:['攻击力'],          groups:['atkPower','atkDmg','elem','crit','shatter'], icon:'🗡️', part:'长刃' },
+    { slot:'头盔',   main:['生命值','护甲值'], groups:['defense','reduce','regen','energy'],         icon:'🪖', part:'战盔' },
+    { slot:'手套',   main:['攻击力'],          groups:['speed','multi','atkDmg','charge'],           icon:'🧤', part:'手套' },
+    { slot:'护甲',   main:['生命值','护甲值'], groups:['defense','reduce','block','shield'],         icon:'🛡️', part:'胸甲' },
+    { slot:'腰带',   main:['生命值','护甲值'], groups:['defense','shield','regen','reduce'],         icon:'🧵', part:'腰带' },
+    { slot:'项链',   main:['攻击力'],          groups:['elem','global','typeDmg','crit'],            icon:'📿', part:'护符' },
+    { slot:'左戒指', main:['攻击力'],          groups:['crit','atkPower','typeDmg','global'],        icon:'💍', part:'戒指' },
+    { slot:'右戒指', main:['攻击力'],          groups:['crit','atkPower','typeDmg','global'],        icon:'💍', part:'戒指' },
+    { slot:'鞋子',   main:['护甲值'],          groups:['speed','multi','regen','charge'],            icon:'👢', part:'战靴' },
+    { slot:'副手',   main:['护盾值','生命值'], groups:['shield','spellDmg','burst','global','form'], icon:'🔮', part:'核心' },
   ];
-  const RAR_COEF  = {magic:2, rare:2.5, epic:3.5};
+  const NAME_PRE = ['寒霜','烈焰','雷霆','剧毒','巨岩','疾风','圣光','暗影','裂隙','星陨'];
+  const FORGE_RARS = ['magic', 'rare', 'epic'];
+  const RAR_COEF  = {magic:1,   rare:1.4, epic:1.9};   // 主属性品质系数
+  const AFF_COEF  = {magic:1,   rare:1.5, epic:2};     // 词缀品质系数
+  const AFF_COUNT = {magic:2,   rare:3,   epic:4};     // 词缀条数
   const RAR_TIER  = {magic:'T3', rare:'T2', epic:'T1'};
-  const RAR_STARS = {magic:3, rare:4, epic:5};
-  const RAR_ICON  = {武器:'🗡️', 护甲:'🛡️', 饰品:'💍', 鞋子:'👢'};
-  function forgeItem(){
-    const rarity = FORGE_RARS[Math.floor(Math.random() * FORGE_RARS.length)];
-    const sd = FORGE_DEFS[Math.floor(Math.random() * FORGE_DEFS.length)];
-    const mainVal = Math.round(10 + 10 * (60 / 10) * RAR_COEF[rarity] * (0.8 + Math.random() * 0.7));
-    const nAff = 2 + Math.floor(Math.random() * 2);
-    const pool = sd.pool.slice(); const attrs = {};
-    for (let i = 0; i < nAff && pool.length; i++){
-      const idx = Math.floor(Math.random() * pool.length);
-      const key = pool.splice(idx, 1)[0];
-      attrs[key] = Math.round(10 + Math.random() * 40);
-    }
-    return { name:'铸造·' + sd.slot, icon:RAR_ICON[sd.slot] || '❔', rarity:rarity, slot:sd.slot,
-      level:60, stars:RAR_STARS[rarity], dmg:Math.round(60 + Math.random() * 80),
-      tier:RAR_TIER[rarity], main:{label:sd.main, val:mainVal}, attrs:attrs };
+  const RAR_STARS = {magic:3,   rare:4,   epic:5};
+  const MAIN_RANGE = { '攻击力':[12,26], '生命值':[120,260], '护甲值':[5,12], '护盾值':[80,200] };
+
+  function rollRarity(){
+    const r = Math.random() * 100;
+    return r < 50 ? 'magic' : (r < 85 ? 'rare' : 'epic');
   }
+  // 单条词缀值：flat 固定 1（多重射击）/ chance 3-8 / bonus 15-45 / reduce 4-10 / 其余 zone 8-28，×品质系数
+  function rollAffixVal(af, rarity){
+    const def = window.AttrEngine ? window.AttrEngine.resolveAffix(af) : null;
+    let lo = 8, hi = 28;
+    if (def && def.role === 'flat') return 1;
+    if (def && def.role === 'chance') { lo = 3; hi = 8; }
+    else if (def && def.role === 'bonus') { lo = 15; hi = 45; }
+    else if (def && def.role === 'reduce') { lo = 4; hi = 10; }
+    return Math.max(1, Math.round((lo + Math.random() * (hi - lo)) * AFF_COEF[rarity]));
+  }
+  function forgeItem(){
+    const rarity = rollRarity();
+    const sd = FORGE_SLOTS[Math.floor(Math.random() * FORGE_SLOTS.length)];
+    // 主属性：候选中随机一个 → 值域 × 品质系数（flat，直接叠加进基础值）
+    const mainLabel = sd.main[Math.floor(Math.random() * sd.main.length)];
+    const mr = MAIN_RANGE[mainLabel] || [10, 20];
+    const mainVal = Math.max(1, Math.round((mr[0] + Math.random() * (mr[1] - mr[0])) * RAR_COEF[rarity]));
+    // 词条词缀：槽位允许的词缀组汇总后不重复抽取
+    let pool = [];
+    sd.groups.forEach(function (g) { pool = pool.concat(AFFIX_GROUPS[g] || []); });
+    const attrs = {};
+    for (let i = 0; i < AFF_COUNT[rarity] && pool.length; i++){
+      const idx = Math.floor(Math.random() * pool.length);
+      const af = pool.splice(idx, 1)[0];
+      attrs[af] = rollAffixVal(af, rarity);
+    }
+    return {
+      name: '铸造·' + NAME_PRE[Math.floor(Math.random() * NAME_PRE.length)] + sd.part,
+      icon: sd.icon, rarity: rarity, slot: sd.slot,
+      level: 60, stars: RAR_STARS[rarity], dmg: Math.round(60 + Math.random() * 80),
+      tier: RAR_TIER[rarity], main: { label: mainLabel, val: mainVal }, attrs: attrs,
+    };
+  }
+  // 暴露铸造器（供测试 / 外部调用）
+  window.BagForge = {
+    forge: forgeItem, slots: FORGE_SLOTS, groups: AFFIX_GROUPS,
+    rollRarity: rollRarity, rollAffixVal: rollAffixVal,
+  };
   document.querySelectorAll('#bagNav .bagTool').forEach(function (btn) {
     btn.addEventListener('click', function () {
       const act = btn.dataset.act;
