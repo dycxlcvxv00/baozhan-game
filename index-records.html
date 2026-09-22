@@ -24,7 +24,7 @@
     --accent:#2fe6d0; --accent2:#9b7bff; --gold:#ffcf6b; --ok:#57e39b;
     --el:var(--accent);
     /* 行内布局：序号 / 角色信息 / 4 数据列 / 展开 —— 列头与卡片共用，保证对齐 */
-    --c-idx:56px; --c-who:330px; --c-exp:44px;
+    --c-idx:56px; --c-who:344px; --c-exp:44px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
@@ -49,9 +49,8 @@
     background:var(--panel); border:1px solid var(--line); border-radius:14px;
     backdrop-filter:blur(11px) saturate(120%); -webkit-backdrop-filter:blur(11px) saturate(120%);
     box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.06),
-      0 6px 22px rgba(0,0,0,0.36),
-      0 0 0 1px rgba(47,230,208,0.05);
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      0 4px 14px rgba(0,0,0,0.30);
     position:relative;
   }
 
@@ -71,23 +70,20 @@
   }
   button.chip{cursor:pointer}
   button.chip:hover{color:var(--txt);border-color:rgba(125,165,225,0.42)}
-  .chip.on{color:var(--accent);border-color:rgba(47,230,208,0.5);box-shadow:0 0 12px rgba(47,230,208,0.25)}
+  .chip.on{color:var(--accent);border-color:rgba(47,230,208,0.5)}
   .chip.saved{color:var(--ok);border-color:rgba(87,227,155,0.4)}
   /* 加号：新增角色 */
   .chip.add{
     color:var(--accent);border-color:rgba(47,230,208,0.45);background:rgba(47,230,208,0.10);
     font-weight:700;padding:0 14px;
   }
-  .chip.add:hover{box-shadow:0 0 16px rgba(47,230,208,0.35);background:rgba(47,230,208,0.18)}
+  .chip.add:hover{background:rgba(47,230,208,0.18)}
   .chip.add .plus{font-size:16px;line-height:1;font-weight:800;margin-top:-1px}
 
   /* ---------- 汇总统计 ---------- */
   #summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
   .sm{padding:11px 16px;display:flex;flex-direction:column;gap:2px;overflow:hidden;align-items:center;text-align:center}
-  .sm::after{
-    content:"";position:absolute;right:-26px;top:-26px;width:90px;height:90px;border-radius:50%;
-    background:radial-gradient(circle,var(--el) 0%,transparent 68%);opacity:.10;pointer-events:none;
-  }
+  .sm::after{content:none}
   .sm .k{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px}
   .sm .k .ico{font-size:13px;opacity:.85}
   .sm .v{font-size:24px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
@@ -96,7 +92,7 @@
   .sm.c-sold {--el:#9b7bff}   .sm.c-sold    .v{color:var(--accent2)}
   .sm.c-money{--el:#ffcf6b}   .sm.c-money   .v{color:var(--gold)}
   .sm .v.flash{animation:flash .7s ease}
-  @keyframes flash{0%{transform:scale(1)}30%{transform:scale(1.06);filter:brightness(1.35)}100%{transform:scale(1)}}
+  @keyframes flash{0%{transform:scale(1)}35%{transform:scale(1.04)}100%{transform:scale(1)}}
 
   /* ---------- 列标题条（顶部共享一次，竖向对齐各卡片） ---------- */
   .colhead{
@@ -130,11 +126,11 @@
   }
   .card::before{
     content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
-    background:var(--el);opacity:.9;pointer-events:none;z-index:2;
+    background:var(--el);opacity:.8;pointer-events:none;z-index:2;
   }
   .card:hover{
-    border-color:color-mix(in srgb,var(--el) 38%,transparent);
-    box-shadow:0 6px 24px rgba(0,0,0,0.45),0 0 16px color-mix(in srgb,var(--el) 16%,transparent);
+    border-color:color-mix(in srgb,var(--el) 34%,transparent);
+    box-shadow:0 4px 16px rgba(0,0,0,0.40);
   }
 
   /* 序号 */
@@ -150,10 +146,10 @@
     padding:8px 14px 8px 0;border-right:1px solid rgba(125,165,225,0.10);text-align:left;
   }
   /* 第一行：角色名 + 等级/职业/账号（同一行） */
-  .who .line1{display:flex;align-items:baseline;gap:7px;min-width:0;flex-wrap:nowrap}
+  .who .line1{display:flex;align-items:baseline;gap:5px;min-width:0;flex-wrap:nowrap}
   .who .nm{
     font-size:14.5px;font-weight:800;letter-spacing:.2px;
-    padding:2px 0;border-radius:6px;flex:0 1 auto;min-width:56px;
+    padding:2px 0;border-radius:6px;flex:0 0 auto;
     background:transparent;border:1px solid transparent;
     color:var(--txt);font-family:inherit;outline:none;transition:.16s;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;
@@ -161,11 +157,10 @@
   .who .nm.empty{color:var(--mute);font-weight:600}
   /* 编辑态（点「修改」后）才允许输入 */
   .who.editing .nm{
-    padding:2px 7px;cursor:text;flex:1 1 auto;
+    padding:2px 7px;cursor:text;flex:0 1 auto;min-width:60px;
     background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.5);
-    box-shadow:0 0 0 3px rgba(47,230,208,0.10);
   }
-  .who .meta{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--mute);min-width:0;flex:0 1 auto;overflow:hidden}
+  .who .meta{display:flex;align-items:baseline;gap:5px;font-size:11.5px;color:var(--mute);min-width:0;flex:0 1 auto;overflow:hidden}
   .who .meta .lv{color:var(--gold);font-weight:700;white-space:nowrap}
   .who .meta .job{color:var(--el);white-space:nowrap;font-weight:600}
   .who .meta .acct{
@@ -194,7 +189,7 @@
   /* 未开启：灰 */
   .feat.off{color:var(--mute);border-color:rgba(125,165,225,0.18);background:rgba(255,255,255,0.02);opacity:.72}
   /* 已开启：绿 */
-  .feat.on{color:var(--ok);border-color:rgba(87,227,155,0.5);background:rgba(87,227,155,0.10);box-shadow:0 0 10px rgba(87,227,155,0.18)}
+  .feat.on{color:var(--ok);border-color:rgba(87,227,155,0.55);background:rgba(87,227,155,0.12)}
   .wealth{
     margin-left:auto;display:flex;align-items:baseline;gap:4px;flex:0 0 auto;white-space:nowrap;
   }
@@ -233,7 +228,6 @@
   .input:hover{background:rgba(255,255,255,0.075);border-color:rgba(125,165,225,0.34)}
   .input:focus{
     background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.55);
-    box-shadow:0 0 0 3px rgba(47,230,208,0.10);
   }
   .input::-webkit-outer-spin-button,.input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .input[type=number]{-moz-appearance:textfield;appearance:textfield}
@@ -334,6 +328,7 @@
   .field{margin-bottom:12px}
   .field label{display:block;font-size:11.5px;color:var(--dim);margin-bottom:5px;letter-spacing:.5px}
   .field label .req{color:var(--accent);margin-left:3px}
+  .field label .tip{color:var(--mute);font-weight:400;letter-spacing:0}
   .field input{
     width:100%;height:34px;padding:0 11px;border-radius:9px;
     background:rgba(255,255,255,0.055);border:1px solid rgba(125,165,225,0.22);
@@ -341,7 +336,7 @@
   }
   .field input::placeholder{color:var(--mute);opacity:.75;font-size:12.5px}
   .field input:hover{background:rgba(255,255,255,0.075);border-color:rgba(125,165,225,0.36)}
-  .field input:focus{background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.55);box-shadow:0 0 0 3px rgba(47,230,208,0.10)}
+  .field input:focus{background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.55)}
   .field input.bad{border-color:rgba(255,107,107,0.6);box-shadow:0 0 0 3px rgba(255,107,107,0.12)}
   .field .err{font-size:11px;color:#ff8a8a;margin-top:4px;display:none}
   .field.bad .err{display:block}
@@ -356,14 +351,14 @@
     color:#04231f;background:linear-gradient(135deg,var(--accent),#5ce8d8);
     border-color:transparent;font-weight:700;
   }
-  .mbtn.primary:hover{box-shadow:0 0 18px rgba(47,230,208,0.4);filter:brightness(1.06)}
+  .mbtn.primary:hover{background:linear-gradient(135deg,#46e9d6,#7ff0e2)}
 
   @media (max-width:1280px){ :root{--c-who:270px} }
   @media (max-width:1080px){
     .card{flex-wrap:wrap}
     .colhead .h-who{flex:1 1 160px}
     .who{flex:1 1 160px;border-right:0}
-    .who .nm{min-width:44px}
+    .who .nm{min-width:0}
     .colhead .h-cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10)}
     .colhead .h-cell:nth-child(2n){border-right:0}
     .cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10)}
@@ -447,6 +442,11 @@
       <input id="fLevel" type="text" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="如 45（可留空）" />
       <div class="err">等级请填数字</div>
     </div>
+    <div class="field">
+      <label for="fWealth">财富值</label>
+      <input id="fWealth" type="text" inputmode="decimal" maxlength="16" autocomplete="off" placeholder="如 12000（可留空）" />
+      <div class="err">财富值请填数字</div>
+    </div>
 
     <div class="modal-foot">
       <button class="mbtn" type="button" id="mdCancel">取消</button>
@@ -469,7 +469,7 @@
  * ============================================================ */
 let ACCOUNTS = [
   { id:'a1', account:'', name:'', level:'', job:'',
-  gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, records:[], flags:{} }
+  gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, wealth:0, records:[], flags:{} }
 ];
 
 const RING_NUMS = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
@@ -532,7 +532,8 @@ function saveLocal(){
       accounts: ACCOUNTS.map(function(c){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
-                 laborCost:c.laborCost, records:c.records || [], flags:c.flags || {} };
+                 laborCost:c.laborCost, wealth:Number(c.wealth)||0,
+                 records:c.records || [], flags:c.flags || {} };
       })
     }));
     flashSaved();
@@ -552,6 +553,7 @@ function loadLocal(){
       level: s.level != null ? s.level : '', job: s.job || '',
       gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
       soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
+      wealth: Number(s.wealth)||0,
       records: Array.isArray(s.records) ? s.records : [],
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
@@ -589,14 +591,6 @@ function refreshNumbers(i){
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
-    /* 财富值 = 售价 - 人工 */
-    const wEl = row.querySelector('[data-w]');
-    if(wEl){
-      const w = t.soldValue - t.laborCost;
-      wEl.textContent = money(w);
-      wEl.classList.toggle('neg', w < 0);
-      wEl.classList.remove('hit'); void wEl.offsetWidth; wEl.classList.add('hit');
-    }
   }
   const sum = summarize(ACCOUNTS);
   setText('[data-sum="roles"]',     num(sum.roles));
@@ -710,8 +704,9 @@ const FEATURES = [
   { key:'market',  label:'市集' },
   { key:'pet',     label:'宠物' }
 ];
-/* 财富值 = 已出售晶石总价格 - 人工费用 */
-function wealth(c){ const t = totals(c); return t.soldValue - t.laborCost; }
+/* 财富值：一个独立的数值，和等级一样由「修改」弹窗直接填写，
+   不参与任何自动计算，也不随每日录入变化。 */
+function wealth(c){ return Number(c.wealth) || 0; }
 
 /* 角色信息：第一行 角色名+等级/职业/账号；第二行 4 个功能开关 + 财富值 */
 function whoHTML(c, i){
@@ -744,7 +739,8 @@ function whoHTML(c, i){
     + '</div>'
     + '<div class="line2">'
     +   '<span class="feats">' + feats + '</span>'
-    +   '<span class="wealth"><span class="wk">财富值</span><span class="' + wCls + '" data-w="' + i + '">' + money(w) + '</span></span>'
+    +   '<span class="wealth"><span class="wk">财富值</span><span class="' + wCls + '" data-w="' + i + '">'
+    +     money(w) + '</span></span>'
     + '</div>'
     + '</div>';
 }
@@ -856,6 +852,7 @@ const fAccount = document.getElementById('fAccount');
 const fName    = document.getElementById('fName');
 const fJob     = document.getElementById('fJob');
 const fLevel   = document.getElementById('fLevel');
+const fWealth  = document.getElementById('fWealth');
 let modalMode = 'add';   // 'add' | 'edit'
 let modalIdx  = -1;
 
@@ -865,12 +862,15 @@ function openModal(mode, idx){
   document.getElementById('mdTitleTxt').textContent = (mode === 'edit') ? '修改角色信息' : '新增角色';
   document.getElementById('mdHint').textContent = (mode === 'edit')
     ? '修改后点「确定」保存'
-    : '填写以下 4 项信息，保存后生成一张角色卡片';
+    : '填写以下信息，保存后生成一张角色卡片';
   fAccount.value = c ? (c.account || '') : '';
   fName.value    = c ? (c.name    || '') : '';
   fJob.value     = c ? (c.job     || '') : '';
   fLevel.value   = c ? (c.level   || '') : '';
-  [fAccount, fName, fJob, fLevel].forEach(function(el){
+  /* 财富值：与等级一样，直接回填独立数值 */
+  fWealth.value = c ? (Number(c.wealth) ? String(c.wealth) : '') : '';
+  fWealth.placeholder = '如 12000（可留空）';
+  [fAccount, fName, fJob, fLevel, fWealth].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
@@ -885,6 +885,7 @@ function modalOk(){
   const name    = fName.value.trim();
   const job     = fJob.value.trim();
   const lvRaw   = fLevel.value.trim();
+  const wRaw    = fWealth.value.trim();
 
   /* 账号必填 */
   let bad = false;
@@ -894,13 +895,24 @@ function modalOk(){
   if(lvRaw !== '' && !/^\d+$/.test(lvRaw)){
     fLevel.classList.add('bad'); fLevel.closest('.field').classList.add('bad'); bad = true;
   } else { fLevel.classList.remove('bad'); fLevel.closest('.field').classList.remove('bad'); }
-  if(bad){ (fAccount.classList.contains('bad') ? fAccount : fLevel).focus(); return; }
+  /* 财富值必须是数字（可留空） */
+  if(wRaw !== '' && !/^-?\d+(\.\d+)?$/.test(wRaw)){
+    fWealth.classList.add('bad'); fWealth.closest('.field').classList.add('bad'); bad = true;
+  } else { fWealth.classList.remove('bad'); fWealth.closest('.field').classList.remove('bad'); }
+  if(bad){
+    (fAccount.classList.contains('bad') ? fAccount
+      : fLevel.classList.contains('bad') ? fLevel : fWealth).focus();
+    return;
+  }
 
   const level = lvRaw === '' ? '' : Number(lvRaw);
+  /* 财富值：独立数值，留空按 0 计 */
+  const wealthVal = (wRaw === '') ? 0 : Number(wRaw);
 
   if(modalMode === 'edit'){
     const c = ACCOUNTS[modalIdx];
     c.account = account; c.name = name; c.job = job; c.level = level;
+    c.wealth = wealthVal;
     /* 同步更新已展开明细的标题 */
     const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
     if(tt) tt.textContent = (name || '未命名角色') + ' · 每日明细';
@@ -910,7 +922,8 @@ function modalOk(){
   } else {
     ACCOUNTS.push({
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
-      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, records:[], flags:{}
+      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, wealth: wealthVal,
+      records:[], flags:{}
     });
     render();
     saveLocal();
@@ -922,7 +935,7 @@ function modalOk(){
 document.getElementById('mdCancel').addEventListener('click', closeModal);
 document.getElementById('mdOk').addEventListener('click', modalOk);
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
-[fAccount, fName, fJob, fLevel].forEach(function(el){
+[fAccount, fName, fJob, fLevel, fWealth].forEach(function(el){
   el.addEventListener('input', function(){
     el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
   });
@@ -1039,6 +1052,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           level: s.level != null ? s.level : '', job: s.job || '',
           gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
           soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
+          wealth: Number(s.wealth)||0,
           records: Array.isArray(s.records) ? s.records : [],
           flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
         };
