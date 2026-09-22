@@ -144,34 +144,46 @@
     color:var(--el);letter-spacing:0;
   }
 
-  /* 角色信息区（靠左） */
+  /* 角色信息区（靠左）—— 默认只读展示，点「修改」才变可编辑 */
   .who{
-    flex:0 0 var(--c-who);min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px;
+    flex:0 0 var(--c-who);min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;
     padding:8px 14px 8px 0;border-right:1px solid rgba(125,165,225,0.10);text-align:left;
   }
-  /* 角色名：可录入（就是你填账号信息的地方） */
   .who .nm{
     font-size:14.5px;font-weight:800;letter-spacing:.2px;
-    width:100%;padding:2px 7px;border-radius:6px;
+    width:100%;padding:2px 0;border-radius:6px;
     background:transparent;border:1px solid transparent;
     color:var(--txt);font-family:inherit;outline:none;transition:.16s;min-width:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;
   }
-  .who .nm::placeholder{color:var(--mute);font-weight:600;opacity:.8;font-size:12.5px}
-  .who .nm:hover{background:rgba(255,255,255,0.045);border-color:rgba(125,165,225,0.22)}
-  .who .nm:focus{background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.5);box-shadow:0 0 0 3px rgba(47,230,208,0.10)}
-  .who .sub{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mute);min-width:0}
+  .who .nm.empty{color:var(--mute);font-weight:600;font-style:normal}
+  /* 编辑态（点「修改」后）才允许输入 */
+  .who.editing .nm{
+    padding:2px 7px;cursor:text;
+    background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.5);
+    box-shadow:0 0 0 3px rgba(47,230,208,0.10);
+  }
+  .who .sub{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mute);min-width:0;flex-wrap:wrap}
   .who .sub .lv{color:var(--gold);font-weight:700;white-space:nowrap}
-  .who .sub .job{color:var(--el);white-space:nowrap}
+  .who .sub .job{color:var(--el);white-space:nowrap;font-weight:600}
   .who .sub .acct{
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.9;
   }
-  .who .sub .delrow{
-    margin-left:auto;width:20px;height:20px;border-radius:6px;flex:0 0 auto;
+  .who .tagnone{color:var(--mute);font-size:11px;opacity:.75}
+  /* 行内小按钮：修改 / 保存 / 取消 / 删除 */
+  .who .ops{margin-left:auto;display:flex;gap:4px;align-items:center;flex:0 0 auto}
+  .who .ob{
+    height:20px;padding:0 8px;border-radius:6px;flex:0 0 auto;
     border:1px solid transparent;background:transparent;color:var(--mute);
-    cursor:pointer;font-size:11px;line-height:1;padding:0;font-family:inherit;transition:.15s;
+    cursor:pointer;font-size:11px;line-height:1;font-family:inherit;transition:.15s;white-space:nowrap;
   }
-  .who .sub .delrow:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.45);background:rgba(255,107,107,0.10)}
+  .who .ob:hover{color:var(--txt);border-color:rgba(125,165,225,0.42);background:rgba(255,255,255,0.05)}
+  .who .ob.edit:hover{color:var(--accent);border-color:rgba(47,230,208,0.5);background:rgba(47,230,208,0.10)}
+  .who .ob.save{color:var(--accent);border-color:rgba(47,230,208,0.5);background:rgba(47,230,208,0.12)}
+  .who .ob.save:hover{box-shadow:0 0 12px rgba(47,230,208,0.3)}
+  .who .ob.del:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.45);background:rgba(255,107,107,0.10)}
+  .who.editing{border-right-color:rgba(47,230,208,0.3)}
 
   /* 数据 4 格：上=累计值(居中)，下=录入框 */
   .cells{flex:1;display:grid;grid-template-columns:repeat(4,1fr);min-width:0}
@@ -271,6 +283,52 @@
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* ---------- 弹窗：新增 / 编辑角色 ---------- */
+  .mask{
+    position:fixed;inset:0;background:rgba(3,6,14,0.72);
+    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+    opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:80;
+  }
+  .mask.show{opacity:1;pointer-events:auto}
+  .modal{
+    width:440px;max-width:100%;padding:20px 22px 18px;border-radius:16px;
+    transform:translateY(12px) scale(.98);transition:transform .22s cubic-bezier(.2,.9,.3,1.1);
+  }
+  .mask.show .modal{transform:translateY(0) scale(1)}
+  .modal h2{
+    margin:0 0 3px;font-size:16.5px;font-weight:800;letter-spacing:.4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .modal h2 .bar{width:3px;height:15px;border-radius:2px;background:var(--accent);display:inline-block}
+  .modal .hint{font-size:12px;color:var(--mute);margin-bottom:16px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:11.5px;color:var(--dim);margin-bottom:5px;letter-spacing:.5px}
+  .field label .req{color:var(--accent);margin-left:3px}
+  .field input{
+    width:100%;height:34px;padding:0 11px;border-radius:9px;
+    background:rgba(255,255,255,0.055);border:1px solid rgba(125,165,225,0.22);
+    color:var(--txt);font-size:13px;font-family:inherit;outline:none;transition:.16s;
+  }
+  .field input::placeholder{color:var(--mute);opacity:.75;font-size:12.5px}
+  .field input:hover{background:rgba(255,255,255,0.075);border-color:rgba(125,165,225,0.36)}
+  .field input:focus{background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.55);box-shadow:0 0 0 3px rgba(47,230,208,0.10)}
+  .field input.bad{border-color:rgba(255,107,107,0.6);box-shadow:0 0 0 3px rgba(255,107,107,0.12)}
+  .field .err{font-size:11px;color:#ff8a8a;margin-top:4px;display:none}
+  .field.bad .err{display:block}
+  .modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .mbtn{
+    height:34px;padding:0 18px;border-radius:17px;font-size:13px;cursor:pointer;
+    background:rgba(22,31,56,0.9);color:var(--dim);border:1px solid var(--line);
+    font-family:inherit;transition:.18s;font-weight:600;
+  }
+  .mbtn:hover{color:var(--txt);border-color:rgba(125,165,225,0.45)}
+  .mbtn.primary{
+    color:#04231f;background:linear-gradient(135deg,var(--accent),#5ce8d8);
+    border-color:transparent;font-weight:700;
+  }
+  .mbtn.primary:hover{box-shadow:0 0 18px rgba(47,230,208,0.4);filter:brightness(1.06)}
+
   @media (max-width:1280px){ :root{--c-who:190px} }
   @media (max-width:1080px){
     .card{flex-wrap:wrap}
@@ -334,6 +392,38 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ========== 弹窗：新增 / 编辑角色（账号 / 角色名 / 职业 / 等级） ========== -->
+<div class="mask" id="mask">
+  <div class="modal panel" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+    <h2 id="mdTitle"><span class="bar"></span><span id="mdTitleTxt">新增角色</span></h2>
+    <div class="hint" id="mdHint">填写以下 4 项信息，保存后生成一张角色卡片</div>
+
+    <div class="field">
+      <label for="fAccount">账号<span class="req">*</span></label>
+      <input id="fAccount" type="text" maxlength="48" autocomplete="off" placeholder="登录账号，必填" />
+      <div class="err">请填写账号</div>
+    </div>
+    <div class="field">
+      <label for="fName">角色名</label>
+      <input id="fName" type="text" maxlength="24" autocomplete="off" placeholder="游戏内角色名（可留空）" />
+    </div>
+    <div class="field">
+      <label for="fJob">职业</label>
+      <input id="fJob" type="text" maxlength="16" autocomplete="off" placeholder="如 法师 / 战士（可留空）" />
+    </div>
+    <div class="field">
+      <label for="fLevel">等级</label>
+      <input id="fLevel" type="text" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="如 45（可留空）" />
+      <div class="err">等级请填数字</div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="mbtn" type="button" id="mdCancel">取消</button>
+      <button class="mbtn primary" type="button" id="mdOk">确定</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ============================================================
@@ -540,7 +630,25 @@ function detailHTML(i){
     + '</table></div>';
 }
 
-/* 一行一卡：序号 | 角色信息（可录入） | 4 数值格(居中) + 录入框 | ▼ */
+/* 角色信息：只读展示 + 「修改」按钮（改内容走弹窗） */
+function whoHTML(c, i){
+  const meta = [];
+  if(c.level !== '' && c.level != null) meta.push('<span class="lv">Lv.' + esc(c.level) + '</span>');
+  if(c.job) meta.push('<span class="job">' + esc(c.job) + '</span>');
+  if(c.account) meta.push('<span class="acct">' + esc(c.account) + '</span>');
+  if(!meta.length) meta.push('<span class="tagnone">未填写账号信息</span>');
+
+  const ops = '<button class="ob edit" type="button" data-edit="' + i + '" title="修改账号信息">修改</button>'
+            + '<button class="ob del" type="button" data-rm="' + i + '" title="删除该角色卡片">✕</button>';
+
+  return '<div class="who">'
+    + '<div class="nm' + (c.name ? '' : ' empty') + '">'
+    +   (c.name ? esc(c.name) : '未命名角色') + '</div>'
+    + '<div class="sub">' + meta.join('') + '<span class="ops">' + ops + '</span></div>'
+    + '</div>';
+}
+
+/* 一行一卡：序号 | 角色信息（只读/可编辑） | 4 数值格(居中) + 录入框 | ▼ */
 function cardHTML(c, i){
   const color = THEME[i % THEME.length];
   const t = totals(c);
@@ -554,17 +662,7 @@ function cardHTML(c, i){
   return '<div class="row" data-i="' + i + '">'
     + '<article class="card panel" style="--el:' + color + '">'
     +   '<div class="idx">' + serial(i+1) + '</div>'
-    +   '<div class="who">'
-    +     '<input class="nm" type="text" maxlength="24" data-name="' + i + '" '
-    +       'value="' + esc(c.name || '') + '" placeholder="填写角色名 / 账号" '
-    +       'title="直接在这里录入角色名或账号信息" />'
-    +     '<div class="sub">'
-    +       (c.level !== '' && c.level != null ? '<span class="lv">Lv.' + esc(c.level) + '</span>' : '')
-    +       (c.job ? '<span class="job">' + esc(c.job) + '</span>' : '')
-    +       (c.account ? '<span class="acct">' + esc(c.account) + '</span>' : '')
-    +       '<button class="delrow" type="button" data-rm="' + i + '" title="删除该角色卡片">✕</button>'
-    +     '</div>'
-    +   '</div>'
+    +   whoHTML(c, i)
     +   '<div class="cells">'
     +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '当日剩余')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '当日出售')
@@ -633,32 +731,101 @@ function commitEntry(i){
 /* 键盘 */
 document.addEventListener('keydown', function(e){
   const t = e.target;
-  if(t.classList && (t.classList.contains('input') || t.classList.contains('nm'))){
-    if(e.key === 'Enter'){
-      e.preventDefault();
-      if(t.classList.contains('nm')) t.blur();
-      else commitEntry(Number(t.dataset.i));
-    }
+  if(t.classList && t.classList.contains('input')){
+    if(e.key === 'Enter'){ e.preventDefault(); commitEntry(Number(t.dataset.i)); }
     return;
   }
   if(t.classList && t.classList.contains('del') && e.key === 'Enter'){ e.preventDefault(); t.click(); }
+  /* 弹窗：Esc 关闭，Enter 确定 */
+  if(mask.classList.contains('show')){
+    if(e.key === 'Escape'){ e.preventDefault(); closeModal(); }
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); modalOk(); }
+  }
 });
 
-/* 角色名录入：失焦即存 */
-document.addEventListener('blur', function(e){
-  const t = e.target;
-  if(t && t.dataset && t.dataset.name != null){
-    const i = Number(t.dataset.name);
-    const v = t.value.trim();
-    if(ACCOUNTS[i] && ACCOUNTS[i].name !== v){
-      ACCOUNTS[i].name = v;
-      const tt = document.querySelector('.row[data-i="'+i+'"] .ttl2');
-      if(tt) tt.textContent = (v || '未命名角色') + ' · 每日明细';
-      saveLocal();
-    }
-  }
-}, true);
+/* ============================================================
+ * 弹窗：新增 / 编辑角色（账号 / 角色名 / 职业 / 等级）
+ * ============================================================ */
+const mask = document.getElementById('mask');
+const fAccount = document.getElementById('fAccount');
+const fName    = document.getElementById('fName');
+const fJob     = document.getElementById('fJob');
+const fLevel   = document.getElementById('fLevel');
+let modalMode = 'add';   // 'add' | 'edit'
+let modalIdx  = -1;
 
+function openModal(mode, idx){
+  modalMode = mode; modalIdx = (idx == null ? -1 : idx);
+  const c = (mode === 'edit') ? ACCOUNTS[modalIdx] : null;
+  document.getElementById('mdTitleTxt').textContent = (mode === 'edit') ? '修改角色信息' : '新增角色';
+  document.getElementById('mdHint').textContent = (mode === 'edit')
+    ? '修改后点「确定」保存'
+    : '填写以下 4 项信息，保存后生成一张角色卡片';
+  fAccount.value = c ? (c.account || '') : '';
+  fName.value    = c ? (c.name    || '') : '';
+  fJob.value     = c ? (c.job     || '') : '';
+  fLevel.value   = c ? (c.level   || '') : '';
+  [fAccount, fName, fJob, fLevel].forEach(function(el){
+    el.classList.remove('bad');
+    el.closest('.field').classList.remove('bad');
+  });
+  mask.classList.add('show');
+  setTimeout(function(){ fAccount.focus(); }, 80);
+}
+function closeModal(){
+  mask.classList.remove('show');
+}
+function modalOk(){
+  const account = fAccount.value.trim();
+  const name    = fName.value.trim();
+  const job     = fJob.value.trim();
+  const lvRaw   = fLevel.value.trim();
+
+  /* 账号必填 */
+  let bad = false;
+  if(!account){ fAccount.classList.add('bad'); fAccount.closest('.field').classList.add('bad'); bad = true; }
+  else { fAccount.classList.remove('bad'); fAccount.closest('.field').classList.remove('bad'); }
+  /* 等级必须是数字（可留空） */
+  if(lvRaw !== '' && !/^\d+$/.test(lvRaw)){
+    fLevel.classList.add('bad'); fLevel.closest('.field').classList.add('bad'); bad = true;
+  } else { fLevel.classList.remove('bad'); fLevel.closest('.field').classList.remove('bad'); }
+  if(bad){ (fAccount.classList.contains('bad') ? fAccount : fLevel).focus(); return; }
+
+  const level = lvRaw === '' ? '' : Number(lvRaw);
+
+  if(modalMode === 'edit'){
+    const c = ACCOUNTS[modalIdx];
+    c.account = account; c.name = name; c.job = job; c.level = level;
+    /* 同步更新已展开明细的标题 */
+    const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
+    if(tt) tt.textContent = (name || '未命名角色') + ' · 每日明细';
+    render();
+    saveLocal();
+    toast('已保存修改');
+  } else {
+    ACCOUNTS.push({
+      id:'a' + Date.now(), account:account, name:name, job:job, level:level,
+      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, records:[]
+    });
+    render();
+    saveLocal();
+    toast('已新增角色「' + (name || account) + '」');
+  }
+  closeModal();
+}
+
+document.getElementById('mdCancel').addEventListener('click', closeModal);
+document.getElementById('mdOk').addEventListener('click', modalOk);
+mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
+[fAccount, fName, fJob, fLevel].forEach(function(el){
+  el.addEventListener('input', function(){
+    el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
+  });
+});
+
+/* ============================================================
+ * 卡片交互
+ * ============================================================ */
 document.addEventListener('click', function(e){
   /* 展开 / 收起 */
   const tg = e.target.closest('[data-toggle]');
@@ -668,6 +835,10 @@ document.addEventListener('click', function(e){
     tg.setAttribute('aria-expanded', open ? 'true' : 'false');
     return;
   }
+  /* 修改（弹窗编辑） */
+  const ed = e.target.closest('[data-edit]');
+  if(ed){ openModal('edit', Number(ed.dataset.edit)); return; }
+
   /* 删除单条明细 */
   const del = e.target.closest('[data-del]');
   if(del){
@@ -685,7 +856,7 @@ document.addEventListener('click', function(e){
     const i = Number(cl.dataset.clear);
     const n = (ACCOUNTS[i].records || []).length;
     if(!n){ toast('本来就没有明细'); return; }
-    if(!confirm('确定清空「' + (ACCOUNTS[i].name || '未命名角色') + '」的 ' + n + ' 条明细？此操作不可撤销。')) return;
+    if(!confirm('确定清空「' + (ACCOUNTS[i].name || ACCOUNTS[i].account || '未命名角色') + '」的 ' + n + ' 条明细？此操作不可撤销。')) return;
     ACCOUNTS[i].records = [];
     refreshNumbers(i);
     document.getElementById('detail-' + i).innerHTML = detailHTML(i);
@@ -706,17 +877,9 @@ document.addEventListener('click', function(e){
   }
 });
 
-/* ＋ 新增角色 */
+/* ＋ 新增角色 → 打开弹窗 */
 document.getElementById('btnAdd').addEventListener('click', function(){
-  ACCOUNTS.push({
-    id: 'a' + Date.now(), account:'', name:'', level:'', job:'',
-    gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, records:[]
-  });
-  render();
-  saveLocal();
-  const nm = document.querySelector('.row[data-i="' + (ACCOUNTS.length-1) + '"] .nm');
-  if(nm){ nm.focus(); nm.scrollIntoView({behavior:'smooth', block:'center'}); }
-  toast('已新增角色，直接在「角色名」处填写');
+  openModal('add');
 });
 
 /* 导出 / 导入 */
