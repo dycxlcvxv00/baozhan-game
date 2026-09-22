@@ -8,9 +8,12 @@
      角色晶石台账 · 独立记录面板
      ------------------------------------------------------------
      稳定链接：https://dycxlcvxv00.github.io/baozhan-game/index-records.html
-     定位：本页只做"记录展示"，不引用其它模块。
      结构：顶部栏 → 汇总统计 → 角色卡片（横向紧凑，一行一卡）
-     扩展：内容全部来自脚本区 ACCOUNTS 数组；加角色 = 往数组里加一项。
+     录入：每张卡片 4 个半透明输入框（剩余/当日出售量/当日售价/当日人工），
+           录入后累计值自动重算；未录入按 0 计。
+     明细：卡片最右端 ▼ 按钮展开当日明细（日期 / 4 项），录入自动记一条。
+     存储：localStorage（同域名同浏览器持久），顶部可导出/导入 JSON 备份。
+     数据：内容来自脚本区 ACCOUNTS 数组；加角色 = 往数组里加一项。
      ============================================================ -->
 <style>
   :root{
@@ -55,20 +58,24 @@
   }
 
   /* ---------- 顶部栏 ---------- */
-  #topbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:0 20px;min-height:54px;margin-bottom:14px}
+  #topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:0 20px;min-height:54px;margin-bottom:14px}
   #topbar .brand{
     font-weight:800;font-size:18px;letter-spacing:1px;white-space:nowrap;
     background:linear-gradient(90deg,#fff,var(--accent));
     -webkit-background-clip:text;background-clip:text;color:transparent;
   }
   #topbar .sep{width:1px;height:22px;background:var(--line)}
-  #topbar .right{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  #topbar .right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .chip{
     height:28px;padding:0 12px;border-radius:15px;display:inline-flex;align-items:center;gap:6px;
     background:var(--glass);border:1px solid var(--line);color:var(--dim);font-size:12.5px;
     transition:.18s;white-space:nowrap;font-family:inherit;
   }
+  button.chip{cursor:pointer}
+  button.chip:hover{color:var(--txt);border-color:rgba(125,165,225,0.42)}
   .chip.on{color:var(--accent);border-color:rgba(47,230,208,0.5);box-shadow:0 0 12px rgba(47,230,208,0.25)}
+  .chip.warn{color:var(--gold);border-color:rgba(255,207,107,0.35)}
+  .chip.saved{color:var(--ok);border-color:rgba(87,227,155,0.4)}
 
   /* ---------- 汇总统计（一行四格） ---------- */
   #summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
@@ -85,34 +92,37 @@
   .sm.c-left {--el:#57e39b}   .sm.c-left    .v{color:var(--ok)}
   .sm.c-sold {--el:#9b7bff}   .sm.c-sold    .v{color:var(--accent2)}
   .sm.c-money{--el:#ffcf6b}   .sm.c-money   .v{color:var(--gold)}
+  .sm .v.flash{animation:flash .7s ease}
+  @keyframes flash{0%{transform:scale(1)}30%{transform:scale(1.06);filter:brightness(1.35)}100%{transform:scale(1)}}
 
-  /* ---------- 角色卡片：横向紧凑，一行一卡 ---------- */
+  /* ---------- 角色卡片：横向紧凑 ---------- */
   #cards{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;flex-direction:column}
   .card{
     --el:var(--accent);
-    display:flex;align-items:center;gap:0;
-    padding:0 14px 0 0; overflow:hidden; transition:.16s;
+    display:flex;align-items:stretch;
+    padding:0; overflow:hidden; transition:.16s;
   }
   .card::before{
     content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
-    background:var(--el);opacity:.9;pointer-events:none;
+    background:var(--el);opacity:.9;pointer-events:none;z-index:2;
   }
   .card:hover{
     border-color:color-mix(in srgb,var(--el) 38%,transparent);
     box-shadow:0 6px 24px rgba(0,0,0,0.45),0 0 16px color-mix(in srgb,var(--el) 16%,transparent);
   }
 
-  /* 序号 */
+  /* 序号：特殊化数字 */
   .idx{
-    flex:0 0 52px;display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:800;color:var(--mute);letter-spacing:.6px;
-    font-variant-numeric:tabular-nums;
+    flex:0 0 56px;display:flex;align-items:center;justify-content:center;
+    font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;
+    color:var(--el); letter-spacing:0;
   }
 
-  /* 角色名区（固定宽，防错位） */
+  /* 角色名区 */
   .who{
-    flex:0 0 210px;min-width:0;display:flex;flex-direction:column;gap:2px;
-    padding:8px 0;border-right:1px solid rgba(125,165,225,0.10);
+    flex:0 0 208px;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px;
+    padding:8px 14px 8px 0;border-right:1px solid rgba(125,165,225,0.10);
   }
   .who .nm{
     font-size:15px;font-weight:800;letter-spacing:.2px;
@@ -120,53 +130,136 @@
   }
   .who .sub{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mute);min-width:0}
   .who .sub .lv{color:var(--gold);font-weight:700;white-space:nowrap}
-  .who .sub .job{
-    color:var(--el);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
+  .who .sub .job{color:var(--el);white-space:nowrap}
   .who .sub .acct{
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.9;
   }
 
-  /* 数据格 */
+  /* 数据 4 格：上=累计值，下=录入框 */
   .cells{flex:1;display:grid;grid-template-columns:repeat(4,1fr);min-width:0}
   .cell{
-    padding:8px 12px;display:flex;flex-direction:column;gap:1px;min-width:0;
+    padding:7px 12px;display:flex;flex-direction:column;gap:5px;min-width:0;
     border-right:1px solid rgba(125,165,225,0.08);
   }
   .cell:last-child{border-right:0}
-  .cell .k{
-    font-size:11px;color:var(--mute);white-space:nowrap;
-    overflow:hidden;text-overflow:ellipsis;
-  }
+  .cell .k{font-size:11px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cell .v{
-    font-size:15.5px;font-weight:800;font-variant-numeric:tabular-nums;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px;
+    font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px;line-height:1.15;
   }
   .cell .v small{font-size:10.5px;font-weight:600;color:var(--mute);margin-left:3px;letter-spacing:0}
   .cell .v.ok{color:var(--ok)}
   .cell .v.purple{color:var(--accent2)}
   .cell .v.gold{color:var(--gold)}
   .cell .v.plain{color:var(--txt)}
-  .cell .v.dim{color:var(--mute);font-weight:700}
+  .cell .v.hit{animation:flash .7s ease}
+
+  /* 半透明录入框 */
+  .input{
+    width:100%;height:26px;padding:0 9px;border-radius:7px;
+    background:rgba(255,255,255,0.055);
+    border:1px solid rgba(125,165,225,0.20);
+    color:var(--txt);font-size:12.5px;font-family:inherit;
+    font-variant-numeric:tabular-nums;outline:none;transition:.16s;
+    min-width:0;
+  }
+  .input::placeholder{color:var(--mute);opacity:.75;font-size:11.5px}
+  .input:hover{background:rgba(255,255,255,0.075);border-color:rgba(125,165,225,0.34)}
+  .input:focus{
+    background:rgba(47,230,208,0.09);
+    border-color:rgba(47,230,208,0.55);
+    box-shadow:0 0 0 3px rgba(47,230,208,0.10);
+  }
+  .input::-webkit-outer-spin-button,.input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .input[type=number]{-moz-appearance:textfield;appearance:textfield}
+
+  /* 展开按钮 */
+  .expand{
+    flex:0 0 44px;display:flex;align-items:center;justify-content:center;
+    background:transparent;border:0;border-left:1px solid rgba(125,165,225,0.10);
+    color:var(--mute);cursor:pointer;transition:.18s;font-family:inherit;
+  }
+  .expand:hover{color:var(--el);background:color-mix(in srgb,var(--el) 10%,transparent)}
+  .expand .arw{display:inline-block;transition:transform .25s ease;font-size:13px;line-height:1}
+  .row.open .expand{color:var(--el);background:color-mix(in srgb,var(--el) 10%,transparent)}
+  .row.open .expand .arw{transform:rotate(180deg)}
+
+  /* ---------- 展开的明细区 ---------- */
+  .detail{
+    overflow:hidden;max-height:0;opacity:0;transition:max-height .3s ease,opacity .25s ease;
+    margin-top:0;
+  }
+  .row.open .detail{max-height:900px;opacity:1;margin-top:6px}
+  .detail-inner{padding:12px 14px 13px;border-radius:12px}
+  .detail-head{
+    display:flex;align-items:center;gap:10px;margin-bottom:9px;
+    font-size:12px;color:var(--mute);letter-spacing:.4px;
+  }
+  .detail-head .ttl2{color:var(--el);font-weight:700;font-size:12.5px}
+  .detail-head .right2{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .mini{
+    height:24px;padding:0 10px;border-radius:12px;font-size:11.5px;cursor:pointer;
+    background:rgba(255,255,255,0.05);border:1px solid var(--line);color:var(--dim);
+    font-family:inherit;transition:.18s;
+  }
+  .mini:hover{color:var(--txt);border-color:rgba(125,165,225,0.4)}
+  .mini.danger:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.5)}
+
+  table.dt{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  table.dt th{
+    text-align:left;font-weight:600;color:var(--mute);font-size:11px;
+    padding:6px 10px;border-bottom:1px solid rgba(125,165,225,0.14);white-space:nowrap;
+  }
+  table.dt th.num,table.dt td.num{text-align:right}
+  table.dt td{padding:6px 10px;border-bottom:1px solid rgba(125,165,225,0.06);white-space:nowrap}
+  table.dt tbody tr:hover{background:rgba(255,255,255,0.025)}
+  table.dt td.d{color:var(--dim)}
+  table.dt td.n{font-weight:700}
+  table.dt td.n.ok{color:var(--ok)} table.dt td.n.purple{color:var(--accent2)}
+  table.dt td.n.gold{color:var(--gold)} table.dt td.n.plain{color:var(--txt)}
+  table.dt td.n.zero{color:var(--mute);font-weight:600}
+  table.dt tfoot td{
+    padding:8px 10px;font-weight:800;color:var(--txt);border-top:1px solid rgba(125,165,225,0.18);
+    border-bottom:0;font-size:12.5px;
+  }
+  table.dt .del{
+    width:22px;height:22px;border-radius:6px;border:1px solid transparent;
+    background:transparent;color:var(--mute);cursor:pointer;font-size:12px;line-height:1;
+    font-family:inherit;padding:0;transition:.15s;
+  }
+  table.dt .del:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.45);background:rgba(255,107,107,0.10)}
+  .dt-empty{padding:14px;text-align:center;color:var(--mute);font-size:12.5px}
 
   .empty-tip{padding:26px;text-align:center;color:var(--mute);font-size:13px}
 
-  @media (max-width:1180px){
-    .who{flex:0 0 168px}
-    .cells{grid-template-columns:repeat(2,1fr)}
-    .cell{border-bottom:1px solid rgba(125,165,225,0.08)}
+  .toast{
+    position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(18px);
+    background:rgba(11,19,34,0.95);border:1px solid rgba(47,230,208,0.45);color:var(--accent);
+    padding:9px 18px;border-radius:22px;font-size:12.5px;opacity:0;pointer-events:none;
+    transition:.25s;z-index:99;box-shadow:0 8px 30px rgba(0,0,0,0.5);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:1280px){
+    .who{flex:0 0 170px}
+  }
+  @media (max-width:1080px){
+    .cards-wrap{}
+    .card{flex-wrap:wrap}
+    .who{flex:1 1 160px;border-right:0}
+    .cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10)}
+    .cell{padding:7px 10px}
     .cell:nth-child(2n){border-right:0}
-    .card{align-items:flex-start;padding-right:10px}
+    .cell:nth-child(-n+2){border-bottom:1px solid rgba(125,165,225,0.08)}
+    .expand{flex:0 0 100%;height:26px;border-left:0;border-top:1px solid rgba(125,165,225,0.10)}
+    .row.open .expand .arw{transform:rotate(180deg)}
+    .idx{flex:0 0 46px;font-size:20px;align-items:center}
   }
   @media (max-width:720px){
     .wrap{padding:14px 12px 40px}
     #summary{grid-template-columns:repeat(2,1fr)}
     #topbar{padding:10px 14px;min-height:0;gap:10px}
-    .idx{flex:0 0 38px}
-    .who{flex:1 1 100%;border-right:0;border-bottom:1px solid rgba(125,165,225,0.10)}
-    .card{flex-direction:column;align-items:stretch;padding:0 12px 8px}
-    .cells{width:100%}
     .sm .v{font-size:20px}
   }
 </style>
@@ -179,6 +272,11 @@
     <span class="brand">角色晶石台账</span>
     <span class="sep"></span>
     <span class="chip on" id="tbCount">0 个角色</span>
+    <span class="right">
+      <span class="chip saved" id="tbSaved">已自动保存</span>
+      <button class="chip" id="btnExport" type="button">导出备份</button>
+      <button class="chip" id="btnImport" type="button">导入备份</button>
+    </span>
   </header>
 
   <!-- ========== 汇总统计 ========== -->
@@ -186,131 +284,421 @@
 
   <!-- ========== 角色卡片 ========== -->
   <main id="cards"></main>
+  <input id="fileInput" type="file" accept="application/json,.json" hidden />
 
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 /* ============================================================
- * 数据区 —— 唯一改内容的地方
+ * 数据区 —— 基准信息（改这里）
  * ------------------------------------------------------------
- * 每个角色一项。字段说明（金额单位：元 / 人民币）：
- *   account   账号
- *   name      角色名    level  等级    job  职业
- *   gemsLeft  当前剩余晶石
- *   gemsSold  已出售晶石总数
- *   soldValue 已出售晶石总价值（元）
- *   laborCost 人工费用（元）
+ * 累计值 = 以下基准值 + 所有明细累加（明细由录入自动生成）
+ *   account   账号        name   角色名
+ *   level     等级        job    职业
+ *   gemsLeft  剩余晶石基准  gemsSold  已出售总数基准
+ *   soldValue 已售总价值基准（元）  laborCost 人工费基准（元）
+ *   records[] 历史明细 [{date, gemsLeft, daySold, dayValue, dayLabor}]
  * ============================================================ */
 const ACCOUNTS = [
-  { account: 'zhanghao01', name: '示例角色一', level: 45, job: '法师', gemsLeft: 1200, gemsSold: 3400, soldValue: 2380.5, laborCost: 300 },
-  { account: 'zhanghao02', name: '示例角色二', level: 38, job: '战士', gemsLeft: 860,  gemsSold: 2100, soldValue: 1470,   laborCost: 260 },
-  { account: 'zhanghao03', name: '示例角色三', level: 52, job: '刺客', gemsLeft: 2450, gemsSold: 5600, soldValue: 3920,   laborCost: 420 },
-  { account: 'zhanghao04', name: '示例角色四', level: 29, job: '牧师', gemsLeft: 430,  gemsSold: 980,  soldValue: 686,    laborCost: 180 },
-  { account: 'zhanghao05', name: '示例角色五', level: 61, job: '游侠', gemsLeft: 3180, gemsSold: 7250, soldValue: 5075,   laborCost: 560 },
-  { account: 'zhanghao06', name: '示例角色六', level: 33, job: '术士', gemsLeft: 640,  gemsSold: 1520, soldValue: 1064,   laborCost: 210 },
-  { account: 'zhanghao07', name: '示例角色七', level: 47, job: '圣骑士', gemsLeft: 1720, gemsSold: 4180, soldValue: 2926, laborCost: 340 },
-  { account: 'zhanghao08', name: '示例角色八', level: 25, job: '德鲁伊', gemsLeft: 300, gemsSold: 760,  soldValue: 532,   laborCost: 150 }
+  { account:'zhanghao01', name:'角色名一', level:45, job:'法师',   gemsLeft:1200, gemsSold:3400, soldValue:2380.5, laborCost:300, records:[] },
+  { account:'zhanghao02', name:'角色名二', level:38, job:'战士',   gemsLeft:860,  gemsSold:2100, soldValue:1470,   laborCost:260, records:[] },
+  { account:'zhanghao03', name:'角色名三', level:52, job:'刺客',   gemsLeft:2450, gemsSold:5600, soldValue:3920,   laborCost:420, records:[] },
+  { account:'zhanghao04', name:'角色名四', level:29, job:'牧师',   gemsLeft:430,  gemsSold:980,  soldValue:686,    laborCost:180, records:[] },
+  { account:'zhanghao05', name:'角色名五', level:61, job:'游侠',   gemsLeft:3180, gemsSold:7250, soldValue:5075,   laborCost:560, records:[] },
+  { account:'zhanghao06', name:'角色名六', level:33, job:'术士',   gemsLeft:640,  gemsSold:1520, soldValue:1064,   laborCost:210, records:[] },
+  { account:'zhanghao07', name:'角色名七', level:47, job:'圣骑士', gemsLeft:1720, gemsSold:4180, soldValue:2926,   laborCost:340, records:[] },
+  { account:'zhanghao08', name:'角色名八', level:25, job:'德鲁伊', gemsLeft:300,  gemsSold:760,  soldValue:532,    laborCost:150, records:[] }
 ];
 
-/* 卡片主题色：按顺序循环取用，让相邻卡片有区分度 */
-const THEME = ['#2fe6d0', '#9b7bff', '#ffcf6b', '#7fd4ff', '#ff8a5c', '#57e39b', '#c77bff', '#ff6b6b'];
+// 特殊化序号：11 之后回落到数字（如需更多样式可继续补）
+const RING_NUMS = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
+function serial(n){ return n <= 10 ? RING_NUMS[n-1] : String(n); }
+
+const THEME = ['#2fe6d0','#9b7bff','#ffcf6b','#7fd4ff','#ff8a5c','#57e39b','#c77bff','#ff6b6b'];
 
 /* ============================================================
- * 工具函数
+ * 工具
  * ============================================================ */
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-function int(n) {
-  return (Number(n) || 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 });
-}
-/* 金额：¥ + 千分位 + 最多两位小数 */
-function money(n) {
+/* 数字：无千分号，整数不带小数，小数最多 2 位 */
+function num(n){
   const v = Number(n) || 0;
-  return '¥' + v.toLocaleString('zh-CN', {
-    minimumFractionDigits: (v % 1) ? 2 : 0,
-    maximumFractionDigits: 2
-  });
+  if (Number.isInteger(v)) return String(v);
+  return String(Math.round(v * 100) / 100);
 }
-/* 汇总（从角色数据实时累加） */
-function summarize(list) {
-  return list.reduce((a, c) => {
-    a.gemsLeft  += Number(c.gemsLeft)  || 0;
-    a.gemsSold  += Number(c.gemsSold)  || 0;
-    a.soldValue += Number(c.soldValue) || 0;
-    a.laborCost += Number(c.laborCost) || 0;
+function intNum(n){ return num(Math.round(Number(n) || 0)); }
+function money(n){ return '¥' + num(n); }
+function today(){
+  const d = new Date();
+  const p = x => String(x).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+/* 某角色的累计值 = 基准 + 明细累加 */
+function totals(c){
+  const t = {
+    gemsLeft:  Number(c.gemsLeft)  || 0,
+    gemsSold:  Number(c.gemsSold)  || 0,
+    soldValue: Number(c.soldValue) || 0,
+    laborCost: Number(c.laborCost) || 0
+  };
+  (c.records || []).forEach(function(r){
+    t.gemsLeft  += Number(r.gemsLeft)  || 0;
+    t.gemsSold  += Number(r.daySold)   || 0;
+    t.soldValue += Number(r.dayValue)  || 0;
+    t.laborCost += Number(r.dayLabor)  || 0;
+  });
+  return t;
+}
+function summarize(list){
+  return list.reduce(function(a,c){
+    const t = totals(c);
+    a.gemsLeft += t.gemsLeft; a.gemsSold += t.gemsSold;
+    a.soldValue += t.soldValue; a.laborCost += t.laborCost;
     return a;
-  }, { roles: list.length, gemsLeft: 0, gemsSold: 0, soldValue: 0, laborCost: 0 });
+  }, { roles:list.length, gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0 });
+}
+
+/* ============================================================
+ * 存储：localStorage 持久化（按账号匹配）
+ * ============================================================ */
+const LS_KEY = 'gem-ledger-v1';
+const openRows = new Set();   // 展开状态（不持久化）
+
+function saveLocal(){
+  try{
+    const payload = {
+      v: 1, savedAt: new Date().toISOString(),
+      accounts: ACCOUNTS.map(function(c){
+        return { account:c.account, records:c.records || [] };
+      })
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(payload));
+    flashSaved();
+  }catch(e){ /* 隐私模式等场景静默失败 */ }
+}
+function loadLocal(){
+  let raw = null;
+  try{ raw = localStorage.getItem(LS_KEY); }catch(e){ return; }
+  if(!raw) return;
+  let data;
+  try{ data = JSON.parse(raw); }catch(e){ return; }
+  if(!data || !Array.isArray(data.accounts)) return;
+  data.accounts.forEach(function(saved){
+    const c = ACCOUNTS.find(function(x){ return x.account === saved.account; });
+    if(c && Array.isArray(saved.records)) c.records = saved.records;
+  });
 }
 
 /* ============================================================
  * 渲染
  * ============================================================ */
-function renderSummary(s) {
+function renderSummary(sum, animate){
   const items = [
-    { cls: 'c-roles', ico: '👤', k: '角色数量',       v: int(s.roles) + '<small>个</small>' },
-    { cls: 'c-left',  ico: '💎', k: '剩余总晶石',     v: int(s.gemsLeft) + '<small>颗</small>' },
-    { cls: 'c-sold',  ico: '📦', k: '已出售晶石总数', v: int(s.gemsSold) + '<small>颗</small>' },
-    { cls: 'c-money', ico: '¥',  k: '出售晶石总价值', v: money(s.soldValue) }
+    { cls:'c-roles', ico:'👤', key:'roles',     k:'角色数量',       v:num(sum.roles) + '<small>个</small>' },
+    { cls:'c-left',  ico:'💎', key:'gemsLeft',  k:'剩余总晶石',     v:intNum(sum.gemsLeft) + '<small>颗</small>' },
+    { cls:'c-sold',  ico:'📦', key:'gemsSold',  k:'已出售晶石总数', v:intNum(sum.gemsSold) + '<small>颗</small>' },
+    { cls:'c-money', ico:'¥',  key:'soldValue', k:'出售晶石总价值', v:money(sum.soldValue) }
   ];
-  document.getElementById('summary').innerHTML = items.map(i =>
-    `<div class="sm panel ${i.cls}">
-       <span class="k"><span class="ico">${i.ico}</span>${i.k}</span>
-       <span class="v">${i.v}</span>
-     </div>`).join('');
+  document.getElementById('summary').innerHTML = items.map(function(i){
+    return '<div class="sm panel ' + i.cls + '">'
+      + '<span class="k"><span class="ico">' + i.ico + '</span>' + i.k + '</span>'
+      + '<span class="v" data-sum="' + i.key + '">' + i.v + '</span>'
+      + '</div>';
+  }).join('');
+  if(animate){ items.forEach(function(i){
+    const el = document.querySelector('[data-sum="'+i.key+'"]');
+    if(el && i.key !== 'roles'){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+  }); }
 }
 
-/* 一行一卡：序号 | 角色名区 | 4 格数据 */
-function cardHTML(c, i) {
+/* 只刷新某张卡片的数值 + 顶部汇总（不重建 DOM，避免打断输入） */
+function refreshNumbers(i){
+  const c = ACCOUNTS[i];
+  const t = totals(c);
+  const row = document.querySelector('.row[data-i="'+i+'"]');
+  if(row){
+    setV(row,'gemsLeft',  intNum(t.gemsLeft) + '<small>颗</small>', 'hit');
+    setV(row,'gemsSold',  intNum(t.gemsSold) + '<small>颗</small>', 'hit');
+    setV(row,'soldValue', money(t.soldValue), 'hit');
+    setV(row,'laborCost', money(t.laborCost), 'hit');
+  }
+  const sum = summarize(ACCOUNTS);
+  setText('[data-sum="roles"]',     num(sum.roles) + '<small>个</small>');
+  setText('[data-sum="gemsLeft"]',  intNum(sum.gemsLeft) + '<small>颗</small>', true);
+  setText('[data-sum="gemsSold"]',  intNum(sum.gemsSold) + '<small>颗</small>', true);
+  setText('[data-sum="soldValue"]', money(sum.soldValue), true);
+}
+function setV(row, key, html, anim){
+  const el = row.querySelector('[data-v="'+key+'"]');
+  if(!el) return;
+  el.innerHTML = html;
+  if(anim){ el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
+}
+function setText(sel, html, anim){
+  const el = document.querySelector(sel);
+  if(!el) return;
+  el.innerHTML = html;
+  if(anim){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+}
+
+function detailHTML(i){
+  const c = ACCOUNTS[i];
+  const recs = c.records || [];
+  const rows = recs.length ? recs.slice().reverse().map(function(r){
+    const oi = recs.indexOf(r);
+    const z = v => (Number(v)||0) === 0 ? ' zero' : '';
+    return '<tr>'
+      + '<td class="d">' + esc(r.date || '') + '</td>'
+      + '<td class="num n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
+      + '<td class="num n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
+      + '<td class="num n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
+      + '<td class="num n plain'+z(r.dayLabor)+'">' + num(r.dayLabor) + '</td>'
+      + '<td class="num"><button class="del" type="button" title="删除这条记录" '
+      +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
+      + '</tr>';
+  }).join('') : '<tr><td colspan="6"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入『当日』数据，回车即自动记一条</div></td></tr>';
+
+  const s = recs.reduce(function(a,r){
+    a.gemsLeft += Number(r.gemsLeft)||0; a.daySold += Number(r.daySold)||0;
+    a.dayValue += Number(r.dayValue)||0; a.dayLabor += Number(r.dayLabor)||0;
+    return a;
+  }, {gemsLeft:0,daySold:0,dayValue:0,dayLabor:0});
+
+  const foot = recs.length ? '<tfoot><tr>'
+    + '<td>合计 ' + recs.length + ' 条</td>'
+    + '<td class="num">' + intNum(s.gemsLeft) + '</td>'
+    + '<td class="num">' + intNum(s.daySold) + '</td>'
+    + '<td class="num">' + num(s.dayValue) + '</td>'
+    + '<td class="num">' + num(s.dayLabor) + '</td>'
+    + '<td></td></tr></tfoot>' : '';
+
+  return '<div class="detail-inner panel">'
+    + '<div class="detail-head">'
+    +   '<span class="ttl2">' + esc(c.name) + ' · 每日明细</span>'
+    +   '<span>共 ' + recs.length + ' 条</span>'
+    +   '<span class="right2">'
+    +     '<button class="mini danger" type="button" data-clear="' + i + '">清空明细</button>'
+    +   '</span>'
+    + '</div>'
+    + '<table class="dt">'
+    + '<thead><tr>'
+    +   '<th>日期</th>'
+    +   '<th class="num">剩余晶石</th>'
+    +   '<th class="num">当日出售</th>'
+    +   '<th class="num">当日售价</th>'
+    +   '<th class="num">当日人工</th>'
+    +   '<th></th>'
+    + '</tr></thead>'
+    + '<tbody>' + rows + '</tbody>'
+    + foot
+    + '</table>'
+    + '</div>';
+}
+
+/* 一行一卡：序号 | 角色名 | 4 格（累计值 + 录入框） | 展开按钮 */
+function cardHTML(c, i){
   const color = THEME[i % THEME.length];
+  const t = totals(c);
   const hasLv = c.level != null && c.level !== '';
 
-  return `
-  <article class="card panel" style="--el:${color}">
-    <div class="idx">#${String(i + 1).padStart(2, '0')}</div>
+  const cell = (label, vkey, vhtml, cls, ph) =>
+    '<div class="cell">'
+    + '<span class="k">' + label + '</span>'
+    + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
+    + '<input class="input" type="number" inputmode="decimal" step="any" '
+    +   'data-i="' + i + '" data-f="' + vkey + '" placeholder="' + ph + '" />'
+    + '</div>';
 
-    <div class="who">
-      <div class="nm" title="${esc(c.name)}">${esc(c.name || '未命名角色')}</div>
-      <div class="sub">
-        ${hasLv ? `<span class="lv">Lv.${esc(c.level)}</span>` : ''}
-        ${c.job ? `<span class="job">${esc(c.job)}</span>` : ''}
-        <span class="acct" title="${esc(c.account)}">${esc(c.account || '—')}</span>
-      </div>
-    </div>
-
-    <div class="cells">
-      <div class="cell">
-        <span class="k">当前剩余晶石</span>
-        <span class="v ok">${int(c.gemsLeft)}<small>颗</small></span>
-      </div>
-      <div class="cell">
-        <span class="k">已出售晶石总数</span>
-        <span class="v purple">${int(c.gemsSold)}<small>颗</small></span>
-      </div>
-      <div class="cell">
-        <span class="k">已出售晶石总价格</span>
-        <span class="v gold">${money(c.soldValue)}</span>
-      </div>
-      <div class="cell">
-        <span class="k">人工费用</span>
-        <span class="v plain">${money(c.laborCost)}</span>
-      </div>
-    </div>
-  </article>`;
+  return '<div class="row" data-i="' + i + '">'
+    + '<article class="card panel" style="--el:' + color + '">'
+    +   '<div class="idx">' + serial(i+1) + '</div>'
+    +   '<div class="who">'
+    +     '<div class="nm" title="' + esc(c.name) + '">' + esc(c.name || '未命名角色') + '</div>'
+    +     '<div class="sub">'
+    +       (hasLv ? '<span class="lv">Lv.' + esc(c.level) + '</span>' : '')
+    +       (c.job ? '<span class="job">' + esc(c.job) + '</span>' : '')
+    +       '<span class="acct" title="' + esc(c.account) + '">' + esc(c.account || '—') + '</span>'
+    +     '</div>'
+    +   '</div>'
+    +   '<div class="cells">'
+    +     cell('当前剩余晶石',     'gemsLeft',  intNum(t.gemsLeft) + '<small>颗</small>', 'ok',     '录入当日剩余')
+    +     cell('已出售晶石总数',   'gemsSold',  intNum(t.gemsSold) + '<small>颗</small>', 'purple', '录入当日出售')
+    +     cell('已出售晶石总价格', 'soldValue', money(t.soldValue),                     'gold',   '录入当日售价')
+    +     cell('人工费用',         'laborCost', money(t.laborCost),                     'plain',  '录入当日人工')
+    +   '</div>'
+    +   '<button class="expand" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
+    +     '<span class="arw">▼</span>'
+    +   '</button>'
+    + '</article>'
+    + '<div class="detail" id="detail-' + i + '">' + detailHTML(i) + '</div>'
+    + '</div>';
 }
 
-function render() {
+function render(){
   const box = document.getElementById('cards');
-  box.innerHTML = ACCOUNTS.length
+  const wrap = document.createElement('div');
+  wrap.className = 'cards-wrap';
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+  wrap.innerHTML = ACCOUNTS.length
     ? ACCOUNTS.map(cardHTML).join('')
     : '<div class="empty-tip panel">暂无角色数据 —— 在文件底部 ACCOUNTS 数组里添加</div>';
+  box.innerHTML = '';
+  box.appendChild(wrap);
   renderSummary(summarize(ACCOUNTS));
   document.getElementById('tbCount').textContent = ACCOUNTS.length + ' 个角色';
 }
 
+/* ============================================================
+ * 交互
+ * ============================================================ */
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 1700);
+}
+let savedTimer = null;
+function flashSaved(){
+  const el = document.getElementById('tbSaved');
+  if(!el) return;
+  el.textContent = '已自动保存 ' + new Date().toLocaleTimeString('zh-CN', {hour12:false});
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(function(){ el.textContent = '已自动保存'; }, 2600);
+}
+
+/* 录入提交：把 4 个输入框收成一条当日记录 */
+function commitEntry(i){
+  const row = document.querySelector('.row[data-i="'+i+'"]');
+  if(!row) return;
+  const ins = row.querySelectorAll('.input');
+  const vals = Array.prototype.map.call(ins, function(el){
+    const v = parseFloat(el.value);
+    return isFinite(v) ? v : 0;
+  });
+  if(vals.every(function(v){ return v === 0; })){
+    toast('未填写任何数值（未录入按 0 计）');
+    return;
+  }
+  ACCOUNTS[i].records = ACCOUNTS[i].records || [];
+  ACCOUNTS[i].records.push({
+    date: today(),
+    gemsLeft: vals[0], daySold: vals[1], dayValue: vals[2], dayLabor: vals[3]
+  });
+  Array.prototype.forEach.call(ins, function(el){ el.value = ''; });
+  refreshNumbers(i);
+  const d = document.getElementById('detail-' + i);
+  if(d) d.innerHTML = detailHTML(i);
+  saveLocal();
+  toast('已记录 1 条明细并更新累计值');
+}
+
+/* 事件委托 */
+document.addEventListener('keydown', function(e){
+  if(e.target.classList && e.target.classList.contains('input')){
+    if(e.key === 'Enter'){ e.preventDefault(); commitEntry(Number(e.target.dataset.i)); }
+    return;
+  }
+  if(e.target.classList && e.target.classList.contains('del') && e.key === 'Enter'){
+    e.preventDefault(); e.target.click();
+  }
+});
+
+document.addEventListener('click', function(e){
+  /* 展开 / 收起 */
+  const tg = e.target.closest('[data-toggle]');
+  if(tg){
+    const i = Number(tg.dataset.toggle);
+    const row = tg.closest('.row');
+    const open = row.classList.toggle('open');
+    tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if(open) openRows.add(i); else openRows.delete(i);
+    return;
+  }
+  /* 删除单条明细 */
+  const del = e.target.closest('[data-del]');
+  if(del){
+    const i = Number(del.dataset.del), ri = Number(del.dataset.ri);
+    ACCOUNTS[i].records.splice(ri, 1);
+    refreshNumbers(i);
+    document.getElementById('detail-' + i).innerHTML = detailHTML(i);
+    saveLocal();
+    toast('已删除该条记录');
+    return;
+  }
+  /* 清空该角色明细 */
+  const cl = e.target.closest('[data-clear]');
+  if(cl){
+    const i = Number(cl.dataset.clear);
+    const n = (ACCOUNTS[i].records || []).length;
+    if(!n){ toast('本来就没有明细'); return; }
+    if(!confirm('确定清空「' + ACCOUNTS[i].name + '」的 ' + n + ' 条明细？此操作不可撤销。')) return;
+    ACCOUNTS[i].records = [];
+    refreshNumbers(i);
+    document.getElementById('detail-' + i).innerHTML = detailHTML(i);
+    saveLocal();
+    toast('已清空 ' + n + ' 条明细');
+    return;
+  }
+});
+
+/* 导出 / 导入备份 */
+document.getElementById('btnExport').addEventListener('click', function(){
+  const data = {
+    v: 1, exportedAt: new Date().toISOString(),
+    accounts: ACCOUNTS.map(function(c){
+      return { account:c.account, name:c.name, level:c.level, job:c.job,
+               gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
+               laborCost:c.laborCost, records:c.records || [] };
+    })
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'gem-ledger-' + today() + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  toast('已导出备份 JSON');
+});
+document.getElementById('btnImport').addEventListener('click', function(){
+  document.getElementById('fileInput').click();
+});
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  const fr = new FileReader();
+  fr.onload = function(){
+    try{
+      const data = JSON.parse(fr.result);
+      if(!data || !Array.isArray(data.accounts)) throw new Error('格式不对');
+      let hit = 0;
+      data.accounts.forEach(function(s){
+        const c = ACCOUNTS.find(function(x){ return x.account === s.account; });
+        if(!c) return;
+        ['gemsLeft','gemsSold','soldValue','laborCost'].forEach(function(k){
+          if(s[k] != null) c[k] = Number(s[k]) || 0;
+        });
+        if(Array.isArray(s.records)) c.records = s.records;
+        hit++;
+      });
+      render(); saveLocal();
+      toast('已导入 ' + hit + ' 个账号的数据');
+    }catch(err){ toast('导入失败：不是有效的备份文件'); }
+    e.target.value = '';
+  };
+  fr.readAsText(f);
+});
+
+/* ---------- 启动 ---------- */
+loadLocal();
 render();
+ACCOUNTS.forEach(function(_, i){ refreshNumbers(i); });
 </script>
 </body>
 </html>
