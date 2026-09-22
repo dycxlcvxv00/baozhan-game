@@ -73,6 +73,8 @@
   button.chip:hover{color:var(--txt);border-color:rgba(125,165,225,0.42)}
   .chip.on{color:var(--accent);border-color:rgba(47,230,208,0.5)}
   .chip.saved{color:var(--ok);border-color:rgba(87,227,155,0.4)}
+  .chip.time{color:var(--gold);border-color:rgba(255,207,107,0.38);font-variant-numeric:tabular-nums}
+  .chip.time.hit{animation:flash .7s ease}
   /* 加号：新增角色 */
   .chip.add{
     color:var(--accent);border-color:rgba(47,230,208,0.45);background:rgba(47,230,208,0.10);
@@ -82,16 +84,22 @@
   .chip.add .plus{font-size:16px;line-height:1;font-weight:800;margin-top:-1px}
 
   /* ---------- 汇总统计 ---------- */
-  #summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  #summary{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+  @media (max-width:1440px){ #summary{grid-template-columns:repeat(3,1fr)} }
   .sm{padding:11px 16px;display:flex;flex-direction:column;gap:2px;overflow:hidden;align-items:center;text-align:center}
   .sm::after{content:none}
   .sm .k{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px}
-  .sm .k .ico{font-size:13px;opacity:.85}
+  .sm .k .ico{width:14px;height:14px;flex:0 0 auto;display:inline-flex;
+    align-items:center;justify-content:center;opacity:.9;color:var(--el)}
+  .sm .k .ico svg{width:14px;height:14px;display:block}
   .sm .v{font-size:24px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
   .sm.c-roles{--el:#2fe6d0}   .sm.c-roles   .v{color:var(--accent)}
   .sm.c-left {--el:#57e39b}   .sm.c-left    .v{color:var(--ok)}
   .sm.c-sold {--el:#9b7bff}   .sm.c-sold    .v{color:var(--accent2)}
   .sm.c-money{--el:#ffcf6b}   .sm.c-money   .v{color:var(--gold)}
+  .sm.c-labor{--el:#ff8a5c}   .sm.c-labor   .v{color:#ff8a5c}
+  .sm.c-net  {--el:#57e39b}   .sm.c-net     .v{color:var(--ok)}
+  .sm.c-net  .v.neg{color:#ff6b6b}
   .sm .v.flash{animation:flash .7s ease}
   @keyframes flash{0%{transform:scale(1)}35%{transform:scale(1.04)}100%{transform:scale(1)}}
 
@@ -391,6 +399,7 @@
     <span class="brand">角色晶石台账</span>
     <span class="sep"></span>
     <span class="chip on" id="tbCount">0 个角色</span>
+    <span class="chip time" id="tbChanged" title="本次数据改动时间">最后更改 --:--</span>
     <span class="right">
       <button class="chip add" id="btnAdd" type="button" title="新增一个角色卡片"><span class="plus">＋</span>新增角色</button>
       <span class="chip saved" id="tbSaved">已自动保存</span>
@@ -533,6 +542,31 @@ function incomeOf(c){ const t = totals(c); return t.soldValue - t.laborCost; }
  * 存储
  * ============================================================ */
 const LS_KEY = 'gem-ledger-v2';
+
+/* 最后更改时间 = 本次数据改动时间（不是实时时钟）
+ * 只在真正写入数据时更新，刷新页面后保持为上次改动时间 */
+function fmtChangeTime(d){
+  const p = function(x){ return String(x).padStart(2,'0'); };
+  return p(d.getMonth()+1) + '-' + p(d.getDate()) + ' '
+       + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+function stampChanged(el){
+  const box = el || document.getElementById('tbChanged');
+  if(!box) return;
+  box.textContent = '最后更改 ' + fmtChangeTime(new Date());
+  box.classList.remove('hit'); void box.offsetWidth; box.classList.add('hit');
+}
+/* 刷新页面后：从 localStorage 恢复上次改动时间 */
+function restoreChanged(iso){
+  const box = document.getElementById('tbChanged');
+  if(!box) return;
+  if(!iso){ box.textContent = '最后更改 --:--'; return; }
+  const d = new Date(iso);
+  if(isNaN(d.getTime())){ box.textContent = '最后更改 --:--'; return; }
+  box.textContent = '最后更改 ' + fmtChangeTime(d);
+  box.title = '本次数据改动时间：' + d.toLocaleString('zh-CN', {hour12:false});
+}
+
 function saveLocal(){
   try{
     localStorage.setItem(LS_KEY, JSON.stringify({
@@ -544,16 +578,17 @@ function saveLocal(){
                  records:c.records || [], flags:c.flags || {} };
       })
     }));
+    stampChanged();
     flashSaved();
   }catch(e){}
 }
 function loadLocal(){
   let raw = null;
-  try{ raw = localStorage.getItem(LS_KEY); }catch(e){ return false; }
-  if(!raw) return false;
+  try{ raw = localStorage.getItem(LS_KEY); }catch(e){ return null; }
+  if(!raw) return null;
   let data;
-  try{ data = JSON.parse(raw); }catch(e){ return false; }
-  if(!data || !Array.isArray(data.accounts) || !data.accounts.length) return false;
+  try{ data = JSON.parse(raw); }catch(e){ return null; }
+  if(!data || !Array.isArray(data.accounts) || !data.accounts.length) return null;
   ACCOUNTS = data.accounts.map(function(s, i){
     return {
       id: s.id || ('a' + (i+1)),
@@ -566,22 +601,36 @@ function loadLocal(){
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
-  return true;
+  return data.savedAt || null;   /* 返回上次改动时间，供顶部标签恢复 */
 }
 
 /* ============================================================
  * 渲染
  * ============================================================ */
+/* ---- 汇总卡图标：内联 SVG，不依赖 emoji 字体，任何浏览器渲染一致 ---- */
+const ICONS = {
+  roles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20c0-3.9 3.3-6.4 7.4-6.4s7.4 2.5 7.4 6.4"/></svg>',
+  gem:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M6.2 3.4h11.6L21.6 9 12 20.6 2.4 9z"/><path d="M2.4 9h19.2M9 3.4 12 9l3-5.6M12 9v11.6"/></svg>',
+  box:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 7.4 12 3l8.8 4.4v9.2L12 21l-8.8-4.4z"/><path d="m3.2 7.4 8.8 4.4 8.8-4.4M12 11.8V21"/></svg>',
+  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 4.2 12 11l5.6-6.8M12 11v9.6M8 14h8M8 17.2h8"/></svg>',
+  tool:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3.4a5.4 5.4 0 0 0-4.9 7.6L3.6 17.7l2.7 2.7 6.7-6.7a5.4 5.4 0 0 0 7.6-4.9 5.4 5.4 0 0 0-.5-2.2l-3 3-2.7-2.7 3-3a5.4 5.4 0 0 0-2.2-.5z"/></svg>',
+  trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 16.8 9.2 11l3.6 3.6 7.4-7.4"/><path d="M15.2 7.2h5v5"/></svg>'
+};
+function ico(name){ return '<span class="ico">' + (ICONS[name] || '') + '</span>'; }
+
 function renderSummary(sum, animate){
+  const netTotal = sum.soldValue - sum.laborCost;   /* 总收入 = 售价总价值 − 人工费用总支出 */
   const items = [
-    { cls:'c-roles', ico:'👤', key:'roles',     k:'角色数量',       v:num(sum.roles) },
-    { cls:'c-left',  ico:'💎', key:'gemsLeft',  k:'剩余总晶石',     v:intNum(sum.gemsLeft) },
-    { cls:'c-sold',  ico:'📦', key:'gemsSold',  k:'已出售晶石总数', v:intNum(sum.gemsSold) },
-    { cls:'c-money', ico:'¥',  key:'soldValue', k:'出售晶石总价值', v:money(sum.soldValue) }
+    { cls:'c-roles', ico:'roles', key:'roles',      k:'角色数量',       v:num(sum.roles) },
+    { cls:'c-left',  ico:'gem',   key:'gemsLeft',   k:'剩余总晶石',     v:intNum(sum.gemsLeft) },
+    { cls:'c-sold',  ico:'box',   key:'gemsSold',   k:'已出售晶石总数', v:intNum(sum.gemsSold) },
+    { cls:'c-money', ico:'money', key:'soldValue',  k:'出售晶石总价值', v:money(sum.soldValue) },
+    { cls:'c-labor', ico:'tool',  key:'laborCost',  k:'人工费用总支出', v:money(sum.laborCost) },
+    { cls:'c-net',   ico:'trend', key:'netIncome',  k:'总收入',         v:money(netTotal) }
   ];
   document.getElementById('summary').innerHTML = items.map(function(i){
     return '<div class="sm panel ' + i.cls + '">'
-      + '<span class="k"><span class="ico">' + i.ico + '</span>' + i.k + '</span>'
+      + '<span class="k">' + ico(i.ico) + i.k + '</span>'
       + '<span class="v" data-sum="' + i.key + '">' + i.v + '</span>'
       + '</div>';
   }).join('');
@@ -612,6 +661,11 @@ function refreshNumbers(i){
   setText('[data-sum="gemsLeft"]',  intNum(sum.gemsLeft),  true);
   setText('[data-sum="gemsSold"]',  intNum(sum.gemsSold),  true);
   setText('[data-sum="soldValue"]', money(sum.soldValue),  true);
+  setText('[data-sum="laborCost"]', money(sum.laborCost),  true);
+  const net = sum.soldValue - sum.laborCost;
+  setText('[data-sum="netIncome"]', money(net), true);
+  const netEl = document.querySelector('[data-sum="netIncome"]');
+  if(netEl) netEl.classList.toggle('neg', net < 0);
 }
 function setV(row, key, html, anim){
   const el = row.querySelector('[data-v="'+key+'"]');
@@ -1095,8 +1149,9 @@ document.getElementById('fileInput').addEventListener('change', function(e){
 });
 
 /* ---------- 启动 ---------- */
-loadLocal();
+const lastSavedAt = loadLocal();
 render();
+restoreChanged(lastSavedAt);   /* 恢复「最后更改」为上次改动时间 */
 window.addEventListener('resize', function(){ syncAllDetailCols(); });
 </script>
 </body>
