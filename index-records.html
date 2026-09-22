@@ -25,6 +25,7 @@
     --el:var(--accent);
     /* 行内布局：序号 / 角色信息 / 4 数据列 / 展开 —— 列头与卡片共用，保证对齐 */
     --c-idx:56px; --c-who:344px; --c-exp:44px;
+    --cols:5;   /* 数据列数：当前剩余 / 当日收入 / 已出售总数 / 已出售总价 / 人工费用 */
   }
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
@@ -106,7 +107,7 @@
     font-size:11px;letter-spacing:1.2px;color:var(--mute);text-transform:uppercase;
     display:flex;align-items:center;
   }
-  .colhead .h-cells{flex:1;display:grid;grid-template-columns:repeat(4,1fr);min-width:0}
+  .colhead .h-cells{flex:1;display:grid;grid-template-columns:repeat(var(--cols),1fr);min-width:0}
   .colhead .h-cell{
     padding:8px 12px;font-size:11.5px;font-weight:700;letter-spacing:.6px;color:var(--dim);
     text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -198,7 +199,7 @@
   .wealth .wv.neg{color:#ff6b6b}
 
   /* 数据 4 格：上=累计值(居中)，下=录入框 */
-  .cells{flex:1;display:grid;grid-template-columns:repeat(4,1fr);min-width:0}
+  .cells{flex:1;display:grid;grid-template-columns:repeat(var(--cols),1fr);min-width:0}
   .cell{
     padding:7px 12px;display:flex;flex-direction:column;gap:5px;min-width:0;align-items:center;
     border-right:1px solid rgba(125,165,225,0.08);
@@ -213,7 +214,18 @@
   .cell .v.purple{color:var(--accent2)}
   .cell .v.gold{color:var(--ok)}          /* 已出售晶石总价格 → 绿 */
   .cell .v.plain{color:#ff6b6b}           /* 人工费用 → 红 */
+  .cell .v.inc{color:var(--txt)}          /* 当日收入 → 正绿负红，见下 */
+  .cell .v.inc.pos{color:var(--ok)}
+  .cell .v.inc.neg{color:#ff6b6b}
   .cell .v.hit{animation:flash .7s ease}
+
+  /* 只读格（当日收入）：上方数值 + 下方「自动」占位，与录入格等高对齐 */
+  .cell.ro{position:relative}
+  .cell.ro .auto{
+    width:100%;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;letter-spacing:.6px;color:var(--mute);
+    background:rgba(255,255,255,0.028);border:1px dashed rgba(125,165,225,0.16);
+  }
 
   /* 半透明录入框 */
   .input{
@@ -274,14 +286,7 @@
   table.dt td.n.ok{color:var(--ok)} table.dt td.n.purple{color:var(--accent2)}
   table.dt td.n.gold{color:var(--gold)} table.dt td.n.plain{color:var(--txt)}
   table.dt td.n.income{color:var(--ok)}
-  /* 当日收入列：宽度为 0，不参与布局，文本浮在「当日人工」与展开按钮之间的空隙上 */
-  table.dt th.th-inc,table.dt td.inc{width:0;padding:0!important;position:relative;overflow:visible!important;border-bottom:0}
-  table.dt th.th-inc span,table.dt td.inc{white-space:nowrap}
-  table.dt th.th-inc{color:transparent}
-  table.dt th.th-inc::after{
-    content:"当日收入";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-    color:var(--mute);font-size:11px;font-weight:600;-webkit-text-fill-color:var(--mute);
-  }
+
   table.dt td.n.zero{color:var(--mute);font-weight:600}
   table.dt td.n.inc-zero{color:var(--mute);font-weight:600}
   table.dt tfoot td{
@@ -359,11 +364,11 @@
     .colhead .h-who{flex:1 1 160px}
     .who{flex:1 1 160px;border-right:0}
     .who .nm{min-width:0}
-    .colhead .h-cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10)}
+    .colhead .h-cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10);--cols:2}
     .colhead .h-cell:nth-child(2n){border-right:0}
-    .cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10)}
+    .cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10);--cols:2}
     .cell:nth-child(2n){border-right:0}
-    .cell:nth-child(-n+2){border-bottom:1px solid rgba(125,165,225,0.08)}
+    .cell:nth-child(-n+4){border-bottom:1px solid rgba(125,165,225,0.08)}
     .expand{flex:0 0 100%;height:26px;border-left:0;border-top:1px solid rgba(125,165,225,0.10)}
     .colhead .h-exp{display:none}
     .colhead{display:none}   /* 窄屏字段名回填到每格 */
@@ -403,6 +408,7 @@
     <div class="h-who">角色信息</div>
     <div class="h-cells">
       <div class="h-cell">当前剩余晶石</div>
+      <div class="h-cell">当日收入</div>
       <div class="h-cell">已出售晶石总数</div>
       <div class="h-cell">已出售晶石总价格</div>
       <div class="h-cell">人工费用</div>
@@ -520,6 +526,8 @@ function summarize(list){
     return a;
   }, { roles:list.length, gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0 });
 }
+/* 当日收入累计 = 累计售价 − 累计人工 */
+function incomeOf(c){ const t = totals(c); return t.soldValue - t.laborCost; }
 
 /* ============================================================
  * 存储
@@ -588,6 +596,13 @@ function refreshNumbers(i){
   if(row){
     const t = totals(ACCOUNTS[i]);
     setV(row,'gemsLeft',  intNum(t.gemsLeft), 'hit');
+    const dInc = t.soldValue - t.laborCost;
+    setV(row,'dayIncome', money(dInc), 'hit');
+    const dEl = row.querySelector('[data-v="dayIncome"]');
+    if(dEl){
+      dEl.classList.toggle('pos', dInc > 0);
+      dEl.classList.toggle('neg', dInc < 0);
+    }
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
@@ -623,10 +638,10 @@ function detailHTML(i){
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + '</td>'
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
+      + '<td class="n'+icls+'">' + incomeText(r) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
       + '<td class="n plain'+z(r.dayLabor)+'">' + num(r.dayLabor) + '</td>'
-      + '<td class="n inc'+icls.replace(' income',' inc-income')+'">' + incomeText(r) + '</td>'
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
@@ -642,10 +657,10 @@ function detailHTML(i){
   const foot = recs.length ? '<tfoot><tr>'
     + '<td>合计 ' + recs.length + ' 条</td>'
     + '<td>' + intNum(s.gemsLeft) + '</td>'
+    + '<td>' + (s.inc > 0 ? '+' : '') + num(s.inc) + '</td>'
     + '<td>' + intNum(s.daySold) + '</td>'
     + '<td>' + num(s.dayValue) + '</td>'
     + '<td>' + num(s.dayLabor) + '</td>'
-    + '<td class="inc">' + (s.inc > 0 ? '+' : '') + num(s.inc) + '</td>'
     + '<td></td></tr></tfoot>' : '';
 
   return '<div class="detail-inner panel">'
@@ -655,11 +670,12 @@ function detailHTML(i){
     +   '<span class="right2"><button class="mini danger" type="button" data-clear="' + i + '">清空明细</button></span>'
     + '</div>'
     + '<table class="dt">'
-    + '<colgroup><col class="c-date" /><col class="c-num" /><col class="c-num" />'
-    +   '<col class="c-num" /><col class="c-num" /><col class="c-zero" /><col class="c-act" /></colgroup>'
+    + '<colgroup><col class="c-date" />'
+    +   '<col class="c-num" /><col class="c-num" /><col class="c-num" />'
+    +   '<col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
     + '<thead><tr>'
-    +   '<th>日期</th><th>剩余晶石</th><th>当日出售</th><th>当日售价</th>'
-    +   '<th>当日人工</th><th class="th-inc">当日收入</th><th></th>'
+    +   '<th>日期</th><th>剩余晶石</th><th>当日收入</th><th>当日出售</th>'
+    +   '<th>当日售价</th><th>当日人工</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
     + foot
@@ -673,7 +689,6 @@ function syncDetailCols(i){
   const tbl = row.querySelector('table.dt');
   if(!tbl || !tbl.querySelector('colgroup')) return;
   const cols = tbl.querySelectorAll('colgroup col');
-  if(cols.length !== 7) return;
   const idx = row.querySelector('.idx');
   const who = row.querySelector('.who');
   const exp = row.querySelector('.expand');
@@ -683,15 +698,18 @@ function syncDetailCols(i){
   const actW = exp.getBoundingClientRect().width;
   /* 日期列 = 序号列 + 角色信息列（与卡片左半部分完全等宽） */
   const dateW = idx.getBoundingClientRect().width + who.getBoundingClientRect().width;
-  /* 4 个数据列 = 剩余空间均分 —— 与卡片 .cells 的划分方式一致 */
-  const numW = (tblW - dateW - actW) / 4;
-  if(numW <= 0) return;
-
+  /* 数据列 = 卡片 .cell 的实际宽度，逐个量取，列数变化也能自适应 */
+  const cellEls = row.querySelectorAll('.cell');
   const px = v => Math.round(v * 100) / 100 + 'px';
+
   cols[0].style.width = px(dateW);
-  for(let k = 1; k <= 4; k++) cols[k].style.width = px(numW);
-  /* 当日收入列并入数据区（不占独立宽度），末列给展开按钮 */
-  cols[5].style.width = px(0);
+  /* colgroup: [日期, 剩余, 当日收入, 当日出售, 当日售价, 当日人工, 展开]
+     —— 5 个数据列逐一按卡片 .cell 的实际宽度写入，保证与顶部 5 栏严格对齐 */
+  const order = [0, 1, 2, 3, 4];
+  order.forEach(function(ci, k){
+    const w = cellEls[ci] ? cellEls[ci].getBoundingClientRect().width : (tblW - dateW - actW) / 5;
+    cols[k + 1].style.width = px(w);
+  });
   cols[6].style.width = px(actW);
 }
 
@@ -749,11 +767,20 @@ function whoHTML(c, i){
 function cardHTML(c, i){
   const color = THEME[i % THEME.length];
   const t = totals(c);
+  /* 当日收入 = 累计售价 − 累计人工（自动计算），正绿负红 */
+  const dInc = t.soldValue - t.laborCost;
+  const dIncCls = dInc > 0 ? ' pos' : (dInc < 0 ? ' neg' : '');
   const cell = (vkey, vhtml, cls, ph) =>
     '<div class="cell">'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
     + '<input class="input" type="number" inputmode="decimal" step="any" '
     +   'data-i="' + i + '" data-f="' + vkey + '" placeholder="' + ph + '" />'
+    + '</div>';
+  /* 只读数值格（如「当日收入」，由售价−人工自动算出，无需录入） */
+  const roCell = (vkey, vhtml, cls, tip) =>
+    '<div class="cell ro" title="' + tip + '">'
+    + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
+    + '<span class="auto">自动</span>'
     + '</div>';
 
   return '<div class="row" data-i="' + i + '">'
@@ -762,6 +789,8 @@ function cardHTML(c, i){
     +   whoHTML(c, i)
     +   '<div class="cells">'
     +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '当日剩余')
+    +     roCell('dayIncome', money(dInc), 'inc' + dIncCls,
+    +            '当日收入 = 当日售价 − 当日人工，自动计算')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '当日出售')
     +     cell('soldValue', money(t.soldValue), 'gold',   '当日售价')
     +     cell('laborCost', money(t.laborCost), 'plain',  '当日人工')
