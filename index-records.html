@@ -24,7 +24,7 @@
     --accent:#2fe6d0; --accent2:#9b7bff; --gold:#ffcf6b; --ok:#57e39b;
     --el:var(--accent);
     /* 行内布局：序号 / 角色信息 / 4 数据列 / 展开 —— 列头与卡片共用，保证对齐 */
-    --c-idx:56px; --c-who:230px; --c-exp:44px;
+    --c-idx:56px; --c-who:330px; --c-exp:44px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
@@ -146,33 +146,34 @@
 
   /* 角色信息区（靠左）—— 默认只读展示，点「修改」才变可编辑 */
   .who{
-    flex:0 0 var(--c-who);min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;
+    flex:0 0 var(--c-who);min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;
     padding:8px 14px 8px 0;border-right:1px solid rgba(125,165,225,0.10);text-align:left;
   }
+  /* 第一行：角色名 + 等级/职业/账号（同一行） */
+  .who .line1{display:flex;align-items:baseline;gap:7px;min-width:0;flex-wrap:nowrap}
   .who .nm{
     font-size:14.5px;font-weight:800;letter-spacing:.2px;
-    width:100%;padding:2px 0;border-radius:6px;
+    padding:2px 0;border-radius:6px;flex:0 1 auto;min-width:56px;
     background:transparent;border:1px solid transparent;
-    color:var(--txt);font-family:inherit;outline:none;transition:.16s;min-width:0;
+    color:var(--txt);font-family:inherit;outline:none;transition:.16s;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;
   }
-  .who .nm.empty{color:var(--mute);font-weight:600;font-style:normal}
+  .who .nm.empty{color:var(--mute);font-weight:600}
   /* 编辑态（点「修改」后）才允许输入 */
   .who.editing .nm{
-    padding:2px 7px;cursor:text;
+    padding:2px 7px;cursor:text;flex:1 1 auto;
     background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.5);
     box-shadow:0 0 0 3px rgba(47,230,208,0.10);
   }
-  .who .sub{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mute);min-width:0;flex-wrap:wrap}
-  .who .sub .lv{color:var(--gold);font-weight:700;white-space:nowrap}
-  .who .sub .job{color:var(--el);white-space:nowrap;font-weight:600}
-  .who .sub .acct{
+  .who .meta{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--mute);min-width:0;flex:0 1 auto;overflow:hidden}
+  .who .meta .lv{color:var(--gold);font-weight:700;white-space:nowrap}
+  .who .meta .job{color:var(--el);white-space:nowrap;font-weight:600}
+  .who .meta .acct{
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.9;
   }
-  .who .tagnone{color:var(--mute);font-size:11px;opacity:.75}
-  /* 行内小按钮：修改 / 保存 / 取消 / 删除 */
-  .who .ops{margin-left:auto;display:flex;gap:4px;align-items:center;flex:0 0 auto}
+  .who .tagnone{color:var(--mute);font-size:11px;opacity:.75;white-space:nowrap}
+  .who .ops{margin-left:auto;display:flex;gap:4px;align-items:center;flex:0 0 auto;align-self:center}
   .who .ob{
     height:20px;padding:0 8px;border-radius:6px;flex:0 0 auto;
     border:1px solid transparent;background:transparent;color:var(--mute);
@@ -180,10 +181,26 @@
   }
   .who .ob:hover{color:var(--txt);border-color:rgba(125,165,225,0.42);background:rgba(255,255,255,0.05)}
   .who .ob.edit:hover{color:var(--accent);border-color:rgba(47,230,208,0.5);background:rgba(47,230,208,0.10)}
-  .who .ob.save{color:var(--accent);border-color:rgba(47,230,208,0.5);background:rgba(47,230,208,0.12)}
-  .who .ob.save:hover{box-shadow:0 0 12px rgba(47,230,208,0.3)}
   .who .ob.del:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.45);background:rgba(255,107,107,0.10)}
   .who.editing{border-right-color:rgba(47,230,208,0.3)}
+
+  /* 第二行：4 个功能开关（开=绿 / 未开=灰） + 财富值 */
+  .who .line2{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:nowrap}
+  .feats{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+  .feat{
+    font-size:11px;line-height:1.7;padding:1px 8px;border-radius:20px;white-space:nowrap;
+    border:1px solid;font-weight:600;cursor:default;transition:.15s;
+  }
+  /* 未开启：灰 */
+  .feat.off{color:var(--mute);border-color:rgba(125,165,225,0.18);background:rgba(255,255,255,0.02);opacity:.72}
+  /* 已开启：绿 */
+  .feat.on{color:var(--ok);border-color:rgba(87,227,155,0.5);background:rgba(87,227,155,0.10);box-shadow:0 0 10px rgba(87,227,155,0.18)}
+  .wealth{
+    margin-left:auto;display:flex;align-items:baseline;gap:4px;flex:0 0 auto;white-space:nowrap;
+  }
+  .wealth .wk{font-size:11px;color:var(--mute)}
+  .wealth .wv{font-size:12.5px;font-weight:800;color:var(--ok);font-variant-numeric:tabular-nums}
+  .wealth .wv.neg{color:#ff6b6b}
 
   /* 数据 4 格：上=累计值(居中)，下=录入框 */
   .cells{flex:1;display:grid;grid-template-columns:repeat(4,1fr);min-width:0}
@@ -199,8 +216,8 @@
   }
   .cell .v.ok{color:var(--ok)}
   .cell .v.purple{color:var(--accent2)}
-  .cell .v.gold{color:var(--gold)}
-  .cell .v.plain{color:var(--txt)}
+  .cell .v.gold{color:var(--ok)}          /* 已出售晶石总价格 → 绿 */
+  .cell .v.plain{color:#ff6b6b}           /* 人工费用 → 红 */
   .cell .v.hit{animation:flash .7s ease}
 
   /* 半透明录入框 */
@@ -235,7 +252,9 @@
   /* ---------- 展开的明细区 ---------- */
   .detail{overflow:hidden;max-height:0;opacity:0;transition:max-height .3s ease,opacity .25s ease;margin-top:0}
   .row.open .detail{max-height:1200px;opacity:1;margin-top:6px}
-  .detail-inner{padding:12px 14px 13px;border-radius:12px}
+  .detail-inner{padding:12px 0 13px;border-radius:12px}
+  .detail-head{padding:0 14px}
+  .dt-empty{padding:14px}
   .detail-head{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12px;color:var(--mute);letter-spacing:.4px}
   .detail-head .ttl2{color:var(--el);font-weight:700;font-size:12.5px}
   .detail-head .right2{margin-left:auto;display:flex;gap:8px;align-items:center}
@@ -247,18 +266,28 @@
   .mini:hover{color:var(--txt);border-color:rgba(125,165,225,0.4)}
   .mini.danger:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.5)}
 
-  table.dt{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  table.dt{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;table-layout:fixed}
+  /* 列宽由 JS 按上方卡片的实际像素写入（见 syncDetailCols），保证 4 个数据列与卡片格中心对齐 */
   table.dt th{
     font-weight:600;color:var(--mute);font-size:11px;
     padding:6px 10px;border-bottom:1px solid rgba(125,165,225,0.14);white-space:nowrap;text-align:center;
+    overflow:hidden;text-overflow:ellipsis;
   }
-  table.dt td{padding:6px 10px;border-bottom:1px solid rgba(125,165,225,0.06);white-space:nowrap;text-align:center}
+  table.dt td{padding:6px 10px;border-bottom:1px solid rgba(125,165,225,0.06);white-space:nowrap;text-align:center;overflow:hidden;text-overflow:ellipsis}
   table.dt tbody tr:hover{background:rgba(255,255,255,0.025)}
   table.dt td.d{color:var(--dim)}
   table.dt td.n{font-weight:800}
   table.dt td.n.ok{color:var(--ok)} table.dt td.n.purple{color:var(--accent2)}
   table.dt td.n.gold{color:var(--gold)} table.dt td.n.plain{color:var(--txt)}
   table.dt td.n.income{color:var(--ok)}
+  /* 当日收入列：宽度为 0，不参与布局，文本浮在「当日人工」与展开按钮之间的空隙上 */
+  table.dt th.th-inc,table.dt td.inc{width:0;padding:0!important;position:relative;overflow:visible!important;border-bottom:0}
+  table.dt th.th-inc span,table.dt td.inc{white-space:nowrap}
+  table.dt th.th-inc{color:transparent}
+  table.dt th.th-inc::after{
+    content:"当日收入";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    color:var(--mute);font-size:11px;font-weight:600;-webkit-text-fill-color:var(--mute);
+  }
   table.dt td.n.zero{color:var(--mute);font-weight:600}
   table.dt td.n.inc-zero{color:var(--mute);font-weight:600}
   table.dt tfoot td{
@@ -329,11 +358,12 @@
   }
   .mbtn.primary:hover{box-shadow:0 0 18px rgba(47,230,208,0.4);filter:brightness(1.06)}
 
-  @media (max-width:1280px){ :root{--c-who:190px} }
+  @media (max-width:1280px){ :root{--c-who:270px} }
   @media (max-width:1080px){
     .card{flex-wrap:wrap}
     .colhead .h-who{flex:1 1 160px}
     .who{flex:1 1 160px;border-right:0}
+    .who .nm{min-width:44px}
     .colhead .h-cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10)}
     .colhead .h-cell:nth-child(2n){border-right:0}
     .cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10)}
@@ -438,7 +468,8 @@
  *   records[] 每日明细 [{date, gemsLeft, daySold, dayValue, dayLabor}]
  * ============================================================ */
 let ACCOUNTS = [
-  { id:'a1', account:'', name:'', level:'', job:'', gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, records:[] }
+  { id:'a1', account:'', name:'', level:'', job:'',
+  gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, records:[], flags:{} }
 ];
 
 const RING_NUMS = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
@@ -501,7 +532,7 @@ function saveLocal(){
       accounts: ACCOUNTS.map(function(c){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
-                 laborCost:c.laborCost, records:c.records || [] };
+                 laborCost:c.laborCost, records:c.records || [], flags:c.flags || {} };
       })
     }));
     flashSaved();
@@ -521,7 +552,8 @@ function loadLocal(){
       level: s.level != null ? s.level : '', job: s.job || '',
       gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
       soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
-      records: Array.isArray(s.records) ? s.records : []
+      records: Array.isArray(s.records) ? s.records : [],
+      flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
   return true;
@@ -557,6 +589,14 @@ function refreshNumbers(i){
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
+    /* 财富值 = 售价 - 人工 */
+    const wEl = row.querySelector('[data-w]');
+    if(wEl){
+      const w = t.soldValue - t.laborCost;
+      wEl.textContent = money(w);
+      wEl.classList.toggle('neg', w < 0);
+      wEl.classList.remove('hit'); void wEl.offsetWidth; wEl.classList.add('hit');
+    }
   }
   const sum = summarize(ACCOUNTS);
   setText('[data-sum="roles"]',     num(sum.roles));
@@ -592,7 +632,7 @@ function detailHTML(i){
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
       + '<td class="n plain'+z(r.dayLabor)+'">' + num(r.dayLabor) + '</td>'
-      + '<td class="n'+icls+'">' + incomeText(r) + '</td>'
+      + '<td class="n inc'+icls.replace(' income',' inc-income')+'">' + incomeText(r) + '</td>'
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
@@ -611,7 +651,7 @@ function detailHTML(i){
     + '<td>' + intNum(s.daySold) + '</td>'
     + '<td>' + num(s.dayValue) + '</td>'
     + '<td>' + num(s.dayLabor) + '</td>'
-    + '<td>' + (s.inc > 0 ? '+' : '') + num(s.inc) + '</td>'
+    + '<td class="inc">' + (s.inc > 0 ? '+' : '') + num(s.inc) + '</td>'
     + '<td></td></tr></tfoot>' : '';
 
   return '<div class="detail-inner panel">'
@@ -621,16 +661,59 @@ function detailHTML(i){
     +   '<span class="right2"><button class="mini danger" type="button" data-clear="' + i + '">清空明细</button></span>'
     + '</div>'
     + '<table class="dt">'
+    + '<colgroup><col class="c-date" /><col class="c-num" /><col class="c-num" />'
+    +   '<col class="c-num" /><col class="c-num" /><col class="c-zero" /><col class="c-act" /></colgroup>'
     + '<thead><tr>'
     +   '<th>日期</th><th>剩余晶石</th><th>当日出售</th><th>当日售价</th>'
-    +   '<th>当日人工</th><th>当日收入</th><th></th>'
+    +   '<th>当日人工</th><th class="th-inc">当日收入</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
     + foot
     + '</table></div>';
 }
 
-/* 角色信息：只读展示 + 「修改」按钮（改内容走弹窗） */
+/* 明细表列宽按上方卡片实际像素对齐（序号+角色信息 = 日期列，4 数据列 = 四个数值列） */
+function syncDetailCols(i){
+  const row = document.querySelector('.row[data-i="' + i + '"]');
+  if(!row) return;
+  const tbl = row.querySelector('table.dt');
+  if(!tbl || !tbl.querySelector('colgroup')) return;
+  const cols = tbl.querySelectorAll('colgroup col');
+  if(cols.length !== 7) return;
+  const idx = row.querySelector('.idx');
+  const who = row.querySelector('.who');
+  const exp = row.querySelector('.expand');
+  if(!idx || !who || !exp) return;
+
+  const tblW = tbl.getBoundingClientRect().width;
+  const actW = exp.getBoundingClientRect().width;
+  /* 日期列 = 序号列 + 角色信息列（与卡片左半部分完全等宽） */
+  const dateW = idx.getBoundingClientRect().width + who.getBoundingClientRect().width;
+  /* 4 个数据列 = 剩余空间均分 —— 与卡片 .cells 的划分方式一致 */
+  const numW = (tblW - dateW - actW) / 4;
+  if(numW <= 0) return;
+
+  const px = v => Math.round(v * 100) / 100 + 'px';
+  cols[0].style.width = px(dateW);
+  for(let k = 1; k <= 4; k++) cols[k].style.width = px(numW);
+  /* 当日收入列并入数据区（不占独立宽度），末列给展开按钮 */
+  cols[5].style.width = px(0);
+  cols[6].style.width = px(actW);
+}
+
+function syncAllDetailCols(){
+  ACCOUNTS.forEach(function(_, i){ syncDetailCols(i); });
+}
+const FEATURES = [
+  { key:'bag',     label:'背包' },
+  { key:'chaos',   label:'混沌' },
+  { key:'market',  label:'市集' },
+  { key:'pet',     label:'宠物' }
+];
+/* 财富值 = 已出售晶石总价格 - 人工费用 */
+function wealth(c){ const t = totals(c); return t.soldValue - t.laborCost; }
+
+/* 角色信息：第一行 角色名+等级/职业/账号；第二行 4 个功能开关 + 财富值 */
 function whoHTML(c, i){
   const meta = [];
   if(c.level !== '' && c.level != null) meta.push('<span class="lv">Lv.' + esc(c.level) + '</span>');
@@ -641,10 +724,28 @@ function whoHTML(c, i){
   const ops = '<button class="ob edit" type="button" data-edit="' + i + '" title="修改账号信息">修改</button>'
             + '<button class="ob del" type="button" data-rm="' + i + '" title="删除该角色卡片">✕</button>';
 
+  const flags = c.flags || {};
+  const feats = FEATURES.map(function(f){
+    const on = !!flags[f.key];
+    return '<span class="feat ' + (on ? 'on' : 'off') + '" '
+      + 'data-feat="' + i + '" data-key="' + f.key + '" '
+      + 'title="点击切换「' + f.label + '」状态（当前：' + (on ? '已开启' : '未开启') + '）">'
+      + f.label + '</span>';
+  }).join('');
+
+  const w = wealth(c);
+  const wCls = w < 0 ? 'wv neg' : 'wv';
+
   return '<div class="who">'
-    + '<div class="nm' + (c.name ? '' : ' empty') + '">'
-    +   (c.name ? esc(c.name) : '未命名角色') + '</div>'
-    + '<div class="sub">' + meta.join('') + '<span class="ops">' + ops + '</span></div>'
+    + '<div class="line1">'
+    +   '<div class="nm' + (c.name ? '' : ' empty') + '">' + (c.name ? esc(c.name) : '未命名角色') + '</div>'
+    +   '<div class="meta">' + meta.join('') + '</div>'
+    +   '<span class="ops">' + ops + '</span>'
+    + '</div>'
+    + '<div class="line2">'
+    +   '<span class="feats">' + feats + '</span>'
+    +   '<span class="wealth"><span class="wk">财富值</span><span class="' + wCls + '" data-w="' + i + '">' + money(w) + '</span></span>'
+    + '</div>'
     + '</div>';
 }
 
@@ -723,7 +824,11 @@ function commitEntry(i){
   Array.prototype.forEach.call(ins, function(el){ el.value = ''; });
   refreshNumbers(i);
   const d = document.getElementById('detail-' + i);
-  if(d) d.innerHTML = detailHTML(i);
+  if(d){
+    const wasOpen = d.closest('.row') && d.closest('.row').classList.contains('open');
+    d.innerHTML = detailHTML(i);
+    if(wasOpen) syncDetailCols(i);
+  }
   saveLocal();
   toast('已记录（当日收入 ' + incomeText(rec) + '）');
 }
@@ -805,7 +910,7 @@ function modalOk(){
   } else {
     ACCOUNTS.push({
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
-      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, records:[]
+      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, records:[], flags:{}
     });
     render();
     saveLocal();
@@ -833,11 +938,32 @@ document.addEventListener('click', function(e){
     const row = tg.closest('.row');
     const open = row.classList.toggle('open');
     tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if(open){
+      const i = Number(tg.dataset.toggle);
+      /* 展开动画结束后再按实际宽度对齐明细列 */
+      setTimeout(function(){ syncDetailCols(i); }, 320);
+    }
     return;
   }
   /* 修改（弹窗编辑） */
   const ed = e.target.closest('[data-edit]');
   if(ed){ openModal('edit', Number(ed.dataset.edit)); return; }
+
+  /* 功能开关切换：背包 / 混沌 / 市集 / 宠物 */
+  const ft = e.target.closest('[data-feat]');
+  if(ft){
+    const i = Number(ft.dataset.feat), key = ft.dataset.key;
+    const c = ACCOUNTS[i];
+    if(!c) return;
+    c.flags = c.flags || {};
+    c.flags[key] = !c.flags[key];
+    ft.classList.toggle('on', c.flags[key]);
+    ft.classList.toggle('off', !c.flags[key]);
+    const f = FEATURES.find(function(x){ return x.key === key; });
+    ft.title = '点击切换「' + (f ? f.label : key) + '」状态（当前：' + (c.flags[key] ? '已开启' : '未开启') + '）';
+    saveLocal();
+    return;
+  }
 
   /* 删除单条明细 */
   const del = e.target.closest('[data-del]');
@@ -846,6 +972,7 @@ document.addEventListener('click', function(e){
     ACCOUNTS[i].records.splice(ri, 1);
     refreshNumbers(i);
     document.getElementById('detail-' + i).innerHTML = detailHTML(i);
+    syncDetailCols(i);
     saveLocal();
     toast('已删除该条记录');
     return;
@@ -860,6 +987,7 @@ document.addEventListener('click', function(e){
     ACCOUNTS[i].records = [];
     refreshNumbers(i);
     document.getElementById('detail-' + i).innerHTML = detailHTML(i);
+    syncDetailCols(i);
     saveLocal();
     toast('已清空 ' + n + ' 条明细');
     return;
@@ -911,7 +1039,8 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           level: s.level != null ? s.level : '', job: s.job || '',
           gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
           soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
-          records: Array.isArray(s.records) ? s.records : []
+          records: Array.isArray(s.records) ? s.records : [],
+          flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
         };
       });
       render(); saveLocal();
@@ -925,6 +1054,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
 /* ---------- 启动 ---------- */
 loadLocal();
 render();
+window.addEventListener('resize', function(){ syncAllDetailCols(); });
 </script>
 </body>
 </html>
