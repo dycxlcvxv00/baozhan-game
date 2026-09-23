@@ -125,6 +125,35 @@
   .chip.commitall:hover{transform:translateY(-1px)}
   .chip.commitall:active{transform:translateY(0) scale(0.97)}
   .chip.commitall.ok{animation:none}
+  /* 今日结算：把缺的日期按明细补齐。紫色系，与青色的「记录全部」区分 */
+  .chip.settle{
+    color:var(--accent2);border-color:rgba(155,123,255,0.55);
+    background:linear-gradient(180deg,rgba(155,123,255,0.16),rgba(155,123,255,0.07));
+    font-weight:700;padding:0 14px;
+  }
+  .chip.settle .tick{font-size:14px;line-height:1;font-weight:900;margin-top:-1px}
+  .chip.settle .cnt{
+    min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:rgba(155,123,255,0.24);color:var(--accent2);
+    font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+  }
+  /* 有待结算的日子：金色高亮 + 呼吸，提示"该结算了" */
+  .chip.settle.on{
+    color:var(--gold);border-color:rgba(255,207,107,0.62);
+    background:linear-gradient(180deg,rgba(255,207,107,0.22),rgba(255,207,107,0.10));
+    animation:pulse 1.7s ease-in-out infinite;
+  }
+  .chip.settle.on .cnt{background:rgba(255,207,107,0.3);color:var(--gold)}
+  .chip.settle:hover{transform:translateY(-1px)}
+  .chip.settle:active{transform:translateY(0) scale(0.97)}
+  /* 今天的已结算完：变灰下沉，表示"今天不用再点了" */
+  .chip.settle.done{
+    color:var(--dim);border-color:rgba(125,165,225,0.24);
+    background:rgba(125,165,225,0.06);animation:none;font-weight:600;
+  }
+  .chip.settle.done .cnt{background:rgba(125,165,225,0.16);color:var(--dim)}
+  .chip.settle.done:hover{transform:none}
   /* 全屏按钮：图标随状态切换 */
   .chip.iconbtn{padding:0 10px;font-size:15px;line-height:1}
   .chip.iconbtn .fs-off{display:none}
@@ -467,6 +496,51 @@
   .field .err{font-size:11px;color:#ff8a8a;margin-top:4px;display:none}
   .field.bad .err{display:block}
   .modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  /* ---------- 结算结果弹窗 ---------- */
+  .settle-modal{width:620px;max-width:100%}
+  .settle-modal h2 .bar{background:var(--accent2)}
+  .st-list{max-height:min(56vh,460px);overflow:auto;margin:0 -4px 0 0;padding-right:4px}
+  .st-list::-webkit-scrollbar{width:8px}
+  .st-list::-webkit-scrollbar-thumb{background:rgba(125,165,225,0.24);border-radius:4px}
+  .st-list::-webkit-scrollbar-track{background:transparent}
+  .st-day{
+    border:1px solid rgba(125,165,225,0.18);border-radius:12px;
+    padding:12px 14px;margin-bottom:10px;background:rgba(255,255,255,0.022);
+  }
+  .st-day:last-child{margin-bottom:2px}
+  .st-head{
+    display:flex;align-items:center;gap:9px;margin-bottom:9px;
+    font-size:13.5px;font-weight:800;color:var(--txt);
+  }
+  .st-head .dt{color:var(--accent2);font-variant-numeric:tabular-nums;letter-spacing:.4px}
+  .st-head .tag{
+    font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;
+    background:rgba(87,227,155,0.16);color:var(--ok);letter-spacing:.3px;
+  }
+  .st-head .tag.today{background:rgba(255,207,107,0.18);color:var(--gold)}
+  .st-head .wk{font-size:11.5px;color:var(--mute);font-weight:600}
+  .st-nums{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:8px 6px;
+  }
+  .st-num{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .st-num .k{font-size:10.5px;color:var(--mute);letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .st-num .v{font-size:14px;font-weight:800;color:var(--txt);font-variant-numeric:tabular-nums}
+  .st-num .v.acc{color:var(--accent)}
+  .st-num .v.gold{color:var(--gold)}
+  .st-num .v.pos{color:var(--ok)}
+  .st-num .v.neg{color:#ff6b6b}
+  .st-num .v.dim{color:var(--dim)}
+  .st-roles{
+    margin-top:9px;padding-top:9px;border-top:1px dashed rgba(125,165,225,0.16);
+    font-size:11.5px;color:var(--dim);line-height:1.75;
+  }
+  .st-roles b{color:var(--txt);font-weight:700}
+  .st-none{text-align:center;padding:26px 10px;color:var(--mute);font-size:13px;line-height:1.8}
+  .st-none .big{font-size:26px;display:block;margin-bottom:8px;opacity:.6}
+  @media (max-width:640px){
+    .st-nums{grid-template-columns:repeat(2,1fr)}
+    .settle-modal{padding:18px 16px 16px}
+  }
   .mbtn{
     height:34px;padding:0 18px;border-radius:17px;font-size:13px;cursor:pointer;
     background:rgba(22,31,56,0.9);color:var(--dim);border:1px solid var(--line);
@@ -516,6 +590,11 @@
             title="一次性记录所有卡片里填写了数值的内容">
       <span class="tick">✓</span>记录全部
       <span class="cnt" id="commitCnt">0</span>
+    </button>
+    <button class="chip settle" id="btnSettle" type="button"
+            title="把还没结算的日期按明细补齐">
+      <span class="tick">✓</span><span id="settleTxt">今日结算</span>
+      <span class="cnt" id="settleCnt">0</span>
     </button>
     <span class="sep"></span>
     <span class="chip on" id="tbCount">0 个角色</span>
@@ -598,6 +677,18 @@
   </div>
 </div>
 
+<!-- ========== 弹窗：结算结果 ========== -->
+<div class="mask" id="settleMask">
+  <div class="modal panel settle-modal" role="dialog" aria-modal="true" aria-labelledby="stTitle">
+    <h2 id="stTitle"><span class="bar"></span><span id="stTitleTxt">结算完成</span></h2>
+    <div class="hint" id="stHint">已按明细补齐缺失日期</div>
+    <div class="st-list" id="stList"></div>
+    <div class="modal-foot">
+      <button class="mbtn" type="button" id="stClose">知道了</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
  * 数据区 —— 初始角色（其余角色用顶部 ＋ 按钮新增）
@@ -618,6 +709,10 @@ let ACCOUNTS = [
   { id:'a1', account:'', name:'', level:'', job:'',
   gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0, wealth:0, records:[], flags:{} }
 ];
+
+/* 日结快照库：{ '2026-09-23': {date, accounts:[...], total:{...}}, ... }
+ * 与 ACCOUNTS 一起存进 localStorage / 云端 data.json */
+let SNAPSHOTS = {};
 
 const RING_NUMS = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
 function serial(n){ return n <= 10 ? RING_NUMS[n-1] : String(n); }
@@ -741,6 +836,146 @@ function summarize(list){
 function roleIncome(c){ return netProfit(c); }
 
 /* ============================================================
+ * 日结快照（按明细日期分天）
+ * ------------------------------------------------------------
+ * 用途：每天第一次打开页面，点一下「今日结算」把缺的日子补上。
+ *       连续几天没打开也没关系，一次把缺的全部补齐。
+ *
+ * 统计口径：
+ *   把每条明细按 date 归到那一天，**当天单独算一套指标**。
+ *   「本次获取」每天独立从 0 起算（不接前一天的末尾）：
+ *     当天按时间升序逐条比较剩余，增长才计，下降/持平记 0。
+ *   完全没录入明细的日子 → 跳过，不生成快照。
+ *
+ * 字段与 totals() 保持一致，但不含「基准值」——
+ *   快照只反映「当天录入的明细」，基准值是账号初始值，不属于某一天。
+ * ============================================================ */
+
+/* 把某角色的明细按日期分组 → { '2026-09-23': [rec, ...] }，各天内按录入先后排序 */
+function groupRecordsByDate(c){
+  const asc = recsAsc(c);
+  const map = {};
+  asc.forEach(function(r){
+    const d = String(r.date || '').trim();
+    if(!d) return;
+    if(!map[d]) map[d] = [];
+    map[d].push(r);
+  });
+  return map;
+}
+
+/* 算某角色「某一天的明细集合」的指标
+ * 与 totals() 同口径，但只吃传入的这些记录，且不叠加基准值 */
+function dayTotals(c, dayRecs){
+  const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
+              laborCost:0, profit:0, chaosCost:0, recordCount:0 };
+  let prev = 0;
+  dayRecs.forEach(function(r){
+    const cur = Number(r.gemsLeft) || 0;
+    const diff = cur - prev;
+    if(diff > 0) t.gained += diff;      /* 只统计增长 */
+    prev = cur;
+    t.gemsSold  += Number(r.daySold)   || 0;
+    t.soldValue += Number(r.dayValue)  || 0;
+    t.laborCost += Number(r.dayLabor)  || 0;
+    t.chaosCost += Number(r.chaosCost) || 0;
+    t.recordCount++;
+  });
+  /* 当天最后一条的剩余 = 当天收工时的存量 */
+  if(dayRecs.length){
+    t.gemsLeft = Number(dayRecs[dayRecs.length - 1].gemsLeft) || 0;
+  }
+  t.profit = t.soldValue - t.laborCost;
+  return t;
+}
+
+/* 生成「某一天」的完整快照 */
+function snapshotForDay(date, accounts){
+  const rows = [];
+  const total = { roles:0, gemsLeft:0, gained:0, gemsSold:0,
+                  soldValue:0, laborCost:0, profit:0, chaosCost:0, recordCount:0 };
+
+  (accounts || ACCOUNTS).forEach(function(c){
+    const byDate = groupRecordsByDate(c);
+    const dayRecs = byDate[date];
+    if(!dayRecs || !dayRecs.length) return;     /* 这天没录入 → 该角色不出现在快照里 */
+
+    const t = dayTotals(c, dayRecs);
+    rows.push({
+      id: c.id, account: c.account, name: c.name,
+      level: c.level, job: c.job,
+      gemsLeft:  t.gemsLeft,   gained:  t.gained,
+      gemsSold:  t.gemsSold,   soldValue: t.soldValue,
+      laborCost: t.laborCost,  profit:  t.profit,
+      chaosCost: t.chaosCost,  recordCount: t.recordCount
+    });
+    total.gemsLeft  += t.gemsLeft;   total.gained   += t.gained;
+    total.gemsSold  += t.gemsSold;   total.soldValue += t.soldValue;
+    total.laborCost += t.laborCost;  total.profit   += t.profit;
+    total.chaosCost += t.chaosCost;  total.recordCount += t.recordCount;
+  });
+
+  if(!rows.length) return null;                 /* 全天无记录 → 不生成 */
+  total.roles = rows.length;
+
+  return {
+    date: date,
+    generatedAt: new Date().toISOString(),
+    device: (typeof DEVICE === 'string' ? DEVICE : ''),
+    accounts: rows,
+    total: total
+  };
+}
+
+/* 列出「有明细的所有日期」，升序 */
+function allRecordDates(accounts){
+  const set = {};
+  (accounts || ACCOUNTS).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      const d = String(r.date || '').trim();
+      if(d) set[d] = true;
+    });
+  });
+  return Object.keys(set).sort();
+}
+
+/* 扫描：哪些日期还没有快照？
+ * 返回 { missing:[日期...], all:[日期...], done:[日期...] } */
+function pendingSettleDates(accounts, snaps){
+  const all = allRecordDates(accounts);
+  const have = snaps || SNAPSHOTS || {};
+  const missing = all.filter(function(d){ return !have[d]; });
+  const done = all.filter(function(d){ return !!have[d]; });
+  return { missing: missing, all: all, done: done };
+}
+
+/* 执行结算：补齐所有缺失日期
+ * 返回 { added:[{date, snap}...], skipped:[日期...], missingBefore:[...] } */
+function settle(accounts, snaps){
+  const store = snaps || SNAPSHOTS || {};
+  const pend = pendingSettleDates(accounts, store);
+  const added = [], skipped = [];
+
+  pend.missing.forEach(function(d){
+    const snap = snapshotForDay(d, accounts);
+    if(snap){
+      store[d] = snap;
+      added.push({ date: d, snap: snap });
+    }else{
+      skipped.push(d);                       /* 该天其实没有明细，理论不会走到 */
+    }
+  });
+
+  added.sort(function(a, b){ return a.date.localeCompare(b.date); });
+  return { added: added, skipped: skipped, missingBefore: pend.missing };
+}
+
+/* 已结算的日期列表（升序） */
+function settledDates(){
+  return Object.keys(SNAPSHOTS || {}).sort();
+}
+
+/* ============================================================
  * 存储
  * ============================================================ */
 const LS_KEY = 'gem-ledger-v2';
@@ -773,6 +1008,7 @@ function saveLocal(){
   try{
     localStorage.setItem(LS_KEY, JSON.stringify({
       v:DATA_V, savedAt:new Date().toISOString(), updatedBy:DEVICE,
+      snapshots: SNAPSHOTS || {},
       accounts: ACCOUNTS.map(function(c){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
@@ -811,6 +1047,9 @@ function loadLocal(){
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
+  /* 日结快照：老数据没有这个字段，补空对象 */
+  SNAPSHOTS = (data.snapshots && typeof data.snapshots === 'object' && !Array.isArray(data.snapshots))
+            ? data.snapshots : {};
   return data.savedAt || null;   /* 返回上次改动时间，供顶部标签恢复 */
 }
 
@@ -860,12 +1099,13 @@ const DEVICE = (function(){
   return d;
 })();
 
-/* 从 ACCOUNTS 抽出可序列化的一份 */
+/* 从 ACCOUNTS + SNAPSHOTS 抽出可序列化的一份 */
 function serialize(){
   return {
     v: DATA_V,
     savedAt: new Date().toISOString(),
     updatedBy: DEVICE,
+    snapshots: SNAPSHOTS || {},
     accounts: ACCOUNTS.map(function(c){
       return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
@@ -969,7 +1209,7 @@ async function cloudPush(payload){
   return r.json();
 }
 
-/* 把云端 accounts 灌进内存 */
+/* 把云端 accounts + snapshots 灌进内存 */
 function adopt(data){
   ACCOUNTS = (data.accounts || []).map(function(s, i){
     return {
@@ -989,17 +1229,24 @@ function adopt(data){
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
+  SNAPSHOTS = (data.snapshots && typeof data.snapshots === 'object' && !Array.isArray(data.snapshots))
+            ? data.snapshots : {};
 }
 
 function writeCache(data){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){}
 }
 
-/* 防抖推送：连续改动合并成一次网络请求 */
-let pushTimer = null, pushPending = false;
+/* 防抖推送：连续改动合并成一次网络请求
+ * 失败会自动退避重试（3s → 8s → 20s → 60s），断网恢复后无需手动点。
+ * 重试用尽后停手，但 pushPending 保持 true，用户下次改动或点胶囊即可续推。 */
+let pushTimer = null, pushPending = false, pushRetry = 0, retryTimer = null;
+const RETRY_DELAYS = [3000, 8000, 20000, 60000];
+
 function schedulePush(delay){
   if(!useWorker() && !CFG.token) return;    /* 纯本地模式不推送 */
   pushPending = true;
+  clearTimeout(retryTimer);
   cloudUI('syncing', '同步中…');
   clearTimeout(pushTimer);
   pushTimer = setTimeout(doPush, typeof delay === 'number' ? delay : 1200);
@@ -1008,37 +1255,81 @@ async function doPush(){
   if(!pushPending) return;
   const payload = serialize();
   try{
-    await cloudPush(payload);
+    const res = await cloudPush(payload);
     pushPending = false;
+    pushRetry = 0;
+    clearTimeout(retryTimer);
+    /* Worker 会把云端独有的快照日期并进来，这里把合并结果收回本地，
+       避免下次推送又"少"了那几天 */
+    if(res && res.mergedSnapshots && typeof res.mergedSnapshots === 'object'
+       && Array.isArray(res.mergedFromCloud) && res.mergedFromCloud.length){
+      res.mergedFromCloud.forEach(function(d){
+        if(res.mergedSnapshots[d] && !SNAPSHOTS[d]) SNAPSHOTS[d] = res.mergedSnapshots[d];
+      });
+      payload.snapshots = SNAPSHOTS;
+      writeCache(payload);
+      syncSettleBtn();
+    }
     writeCache(payload);
     cloudUI('ok', '云端已同步 ' + cloudTime());
     syncCloudDetail(payload);
   }catch(err){
-    cloudUI('err', '同步失败·点击重试');
-    const chip = document.getElementById('tbCloud');
-    if(chip) chip.title = String(err.message || err);
     console.warn('[云同步]', err);
+    const d = RETRY_DELAYS[pushRetry];
+    if(d != null){
+      pushRetry++;
+      const secs = Math.round(d / 1000);
+      cloudUI('err', '同步失败·' + secs + 's 后重试');
+      const chip = document.getElementById('tbCloud');
+      if(chip) chip.title = String(err.message || err) + '\n将在 ' + secs + ' 秒后自动重试';
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(doPush, d);
+    }else{
+      cloudUI('err', '同步失败·点击重试');
+      const chip = document.getElementById('tbCloud');
+      if(chip) chip.title = String(err.message || err) + '\n已重试多次，点这里手动再试';
+    }
   }
 }
 
-/* 点状态胶囊：手动重试 / 主动拉取 */
+/* 点状态胶囊：手动同步
+ * 以「本机推上去」为主（Worker 会把云端独有的快照合并进来，两边都不丢）；
+ * 只有本机从未存过数据、而云端有时，才反过来拉云端。 */
 async function cloudManual(){
+  pushRetry = 0;                    /* 手动触发 → 重置退避计数 */
+  clearTimeout(retryTimer); clearTimeout(pushTimer);
   cloudUI('syncing', '同步中…');
   try{
-    const { data } = await cloudPull();
-    const localSaved  = latestStampLocal();
-    const remoteSaved = data && data.savedAt;
-    if(data && remoteSaved && (!localSaved || new Date(remoteSaved) > new Date(localSaved))){
-      adopt(data); writeCache(data); render();
-      restoreChanged(remoteSaved);
-      cloudUI('ok', '已拉取云端 ' + cloudTime());
-      toast('已用云端较新数据覆盖本机');
-    }else{
-      await cloudPush(serialize());
-      cloudUI('ok', '云端已同步 ' + cloudTime());
-      toast('本机数据已推送到云端');
+    const localSaved = latestStampLocal();
+
+    /* 本机完全没数据 → 只能拉云端 */
+    if(!localSaved){
+      const { data } = await cloudPull();
+      if(data && data.accounts && data.accounts.length){
+        adopt(data); writeCache(data); render();
+        restoreChanged(data.savedAt);
+        cloudUI('ok', '已拉取云端 ' + cloudTime());
+        toast('已从云端恢复数据');
+      }else{
+        cloudUI('ok', '云端已接通 ' + cloudTime());
+        toast('云端也还没有数据');
+      }
+      syncCloudDetail(data);
+      return;
     }
-    syncCloudDetail(data);
+
+    /* 本机有数据 → 推上去（Worker 负责合并云端独有的快照） */
+    const res = await cloudPush(serialize());
+    pushPending = false;
+    if(res && res.mergedSnapshots && Array.isArray(res.mergedFromCloud)){
+      res.mergedFromCloud.forEach(function(d){
+        if(res.mergedSnapshots[d] && !SNAPSHOTS[d]) SNAPSHOTS[d] = res.mergedSnapshots[d];
+      });
+      syncSettleBtn();
+    }
+    saveLocal();
+    await doPush();                 /* 用统一路径落库，顺便刷新胶囊 */
+    toast('本机数据已推送到云端');
   }catch(err){
     cloudUI('err', '同步失败·点击重试');
     const chip = document.getElementById('tbCloud');
@@ -1418,6 +1709,7 @@ function render(){
   renderSummary(summarize(ACCOUNTS));
   document.getElementById('tbCount').textContent = ACCOUNTS.length + ' 个角色';
   syncCommitAll();
+  syncSettleBtn();
 }
 
 /* ============================================================
@@ -1580,6 +1872,193 @@ document.addEventListener('input', function(e){
 /* 顶部「记录全部」按钮 */
 document.getElementById('btnCommitAll').addEventListener('click', function(){
   commitAll();
+});
+
+/* ============================================================
+ * 今日结算：把缺的日期按明细补齐
+ * ------------------------------------------------------------
+ * 每天第一次打开点一下即可。连续几天没打开，一次补齐所有缺的日期。
+ * 快照按明细的 date 分天统计，彼此独立，互不影响。
+ * ============================================================ */
+
+/* 刷新结算按钮外观与计数
+ *   有待结算 → 金色呼吸 + 显示缺几天
+ *   今天已结算过、且无历史缺漏 → 灰色「今日已结算」
+ *   今天已结算但还有更早的缺漏 → 紫色「补 2 天」 */
+function syncSettleBtn(){
+  const btn = document.getElementById('btnSettle');
+  if(!btn) return;
+  const txt = document.getElementById('settleTxt');
+  const cnt = document.getElementById('settleCnt');
+  const pend = pendingSettleDates(ACCOUNTS, SNAPSHOTS);
+  const n = pend.missing.length;
+  const todayDone = !!SNAPSHOTS[today()];
+  const hasTodayRecs = pend.all.indexOf(today()) >= 0;
+
+  btn.classList.remove('on','done');
+
+  if(n > 0){
+    btn.classList.add('on');
+    if(cnt){ cnt.textContent = String(n); cnt.style.display = ''; }
+    if(txt){
+      /* 只有「今天」这一天缺 → 写「今日结算」；含历史缺漏 → 写「补结算」 */
+      txt.textContent = (n === 1 && pend.missing[0] === today()) ? '今日结算' : '补结算';
+    }
+    btn.title = '待结算 ' + n + ' 天：' + pend.missing.join('、');
+  }else if(!hasTodayRecs){
+    /* 今天还没录入任何明细 —— 没什么可结算的 */
+    btn.classList.add('done');
+    if(cnt){ cnt.textContent = '—'; cnt.style.display = ''; }
+    if(txt) txt.textContent = '今日无记录';
+    btn.title = '今天还没有录入明细，先在卡片里填数值并点「记录全部」';
+  }else{
+    /* 全部结清 */
+    btn.classList.add('done');
+    if(cnt) cnt.style.display = 'none';
+    if(txt) txt.textContent = '今日已结算';
+    btn.title = '已结算 ' + settledDates().length + ' 天，点一下可查看';
+  }
+}
+
+/* 星期几（给弹窗用） */
+function weekdayOf(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  if(isNaN(d.getTime())) return '';
+  return '周' + '日一二三四五六'.charAt(d.getDay());
+}
+
+/* 渲染结算结果弹窗 */
+function renderSettleModal(result, mode){
+  const list = document.getElementById('stList');
+  const title = document.getElementById('stTitleTxt');
+  const hint = document.getElementById('stHint');
+  if(!list) return;
+
+  if(mode === 'view'){
+    /* 查看模式：列出所有已结算的日子 */
+    const dates = settledDates().reverse();
+    title.textContent = '已结算记录';
+    hint.textContent = dates.length
+      ? '共 ' + dates.length + ' 天。每天按当天明细独立统计，互不影响。'
+      : '还没有任何结算记录。先录入明细，再点「今日结算」。';
+    if(!dates.length){
+      list.innerHTML = '<div class="st-none"><span class="big">◷</span>还没有结算记录</div>';
+      return;
+    }
+    list.innerHTML = dates.map(function(d){
+      return dayCardHTML(SNAPSHOTS[d], false);
+    }).join('');
+    return;
+  }
+
+  /* 结算模式：展示刚补齐的日子 */
+  const added = result.added;
+  if(!added.length){
+    title.textContent = '无需结算';
+    hint.textContent = '所有有明细的日期都已经结算过了。';
+    const dates = settledDates().reverse();
+    list.innerHTML = dates.slice(0, 6).map(function(d){
+      return dayCardHTML(SNAPSHOTS[d], false);
+    }).join('') || '<div class="st-none"><span class="big">✓</span>暂时没有需要结算的内容</div>';
+    return;
+  }
+
+  title.textContent = '结算完成 · ' + added.length + ' 天';
+  const ds = added.map(function(a){ return a.date; });
+  const first = ds[0], last = ds[ds.length - 1];
+  hint.textContent = (added.length === 1)
+    ? '已生成 ' + first + ' 的日结快照'
+    : '已补齐 ' + first + ' ～ ' + last + ' 共 ' + added.length + ' 天的日结快照';
+  list.innerHTML = added.map(function(a){
+    return dayCardHTML(a.snap, true);
+  }).join('');
+}
+
+/* 单日卡片 HTML */
+function dayCardHTML(snap, isNew){
+  if(!snap) return '';
+  const t = snap.total || {};
+  const isToday = snap.date === today();
+  const tag = isNew
+    ? '<span class="tag">' + (isToday ? '本次结算' : '补录') + '</span>'
+    : (isToday ? '<span class="tag today">今天</span>' : '<span class="tag">已结算</span>');
+
+  const cell = function(k, v, cls){
+    return '<div class="st-num"><span class="k">' + k + '</span>'
+         + '<span class="v' + (cls ? ' ' + cls : '') + '">' + v + '</span></div>';
+  };
+
+  const profitCls = (t.profit || 0) > 0 ? 'pos' : ((t.profit || 0) < 0 ? 'neg' : 'dim');
+
+  /* 角色摘要：名称 已获取/剩余 */
+  const lines = (snap.accounts || []).map(function(a){
+    return '<b>' + esc(a.name || a.account || '未命名') + '</b>'
+         + ' 剩余 ' + num(a.gemsLeft)
+         + ' · 获取 ' + num(a.gained)
+         + ' · 已售 ' + num(a.gemsSold)
+         + ' · 净利 ' + money(a.profit);
+  });
+
+  return '<div class="st-day">'
+    + '<div class="st-head">'
+    +   '<span class="dt">' + snap.date + '</span>'
+    +   '<span class="wk">' + weekdayOf(snap.date) + '</span>'
+    +   tag
+    + '</div>'
+    + '<div class="st-nums">'
+    +   cell('角色数量', num(t.roles), 'acc')
+    +   cell('剩余晶石总量', num(t.gemsLeft))
+    +   cell('已获取晶石总量', num(t.gained))
+    +   cell('已出售晶石总量', num(t.gemsSold))
+    +   cell('总收入', money(t.soldValue), 'gold')
+    +   cell('人工支出', money(t.laborCost))
+    +   cell('净利润', money(t.profit), profitCls)
+    +   cell('秘境消耗', num(t.chaosCost))
+    + '</div>'
+    + (lines.length ? '<div class="st-roles">' + lines.join('<br>') + '</div>' : '')
+    + '</div>';
+}
+
+function openSettleModal(){
+  document.getElementById('settleMask').classList.add('show');
+}
+function closeSettleModal(){
+  document.getElementById('settleMask').classList.remove('show');
+}
+
+/* 点「今日结算」 */
+function doSettle(){
+  const pend = pendingSettleDates(ACCOUNTS, SNAPSHOTS);
+
+  /* 没有任何明细 → 提示先去录入 */
+  if(!pend.all.length){
+    toast('还没有任何明细记录 —— 先在卡片里填数值并点「记录全部」');
+    return;
+  }
+
+  /* 全结清了 → 改成查看模式 */
+  if(!pend.missing.length){
+    renderSettleModal(null, 'view');
+    openSettleModal();
+    return;
+  }
+
+  const result = settle(ACCOUNTS, SNAPSHOTS);
+  saveLocal();                     /* 立刻落本地 + 推送云端 */
+  syncSettleBtn();
+  render();
+  renderSettleModal(result, 'settle');
+  openSettleModal();
+
+  const n = result.added.length;
+  toast(n ? ('已结算 ' + n + ' 天：' + result.added.map(function(a){ return a.date; }).join('、'))
+          : '没有需要结算的日期');
+}
+
+document.getElementById('btnSettle').addEventListener('click', doSettle);
+document.getElementById('stClose').addEventListener('click', closeSettleModal);
+document.getElementById('settleMask').addEventListener('click', function(e){
+  if(e.target === this) closeSettleModal();
 });
 
 /* 键盘 */
