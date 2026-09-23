@@ -78,6 +78,22 @@
   .chip.saved{color:var(--ok);border-color:rgba(87,227,155,0.4)}
   .chip.time{color:var(--gold);border-color:rgba(255,207,107,0.38);font-variant-numeric:tabular-nums}
   .chip.time.hit{animation:flash .7s ease}
+  /* 云端同步状态：灰=待连接 / 黄=同步中 / 绿=已同步 / 红=失败 */
+  .chip.cloud{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-variant-numeric:tabular-nums}
+  .chip.cloud .dot{
+    width:7px;height:7px;border-radius:50%;flex:none;
+    background:var(--dim);box-shadow:0 0 0 3px rgba(255,255,255,0.05);
+    transition:background .25s,box-shadow .25s;
+  }
+  .chip.cloud.syncing{color:var(--gold);border-color:rgba(255,207,107,0.38)}
+  .chip.cloud.syncing .dot{background:var(--gold);animation:pulse 1s ease-in-out infinite}
+  .chip.cloud.ok{color:var(--ok);border-color:rgba(87,227,155,0.4)}
+  .chip.cloud.ok .dot{background:var(--ok);box-shadow:0 0 0 3px rgba(87,227,155,0.16)}
+  .chip.cloud.err{color:#ff6b6b;border-color:rgba(255,107,107,0.45)}
+  .chip.cloud.err .dot{background:#ff6b6b;box-shadow:0 0 0 3px rgba(255,107,107,0.16)}
+  .chip.cloud.off{opacity:.62;cursor:pointer}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+  @media (max-width:1180px){ .chip.cloud{display:none} }
   /* 加号：新增角色 */
   .chip.add{
     color:var(--accent);border-color:rgba(47,230,208,0.45);background:rgba(47,230,208,0.10);
@@ -504,6 +520,9 @@
     <span class="sep"></span>
     <span class="chip on" id="tbCount">0 个角色</span>
     <span class="chip time" id="tbChanged" title="本次数据改动时间">最后更改 --:--</span>
+    <span class="chip cloud" id="tbCloud" title="点击立即与云端同步一次">
+      <span class="dot" id="cloudDot"></span><span id="cloudTxt">云端待连接</span>
+    </span>
     <span class="right">
       <button class="chip add" id="btnAdd" type="button" title="新增一个角色卡片"><span class="plus">＋</span>新增角色</button>
       <span class="chip saved" id="tbSaved">已自动保存</span>
@@ -753,7 +772,7 @@ function restoreChanged(iso){
 function saveLocal(){
   try{
     localStorage.setItem(LS_KEY, JSON.stringify({
-      v:2, savedAt:new Date().toISOString(),
+      v:DATA_V, savedAt:new Date().toISOString(), updatedBy:DEVICE,
       accounts: ACCOUNTS.map(function(c){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
@@ -763,6 +782,7 @@ function saveLocal(){
     }));
     stampChanged();
     flashSaved();
+    schedulePush();          /* 本地先落地，云端防抖合并推送 */
   }catch(e){}
 }
 function loadLocal(){
@@ -793,6 +813,313 @@ function loadLocal(){
   });
   return data.savedAt || null;   /* 返回上次改动时间，供顶部标签恢复 */
 }
+
+/* ============================================================
+ * 云端同步（GitHub 私有仓库 baozhan-data / data.json）
+ * ------------------------------------------------------------
+ *   读取：打开页面时拉一次；若云端 savedAt 比本地新，用云端覆盖本地
+ *   写入：任何改动 → localStorage（立刻）+ 云端（防抖 1.2s 合并推送）
+ *   冲突：以 savedAt 较新的一方为准（最后写入者胜）
+ *   离线：推送失败不清本地数据，下次改动重试；点状态胶囊可手动重试
+ *
+ * 安全说明：GitHub token 不写在页面里，统一由 Cloudflare Worker 保管。
+ *   页面只知道 Worker 地址，拿不到 token，也就无法被扒走。
+ *   Worker 源码见仓库 worker/proxy.js，部署步骤见维护文档第五章。
+ * ============================================================ */
+const CFG = {
+  /* Worker 地址：形如 https://xxx.yyy.workers.dev
+     部署好 Worker 后把地址填在这里（末尾不要带斜杠）
+     也支持用 URL 参数临时指定，不改代码就能试：
+       .../index-records.html?cloud=https://xxx.yyy.workers.dev */
+  api   : '',
+  owner : 'dycxlcvxv00',
+  repo  : 'baozhan-data',
+  path  : 'data.json',
+  token : '',                 /* 仅本机调试可填；填了会被 GitHub 推送保护拦下，别提交 */
+  branch: 'main'
+};
+/* URL 上的 ?cloud= 优先于源码里的配置（方便部署后立即验证） */
+(function(){
+  try{
+    const q = new URLSearchParams(location.search).get('cloud');
+    if(q) CFG.api = q.trim().replace(/\/+$/, '');
+    else if(window.__WORKER__) CFG.api = String(window.__WORKER__).replace(/\/+$/, '');
+  }catch(e){}
+})();
+/* 数据版本：v3 起与云端结构对齐 */
+const DATA_V = 3;
+
+/* 本设备的固定标识，写进 updatedBy，便于看出是哪台设备改的 */
+const DEVICE = (function(){
+  let d = '';
+  try{ d = localStorage.getItem('gem-ledger-device') || ''; }catch(e){}
+  if(!d){
+    d = '设备-' + Math.random().toString(36).slice(2, 7);
+    try{ localStorage.setItem('gem-ledger-device', d); }catch(e){}
+  }
+  return d;
+})();
+
+/* 从 ACCOUNTS 抽出可序列化的一份 */
+function serialize(){
+  return {
+    v: DATA_V,
+    savedAt: new Date().toISOString(),
+    updatedBy: DEVICE,
+    accounts: ACCOUNTS.map(function(c){
+      return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
+               gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
+               laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
+               records:c.records || [], flags:c.flags || {} };
+    })
+  };
+}
+
+/* --- 状态胶囊 --- */
+function cloudUI(state, text){
+  const chip = document.getElementById('tbCloud');
+  const txt  = document.getElementById('cloudTxt');
+  if(!chip) return;
+  chip.classList.remove('syncing','ok','err','off');
+  if(state) chip.classList.add(state);
+  if(txt && text) txt.textContent = text;
+}
+function cloudTime(){
+  return new Date().toLocaleTimeString('zh-CN', {hour12:false}).slice(0,5);
+}
+
+/* --- 云端读写 --- */
+/* base64 编解码（直连 GitHub 时用；Worker 模式下不涉及）—— 中文安全 */
+function b64encode(str){
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function b64decode(b64){
+  return decodeURIComponent(escape(atob(String(b64).replace(/\s/g, ''))));
+}
+
+/* 两种后端：优先 Worker 中转（token 在服务端），否则直连 GitHub（本机调试） */
+function apiBase(){
+  if(CFG.api) return CFG.api.replace(/\/+$/, '');
+  return '';
+}
+function useWorker(){ return !!apiBase(); }
+
+/* 端点：Worker 模式下是 /data.json，直连模式下是 GitHub Contents API */
+function readURL(){
+  const b = apiBase();
+  return (b ? b + '/' + CFG.path : 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + CFG.path)
+         + '?t=' + Date.now();
+}
+function writeURL(){
+  const b = apiBase();
+  return b ? b + '/' + CFG.path
+           : 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + CFG.path;
+}
+function cloudHeaders(){
+  if(useWorker()) return { 'Content-Type':'application/json' };
+  return { 'Authorization':'Bearer ' + CFG.token,
+           'Accept':'application/vnd.github+json',
+           'Content-Type':'application/json' };
+}
+/* Worker 返回 { data, sha }；GitHub 返回 { content(base64), sha } —— 统一成 { data, sha, raw } */
+function normalizeRead(j){
+  if(!j) return { data:null, sha:'', raw:null };
+  if(typeof j === 'object' && ('data' in j || 'sha' in j) && !('content' in j)){
+    return { data: j.data || null, sha: j.sha || '', raw: j };
+  }
+  let data = null;
+  if(j && j.content){
+    try{ data = JSON.parse(b64decode(j.content)); }catch(e){ data = null; }
+  }
+  return { data:data, sha:(j && j.sha) || '', raw:j };
+}
+
+/* 拉取云端数据 → {data, sha, raw}；无文件时 {data:null, sha:'', raw:null} */
+async function cloudPull(){
+  const r = await fetch(readURL(), { headers: cloudHeaders(), cache:'no-store' });
+  if(r.status === 404) return { data:null, sha:'', raw:null };
+  if(!r.ok){
+    const e = await r.json().catch(function(){ return {}; });
+    throw new Error('拉取失败 ' + r.status + (e && e.message ? '：' + e.message : ''));
+  }
+  return normalizeRead(await r.json());
+}
+
+/* 推送本地数据 → 整份覆盖 data.json */
+async function cloudPush(payload){
+  let body;
+  if(useWorker()){
+    /* Worker 自己处理 sha，页面只管交数据 */
+    body = JSON.stringify({ data: payload, by: DEVICE });
+  }else{
+    const { sha } = await cloudPull();          /* 先拿最新 sha，避免 409 */
+    body = JSON.stringify({
+      message: 'data: ' + (payload.savedAt || '').replace('T',' ').slice(0,19)
+               + ' · ' + (payload.accounts || []).length + ' 个角色 · ' + DEVICE,
+      content: b64encode(JSON.stringify(payload, null, 2) + '\n'),
+      branch: CFG.branch,
+      ...(sha ? { sha } : {})
+    });
+  }
+  const r = await fetch(writeURL(), { method:'PUT', headers: cloudHeaders(), body: body });
+  if(!r.ok){
+    const e = await r.json().catch(function(){ return {}; });
+    throw new Error('推送失败 ' + r.status + (e && e.message ? '：' + e.message : ''));
+  }
+  return r.json();
+}
+
+/* 把云端 accounts 灌进内存 */
+function adopt(data){
+  ACCOUNTS = (data.accounts || []).map(function(s, i){
+    return {
+      id: s.id || ('a' + (i+1)),
+      account: s.account || '', name: s.name || '',
+      level: s.level != null ? s.level : '', job: s.job || '',
+      gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
+      soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
+      chaosCost: Number(s.chaosCost)||0,
+      wealth: Number(s.wealth)||0,
+      records: Array.isArray(s.records) ? s.records.map(function(r){
+        return { date:r.date || '', time:r.time || '00:00:00',
+                 gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
+                 dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
+                 chaosCost:Number(r.chaosCost)||0 };
+      }) : [],
+      flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
+    };
+  });
+}
+
+function writeCache(data){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){}
+}
+
+/* 防抖推送：连续改动合并成一次网络请求 */
+let pushTimer = null, pushPending = false;
+function schedulePush(delay){
+  if(!useWorker() && !CFG.token) return;    /* 纯本地模式不推送 */
+  pushPending = true;
+  cloudUI('syncing', '同步中…');
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(doPush, typeof delay === 'number' ? delay : 1200);
+}
+async function doPush(){
+  if(!pushPending) return;
+  const payload = serialize();
+  try{
+    await cloudPush(payload);
+    pushPending = false;
+    writeCache(payload);
+    cloudUI('ok', '云端已同步 ' + cloudTime());
+    syncCloudDetail(payload);
+  }catch(err){
+    cloudUI('err', '同步失败·点击重试');
+    const chip = document.getElementById('tbCloud');
+    if(chip) chip.title = String(err.message || err);
+    console.warn('[云同步]', err);
+  }
+}
+
+/* 点状态胶囊：手动重试 / 主动拉取 */
+async function cloudManual(){
+  cloudUI('syncing', '同步中…');
+  try{
+    const { data } = await cloudPull();
+    const localSaved  = latestStampLocal();
+    const remoteSaved = data && data.savedAt;
+    if(data && remoteSaved && (!localSaved || new Date(remoteSaved) > new Date(localSaved))){
+      adopt(data); writeCache(data); render();
+      restoreChanged(remoteSaved);
+      cloudUI('ok', '已拉取云端 ' + cloudTime());
+      toast('已用云端较新数据覆盖本机');
+    }else{
+      await cloudPush(serialize());
+      cloudUI('ok', '云端已同步 ' + cloudTime());
+      toast('本机数据已推送到云端');
+    }
+    syncCloudDetail(data);
+  }catch(err){
+    cloudUI('err', '同步失败·点击重试');
+    const chip = document.getElementById('tbCloud');
+    if(chip) chip.title = String(err.message || err);
+    toast('同步失败：' + (err.message || err));
+  }
+}
+
+/* 本地已保存数据的 savedAt */
+function latestStampLocal(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return null;
+    const d = JSON.parse(raw);
+    return d && d.savedAt ? d.savedAt : null;
+  }catch(e){ return null; }
+}
+
+/* 悬浮提示里带上云端信息 */
+function syncCloudDetail(data){
+  const chip = document.getElementById('tbCloud');
+  if(!chip) return;
+  if(data && data.savedAt){
+    const by = data.updatedBy ? ' · ' + data.updatedBy : '';
+    const n  = (data.accounts || []).length;
+    chip.title = '云端数据：' + data.savedAt.replace('T',' ').slice(0,19) + by
+               + '\n' + n + ' 个角色 · 点击立即同步一次';
+  }else{
+    chip.title = '点击立即与云端同步一次';
+  }
+}
+
+/* 打开页面：拉云端 → 比时间戳决定用哪份；然后挂上自动推送 */
+async function cloudInit(){
+  /* 两个后端都没配 → 纯本地模式，不报错，正常能用 */
+  if(!useWorker() && !CFG.token){
+    cloudUI('off', '未接云端');
+    const chip = document.getElementById('tbCloud');
+    if(chip) chip.title = '还没配置云端地址，数据只存在本机浏览器里\n'
+                        + '配置方法见「角色晶石台账-维护文档」第五章';
+    return;
+  }
+  cloudUI('syncing', '连接云端…');
+  let remote = null, sha = '';
+  try{
+    const r = await cloudPull();
+    remote = r.data; sha = r.sha;
+    syncCloudDetail(remote);
+  }catch(err){
+    cloudUI('err', '云端未连接·点击重试');
+    const chip = document.getElementById('tbCloud');
+    if(chip) chip.title = String(err.message || err);
+    return;                                  /* 离线也能用，本地照常 */
+  }
+
+  const localSaved  = latestStampLocal();
+  const remoteSaved = remote && remote.savedAt;
+  const remoteHasData = !!(remote && remote.accounts && remote.accounts.length);
+
+  if(remoteHasData && (!localSaved || new Date(remoteSaved) > new Date(localSaved))){
+    /* 云端更新 → 采用云端 */
+    adopt(remote); writeCache(remote); render();
+    restoreChanged(remoteSaved);
+    cloudUI('ok', '云端已同步 ' + cloudTime());
+  }else{
+    cloudUI('ok', '云端已接通 ' + cloudTime());
+    /* 云端还是空的、本机有「用户真正录入过」的数据 → 首次上云
+       注意：localSaved 为空说明本机也没存过东西，绝不要把初始空壳推上去 */
+    if(!remoteHasData && ACCOUNTS.length && localSaved){
+      schedulePush(300);
+    }
+  }
+}
+
+document.getElementById('tbCloud').addEventListener('click', cloudManual);
+
+/* 关页前若还有没推上去的改动，尽量补一次（用 sendBeacon 会带不上认证头，
+   所以这里是同步尽力而为，失败也无妨：localStorage 里一定有） */
+window.addEventListener('beforeunload', function(){
+  if(pushPending){ clearTimeout(pushTimer); doPush(); }
+});
 
 /* ============================================================
  * 渲染
@@ -1541,6 +1868,7 @@ document.addEventListener('webkitfullscreenchange', function(){
 const lastSavedAt = loadLocal();
 render();
 restoreChanged(lastSavedAt);   /* 恢复「最后更改」为上次改动时间 */
+cloudInit();                   /* 异步连云端：比时间戳决定用本机还是云端 */
 window.addEventListener('resize', function(){ syncAllDetailCols(); });
 syncFullBtn();                 /* 初始化全屏按钮状态 */
 </script>
