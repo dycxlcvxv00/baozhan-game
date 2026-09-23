@@ -25,7 +25,7 @@
     --el:var(--accent);
     /* 行内布局：序号 / 角色信息 / 4 数据列 / 展开 —— 列头与卡片共用，保证对齐 */
     --c-idx:56px; --c-who:344px; --c-exp:44px;
-    --cols:6;   /* 数据列数：当前剩余 / 当日收入 / 角色总收入 / 已出售总数 / 已出售总价 / 人工费用 */
+    --cols:7;   /* 数据列数：当前剩余 / 已获取 / 已出售 / 收入 / 人工费用 / 净利润 / 秘境消耗 */
   }
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
@@ -84,8 +84,9 @@
   .chip.add .plus{font-size:16px;line-height:1;font-weight:800;margin-top:-1px}
 
   /* ---------- 汇总统计 ---------- */
-  #summary{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
-  @media (max-width:1440px){ #summary{grid-template-columns:repeat(3,1fr)} }
+  #summary{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:16px}
+  @media (max-width:1680px){ #summary{grid-template-columns:repeat(4,1fr)} }
+  @media (max-width:980px){ #summary{grid-template-columns:repeat(2,1fr)} }
   .sm{padding:11px 16px;display:flex;flex-direction:column;gap:2px;overflow:hidden;align-items:center;text-align:center}
   .sm::after{content:none}
   .sm .k{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px}
@@ -95,11 +96,13 @@
   .sm .v{font-size:24px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
   .sm.c-roles{--el:#2fe6d0}   .sm.c-roles   .v{color:var(--accent)}
   .sm.c-left {--el:#57e39b}   .sm.c-left    .v{color:var(--ok)}
+  .sm.c-gain {--el:#7fd4ff}   .sm.c-gain    .v{color:#7fd4ff}
   .sm.c-sold {--el:#9b7bff}   .sm.c-sold    .v{color:var(--accent2)}
   .sm.c-money{--el:#ffcf6b}   .sm.c-money   .v{color:var(--gold)}
   .sm.c-labor{--el:#ff8a5c}   .sm.c-labor   .v{color:#ff8a5c}
   .sm.c-net  {--el:#57e39b}   .sm.c-net     .v{color:var(--ok)}
-  .sm.c-net  .v.neg{color:#ff6b6b}
+  .sm.c-chaos{--el:#c77bff}   .sm.c-chaos   .v{color:#c77bff}
+  .sm .v.neg{color:#ff6b6b !important}
   .sm .v.flash{animation:flash .7s ease}
   @keyframes flash{0%{transform:scale(1)}35%{transform:scale(1.04)}100%{transform:scale(1)}}
 
@@ -222,7 +225,8 @@
   .cell .v.purple{color:var(--accent2)}
   .cell .v.gold{color:var(--ok)}          /* 已出售晶石总价格 → 绿 */
   .cell .v.plain{color:#ff6b6b}           /* 人工费用 → 红 */
-  .cell .v.inc{color:var(--txt)}          /* 当日收入 → 正绿负红，见下 */
+  .cell .v.chaos{color:#c77bff}           /* 秘境消耗晶石 → 紫 */
+  .cell .v.inc{color:var(--txt)}          /* 已获取 / 净利润 → 正绿负红，见下 */
   .cell .v.inc.pos{color:var(--ok)}
   .cell .v.inc.neg{color:#ff6b6b}
   .cell .v.hit{animation:flash .7s ease}
@@ -421,11 +425,12 @@
     <div class="h-who">角色信息</div>
     <div class="h-cells">
       <div class="h-cell">当前剩余晶石</div>
-      <div class="h-cell">当日收入</div>
-      <div class="h-cell">角色总收入</div>
-      <div class="h-cell">已出售晶石总数</div>
-      <div class="h-cell">已出售晶石总价格</div>
+      <div class="h-cell">已获取晶石</div>
+      <div class="h-cell">已出售晶石</div>
+      <div class="h-cell">收入</div>
       <div class="h-cell">人工费用</div>
+      <div class="h-cell">净利润</div>
+      <div class="h-cell">秘境消耗晶石</div>
     </div>
     <div class="h-exp"></div>
   </div>
@@ -489,7 +494,7 @@
  * ============================================================ */
 let ACCOUNTS = [
   { id:'a1', account:'', name:'', level:'', job:'',
-  gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, wealth:0, records:[], flags:{} }
+  gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0, wealth:0, records:[], flags:{} }
 ];
 
 const RING_NUMS = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
@@ -523,39 +528,59 @@ function nowTime(){
 }
 /* 排序用：把「日期 + 时间」拼成可比字符串；旧记录无 time 视为 00:00:00 */
 function recStamp(r){ return String(r.date || '') + ' ' + String(r.time || '00:00:00'); }
-/* 当日收入 = 当日售价 - 当日人工（自动算） */
+/* 净利润（单条记录） = 收入 − 人工费用 */
 function income(r){ return (Number(r.dayValue)||0) - (Number(r.dayLabor)||0); }
 function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v); }
-/* 卡片的「当日收入」只统计今天的记录（按日期筛选），跨天自动归零 */
-function todayIncome(c){
-  const d = today();
-  return (c.records||[]).reduce(function(a, r){
-    return String(r.date||'') === d ? a + income(r) : a;
-  }, 0);
-}
 
-/* 累计值 = 基准 + 明细 */
+/* 累计值 = 基准 + 明细
+ * 字段：gemsLeft 当前剩余 / gemsSold 已出售 / soldValue 收入 /
+ *       laborCost 人工费用 / chaosCost 秘境消耗晶石 */
 function totals(c){
   const t = { gemsLeft:Number(c.gemsLeft)||0, gemsSold:Number(c.gemsSold)||0,
-              soldValue:Number(c.soldValue)||0, laborCost:Number(c.laborCost)||0 };
+              soldValue:Number(c.soldValue)||0, laborCost:Number(c.laborCost)||0,
+              chaosCost:Number(c.chaosCost)||0 };
   (c.records||[]).forEach(function(r){
     t.gemsLeft  += Number(r.gemsLeft)  || 0;
     t.gemsSold  += Number(r.daySold)   || 0;
     t.soldValue += Number(r.dayValue)  || 0;
     t.laborCost += Number(r.dayLabor)  || 0;
+    t.chaosCost += Number(r.chaosCost) || 0;
   });
   return t;
 }
+
+/* 已获取晶石 = 逐条累加「本条剩余 − 上一条剩余」（首条 = 本条剩余 − 0）
+ * 允许负数：剩余下降时该条增量为负，如实累加。
+ * 按「日期+时间」升序遍历，保证时序正确。 */
+function gained(c){
+  const recs = (c.records||[]).slice().sort(function(a, b){
+    return recStamp(a).localeCompare(recStamp(b));
+  });
+  let prev = 0, acc = 0;
+  recs.forEach(function(r){
+    const cur = Number(r.gemsLeft) || 0;
+    acc += (cur - prev);      /* 允许负数，如实累加 */
+    prev = cur;
+  });
+  return acc;
+}
+
+/* 净利润 = 收入 − 人工费用（角色级） */
+function netProfit(c){ const t = totals(c); return t.soldValue - t.laborCost; }
+
 function summarize(list){
   return list.reduce(function(a,c){
     const t = totals(c);
     a.gemsLeft += t.gemsLeft; a.gemsSold += t.gemsSold;
     a.soldValue += t.soldValue; a.laborCost += t.laborCost;
+    a.chaosCost += t.chaosCost; a.gained += gained(c);
+    a.profit += (t.soldValue - t.laborCost);
     return a;
-  }, { roles:list.length, gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0 });
+  }, { roles:list.length, gemsLeft:0, gained:0, gemsSold:0,
+       soldValue:0, laborCost:0, profit:0, chaosCost:0 });
 }
-/* 角色总收入 = 该角色累计售价 − 累计人工 */
-function roleIncome(c){ const t = totals(c); return t.soldValue - t.laborCost; }
+/* 已废弃：保留仅为兼容旧引用，实际使用 netProfit() */
+function roleIncome(c){ return netProfit(c); }
 
 /* ============================================================
  * 存储
@@ -593,7 +618,7 @@ function saveLocal(){
       accounts: ACCOUNTS.map(function(c){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
-                 laborCost:c.laborCost, wealth:Number(c.wealth)||0,
+                 laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
                  records:c.records || [], flags:c.flags || {} };
       })
     }));
@@ -615,12 +640,14 @@ function loadLocal(){
       level: s.level != null ? s.level : '', job: s.job || '',
       gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
       soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
+      chaosCost: Number(s.chaosCost)||0,
       wealth: Number(s.wealth)||0,
       records: Array.isArray(s.records) ? s.records.map(function(r){
-        /* 兼容旧记录：没有 time 的补 00:00:00，保证排序稳定 */
+        /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0 */
         return { date:r.date || '', time:r.time || '00:00:00',
                  gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
-                 dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0 };
+                 dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
+                 chaosCost:Number(r.chaosCost)||0 };
       }) : [],
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
@@ -638,19 +665,22 @@ const ICONS = {
   box:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 7.4 12 3l8.8 4.4v9.2L12 21l-8.8-4.4z"/><path d="m3.2 7.4 8.8 4.4 8.8-4.4M12 11.8V21"/></svg>',
   money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 4.2 12 11l5.6-6.8M12 11v9.6M8 14h8M8 17.2h8"/></svg>',
   tool:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3.4a5.4 5.4 0 0 0-4.9 7.6L3.6 17.7l2.7 2.7 6.7-6.7a5.4 5.4 0 0 0 7.6-4.9 5.4 5.4 0 0 0-.5-2.2l-3 3-2.7-2.7 3-3a5.4 5.4 0 0 0-2.2-.5z"/></svg>',
-  trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 16.8 9.2 11l3.6 3.6 7.4-7.4"/><path d="M15.2 7.2h5v5"/></svg>'
+  trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 16.8 9.2 11l3.6 3.6 7.4-7.4"/><path d="M15.2 7.2h5v5"/></svg>',
+  gain:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.4V4.6"/><path d="m5.4 11.2 6.6-6.6 6.6 6.6"/></svg>',
+  chaos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 21 7.4v9.2L12 21.2 3 16.6V7.4z"/><path d="M12 12 21 7.4M12 12v9.2M12 12 3 7.4"/></svg>'
 };
 function ico(name){ return '<span class="ico">' + (ICONS[name] || '') + '</span>'; }
 
 function renderSummary(sum, animate){
-  const netTotal = sum.soldValue - sum.laborCost;   /* 总收入 = 售价总价值 − 人工费用总支出 */
   const items = [
-    { cls:'c-roles', ico:'roles', key:'roles',      k:'角色数量',       v:num(sum.roles) },
-    { cls:'c-left',  ico:'gem',   key:'gemsLeft',   k:'剩余总晶石',     v:intNum(sum.gemsLeft) },
-    { cls:'c-sold',  ico:'box',   key:'gemsSold',   k:'已出售晶石总数', v:intNum(sum.gemsSold) },
-    { cls:'c-money', ico:'money', key:'soldValue',  k:'出售晶石总价值', v:money(sum.soldValue) },
-    { cls:'c-labor', ico:'tool',  key:'laborCost',  k:'人工费用总支出', v:money(sum.laborCost) },
-    { cls:'c-net',   ico:'trend', key:'netIncome',  k:'总收入',         v:money(netTotal) }
+    { cls:'c-roles', ico:'roles', key:'roles',      k:'角色数量',         v:num(sum.roles) },
+    { cls:'c-left',  ico:'gem',   key:'gemsLeft',   k:'剩余晶石总量',     v:intNum(sum.gemsLeft) },
+    { cls:'c-gain',  ico:'gain',  key:'gained',     k:'已获取晶石总量',   v:num(sum.gained) },
+    { cls:'c-sold',  ico:'box',   key:'gemsSold',   k:'出售晶石总量',     v:intNum(sum.gemsSold) },
+    { cls:'c-money', ico:'money', key:'soldValue',  k:'总收入',           v:money(sum.soldValue) },
+    { cls:'c-labor', ico:'tool',  key:'laborCost',  k:'总支出（人工支出）', v:money(sum.laborCost) },
+    { cls:'c-net',   ico:'trend', key:'profit',     k:'净利润（总）',     v:money(sum.profit) },
+    { cls:'c-chaos', ico:'chaos', key:'chaosCost',  k:'秘境消耗晶石总量', v:intNum(sum.chaosCost) }
   ];
   document.getElementById('summary').innerHTML = items.map(function(i){
     return '<div class="sm panel ' + i.cls + '">'
@@ -658,6 +688,11 @@ function renderSummary(sum, animate){
       + '<span class="v" data-sum="' + i.key + '">' + i.v + '</span>'
       + '</div>';
   }).join('');
+  /* 负值标红：已获取、净利润、秘境消耗都可能为负 */
+  [['gained','neg'],['profit','neg'],['chaosCost','neg']].forEach(function(pair){
+    const el = document.querySelector('[data-sum="'+pair[0]+'"]');
+    if(el) el.classList.toggle(pair[1], parseFloat(el.textContent.replace(/[^\d.-]/g,'')) < 0);
+  });
   if(animate){ items.forEach(function(i){
     if(i.key === 'roles') return;
     const el = document.querySelector('[data-sum="'+i.key+'"]');
@@ -669,37 +704,39 @@ function refreshNumbers(i){
   if(row){
     const c = ACCOUNTS[i];
     const t = totals(c);
+    /* 7 列：当前剩余 / 已获取 / 已出售 / 收入 / 人工费用 / 净利润 / 秘境消耗 */
     setV(row,'gemsLeft',  intNum(t.gemsLeft), 'hit');
-    /* 当日收入：只算今天 */
-    const tInc = todayIncome(c);
-    setV(row,'dayIncome', money(tInc), 'hit');
-    const dEl = row.querySelector('[data-v="dayIncome"]');
-    if(dEl){
-      dEl.classList.toggle('pos', tInc > 0);
-      dEl.classList.toggle('neg', tInc < 0);
-    }
-    /* 角色总收入：累计售价 − 累计人工 */
-    const rInc = t.soldValue - t.laborCost;
-    setV(row,'roleIncome', money(rInc), 'hit');
-    const rEl = row.querySelector('[data-v="roleIncome"]');
-    if(rEl){
-      rEl.classList.toggle('pos', rInc > 0);
-      rEl.classList.toggle('neg', rInc < 0);
-    }
+    /* 已获取晶石：逐条累加相邻剩余之差，允许负数 */
+    const g = gained(c);
+    setV(row,'gained', g, 'hit');
+    const gEl = row.querySelector('[data-v="gained"]');
+    if(gEl) gEl.classList.toggle('neg', g < 0);
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
+    /* 净利润 = 收入 − 人工费用 */
+    const p = t.soldValue - t.laborCost;
+    setV(row,'profit', money(p), 'hit');
+    const pEl = row.querySelector('[data-v="profit"]');
+    if(pEl){
+      pEl.classList.toggle('pos', p > 0);
+      pEl.classList.toggle('neg', p < 0);
+    }
+    setV(row,'chaosCost', intNum(t.chaosCost), 'hit');
   }
   const sum = summarize(ACCOUNTS);
   setText('[data-sum="roles"]',     num(sum.roles));
   setText('[data-sum="gemsLeft"]',  intNum(sum.gemsLeft),  true);
+  setText('[data-sum="gained"]',    num(sum.gained),       true);
   setText('[data-sum="gemsSold"]',  intNum(sum.gemsSold),  true);
   setText('[data-sum="soldValue"]', money(sum.soldValue),  true);
   setText('[data-sum="laborCost"]', money(sum.laborCost),  true);
-  const net = sum.soldValue - sum.laborCost;
-  setText('[data-sum="netIncome"]', money(net), true);
-  const netEl = document.querySelector('[data-sum="netIncome"]');
-  if(netEl) netEl.classList.toggle('neg', net < 0);
+  setText('[data-sum="profit"]',    money(sum.profit),     true);
+  setText('[data-sum="chaosCost"]', intNum(sum.chaosCost), true);
+  [['gain','gained'],['net','profit'],['chaos','chaosCost']].forEach(function(pair){
+    const el = document.querySelector('[data-sum="'+pair[1]+'"]');
+    if(el) el.classList.toggle('neg', parseFloat(String(el.textContent).replace(/[^\d.-]/g,'')) < 0);
+  });
 }
 function setV(row, key, html, anim){
   const el = row.querySelector('[data-v="'+key+'"]');
@@ -714,7 +751,7 @@ function setText(sel, html, anim){
   if(anim){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
 }
 
-/* 明细表：日期+时间 | 剩余 | 当日收入 | 角色总收入 | 当日出售 | 当日售价 | 当日人工 | 操作 */
+/* 明细表：日期+时间 | 剩余 | 已获取 | 已出售 | 收入 | 人工 | 净利润 | 秘境消耗 | 操作 */
 function detailHTML(i){
   const c = ACCOUNTS[i];
   const recs = c.records || [];
@@ -722,51 +759,64 @@ function detailHTML(i){
   const ordered = recs.slice().sort(function(a, b){
     return recStamp(b).localeCompare(recStamp(a));
   });
-  /* 逐行累计「角色总收入」，让明细里也能看到累计口径 */
+  /* 升序遍历，逐条算出「已获取增量」与「净利润」，供每行展示 */
   const asc = recs.slice().sort(function(a, b){
     return recStamp(a).localeCompare(recStamp(b));
   });
-  const runIncome = {};
-  asc.reduce(function(acc, r){
-    acc += income(r);
-    runIncome[recStamp(r)] = acc;
-    return acc;
-  }, 0);
+  const runGain = {}, runProfit = {};
+  let prevLeft = 0, accGain = 0, accProfit = 0;
+  asc.forEach(function(r){
+    const cur = Number(r.gemsLeft) || 0;
+    accGain += (cur - prevLeft);          /* 已获取：允许负数 */
+    prevLeft = cur;
+    accProfit += income(r);
+    runGain[recStamp(r)] = accGain;
+    runProfit[recStamp(r)] = accProfit;
+  });
   const rows = ordered.length ? ordered.map(function(r){
     const oi = recs.indexOf(r);
     const z = v => (Number(v)||0) === 0 ? ' zero' : '';
-    const inc = income(r);
-    const icls = inc === 0 ? ' inc-zero' : ' income';
-    const cum = runIncome[recStamp(r)] || 0;
+    const gInc = runGain[recStamp(r)] || 0;
+    const pInc = runProfit[recStamp(r)] || 0;
+    const pSingle = income(r);
+    const pCls = pSingle > 0 ? ' income' : (pSingle < 0 ? ' neg' : ' inc-zero');
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + '</td>'
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
-      + '<td class="n'+icls+'">' + incomeText(r) + '</td>'
-      + '<td class="n cum'+(cum===0?' zero':'')+'">' + money(cum) + '</td>'
+      + '<td class="n cum'+(gInc<0?' neg':'')+'">' + num(gInc) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
       + '<td class="n plain'+z(r.dayLabor)+'">' + num(r.dayLabor) + '</td>'
+      + '<td class="n'+pCls+'">' + money(pSingle) + '</td>'
+      + '<td class="n chaos'+z(r.chaosCost)+'">' + intNum(r.chaosCost) + '</td>'
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
-  }).join('') : '<tr><td colspan="9"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入『当日』数据，回车即自动记一条</div></td></tr>';
+  }).join('') : '<tr><td colspan="10"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
 
   const s = recs.reduce(function(a,r){
     a.gemsLeft += Number(r.gemsLeft)||0; a.daySold += Number(r.daySold)||0;
     a.dayValue += Number(r.dayValue)||0; a.dayLabor += Number(r.dayLabor)||0;
-    a.inc += income(r);
+    a.chaosCost += Number(r.chaosCost)||0;
+    a.profit += income(r);
     return a;
-  }, {gemsLeft:0,daySold:0,dayValue:0,dayLabor:0,inc:0});
+  }, {gemsLeft:0,daySold:0,dayValue:0,dayLabor:0,chaosCost:0,profit:0});
+
+  /* 合计行的「已获取」= 末次剩余 − 首次剩余（与卡片 gained() 同口径的净变化） */
+  const firstLeft = Number((asc[0]||{}).gemsLeft)||0;
+  const lastLeft  = Number((asc[asc.length-1]||{}).gemsLeft)||0;
+  const totalGain = lastLeft - firstLeft;
 
   const foot = recs.length ? '<tfoot><tr>'
     + '<td colspan="2">合计 ' + recs.length + ' 条</td>'
     + '<td>' + intNum(s.gemsLeft) + '</td>'
-    + '<td>' + (s.inc > 0 ? '+' : '') + num(s.inc) + '</td>'
-    + '<td>' + money(s.inc) + '</td>'
+    + '<td class="' + (totalGain<0?'neg':'') + '">' + num(totalGain) + '</td>'
     + '<td>' + intNum(s.daySold) + '</td>'
     + '<td>' + num(s.dayValue) + '</td>'
     + '<td>' + num(s.dayLabor) + '</td>'
+    + '<td>' + money(s.profit) + '</td>'
+    + '<td>' + intNum(s.chaosCost) + '</td>'
     + '<td></td></tr></tfoot>' : '';
 
   return '<div class="detail-inner panel">'
@@ -777,11 +827,11 @@ function detailHTML(i){
     + '</div>'
     + '<table class="dt">'
     + '<colgroup><col class="c-date" /><col class="c-time" />'
-    +   '<col class="c-num" /><col class="c-num" /><col class="c-num" />'
+    +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
     + '<thead><tr>'
-    +   '<th>日期</th><th>时间</th><th>剩余晶石</th><th>当日收入</th><th>角色总收入</th>'
-    +   '<th>当日出售</th><th>当日售价</th><th>当日人工</th><th></th>'
+    +   '<th>日期</th><th>时间</th><th>剩余晶石</th><th>已获取</th><th>已出售</th>'
+    +   '<th>收入</th><th>人工费用</th><th>净利润</th><th>秘境消耗</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
     + foot
@@ -789,7 +839,7 @@ function detailHTML(i){
 }
 
 /* 明细表列宽按上方卡片实际像素对齐
-   colgroup: [日期, 时间, 剩余, 当日收入, 角色总收入, 当日出售, 当日售价, 当日人工, 展开] */
+   colgroup: [日期, 时间, 剩余, 已获取, 已出售, 收入, 人工, 净利润, 秘境消耗, 展开] */
 function syncDetailCols(i){
   const row = document.querySelector('.row[data-i="' + i + '"]');
   if(!row) return;
@@ -813,7 +863,7 @@ function syncDetailCols(i){
   const timeW = 78;
   cols[0].style.width = px(Math.max(dateW - timeW, 60));
   cols[1].style.width = px(timeW);
-  /* 6 个数据列逐一按卡片 .cell 的实际宽度写入，保证与列标题条 6 栏严格对齐 */
+  /* 7 个数据列逐一按卡片 .cell 的实际宽度写入，保证与列标题条 7 栏严格对齐 */
   const n = cellEls.length;
   for(let k = 0; k < n; k++){
     const w = cellEls[k] ? cellEls[k].getBoundingClientRect().width
@@ -873,23 +923,25 @@ function whoHTML(c, i){
     + '</div>';
 }
 
-/* 一行一卡：序号 | 角色信息（只读/可编辑） | 6 数值格(居中) + 录入框 | ▼ */
+/* 一行一卡：序号 | 角色信息（只读/可编辑） | 7 数值格(居中) + 录入框 | ▼
+   7 列：当前剩余晶石 / 已获取晶石 / 已出售晶石 / 收入 / 人工费用 / 净利润 / 秘境消耗晶石
+   其中「已获取晶石」「净利润」自动计算，其余 5 项可录入 */
 function cardHTML(c, i){
   const color = THEME[i % THEME.length];
   const t = totals(c);
-  /* 当日收入 = 只统计「今天」录入的记录，正绿负红 */
-  const tInc = todayIncome(c);
-  const tIncCls = tInc > 0 ? ' pos' : (tInc < 0 ? ' neg' : '');
-  /* 角色总收入 = 累计售价 − 累计人工 */
-  const rInc = t.soldValue - t.laborCost;
-  const rIncCls = rInc > 0 ? ' pos' : (rInc < 0 ? ' neg' : '');
+  /* 已获取晶石：逐条累加相邻剩余之差，允许负数 */
+  const g = gained(c);
+  const gCls = g < 0 ? ' neg' : '';
+  /* 净利润 = 收入 − 人工费用 */
+  const p = t.soldValue - t.laborCost;
+  const pCls = p > 0 ? ' pos' : (p < 0 ? ' neg' : '');
   const cell = (vkey, vhtml, cls, ph) =>
     '<div class="cell">'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
     + '<input class="input" type="number" inputmode="decimal" step="any" '
     +   'data-i="' + i + '" data-f="' + vkey + '" placeholder="' + ph + '" />'
     + '</div>';
-  /* 只读数值格（如「当日收入」「角色总收入」，自动算出，无需录入） */
+  /* 只读数值格（自动算出，无需录入） */
   const roCell = (vkey, vhtml, cls, tip) =>
     '<div class="cell ro" title="' + tip + '">'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
@@ -901,14 +953,15 @@ function cardHTML(c, i){
     +   '<div class="idx">' + serial(i+1) + '</div>'
     +   whoHTML(c, i)
     +   '<div class="cells">'
-    +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '当日剩余')
-    +     roCell('dayIncome', money(tInc), 'inc' + tIncCls,
-    +            '当日收入 = 今日（' + today() + '）录入的售价 − 人工，每天自动归零')
-    +     roCell('roleIncome', money(rInc), 'inc' + rIncCls,
-    +            '角色总收入 = 该角色累计售价 − 累计人工')
-    +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '当日出售')
-    +     cell('soldValue', money(t.soldValue), 'gold',   '当日售价')
-    +     cell('laborCost', money(t.laborCost), 'plain',  '当日人工')
+    +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '当前剩余')
+    +     roCell('gained', g, 'inc' + gCls,
+    +            '已获取晶石 = 逐条累加「本次剩余 − 上次剩余」，允许负数')
+    +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售')
+    +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入')
+    +     cell('laborCost', money(t.laborCost), 'plain',  '本次人工')
+    +     roCell('profit', money(p), 'inc' + pCls,
+    +            '净利润 = 收入 − 人工费用')
+    +     cell('chaosCost', intNum(t.chaosCost), 'chaos', '秘境消耗晶石')
     +   '</div>'
     +   '<button class="expand" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
     +     '<span class="arw">▼</span></button>'
@@ -945,23 +998,36 @@ function flashSaved(){
   savedTimer = setTimeout(function(){ el.textContent = '已自动保存'; }, 2600);
 }
 
-/* 录入提交：把 4 个输入框收成一条当日记录（未填按 0） */
+/* 录入提交：把 5 个录入框收成一条记录（未填按 0）
+   录入项：当前剩余 / 已出售 / 收入 / 人工费用 / 秘境消耗晶石
+   另有两项自动：已获取晶石、净利润，不在此录入 */
 function commitEntry(i){
   const row = document.querySelector('.row[data-i="'+i+'"]');
   if(!row) return;
   const ins = row.querySelectorAll('.input');
-  const vals = Array.prototype.map.call(ins, function(el){
-    const v = parseFloat(el.value);
-    return isFinite(v) ? v : 0;
+  /* 按 data-f 字段名收集，避免依赖 DOM 顺序 */
+  const v = {};
+  let anyFilled = false;
+  Array.prototype.forEach.call(ins, function(el){
+    const n = parseFloat(el.value);
+    const ok = isFinite(n);
+    if(ok && n !== 0) anyFilled = true;
+    v[el.dataset.f] = ok ? n : 0;
   });
-  if(vals.every(function(v){ return v === 0; })){
+  if(!anyFilled){
     toast('未填写任何数值（未录入按 0 计）');
     return;
   }
   ACCOUNTS[i].records = ACCOUNTS[i].records || [];
   /* 同时记录日期与时间，时间精确到秒 */
-  const rec = { date:today(), time:nowTime(),
-                gemsLeft:vals[0], daySold:vals[1], dayValue:vals[2], dayLabor:vals[3] };
+  const rec = {
+    date: today(), time: nowTime(),
+    gemsLeft:  v.gemsLeft  || 0,
+    daySold:   v.gemsSold  || 0,
+    dayValue:  v.soldValue || 0,
+    dayLabor:  v.laborCost || 0,
+    chaosCost: v.chaosCost || 0
+  };
   ACCOUNTS[i].records.push(rec);
   Array.prototype.forEach.call(ins, function(el){ el.value = ''; });
   refreshNumbers(i);
@@ -972,7 +1038,7 @@ function commitEntry(i){
     if(wasOpen) syncDetailCols(i);
   }
   saveLocal();
-  toast('已记录 ' + rec.time + '（当日收入 ' + incomeText(rec) + '）');
+  toast('已记录 ' + rec.time + '（净利润 ' + incomeText(rec) + '）');
 }
 
 /* 键盘 */
@@ -1068,7 +1134,7 @@ function modalOk(){
   } else {
     ACCOUNTS.push({
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
-      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, wealth: wealthVal,
+      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0, wealth: wealthVal,
       records:[], flags:{}
     });
     render();
