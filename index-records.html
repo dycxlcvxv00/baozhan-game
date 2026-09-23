@@ -495,11 +495,20 @@
   .field input.bad{border-color:rgba(255,107,107,0.6);box-shadow:0 0 0 3px rgba(255,107,107,0.12)}
   .field .err{font-size:11px;color:#ff8a8a;margin-top:4px;display:none}
   .field.bad .err{display:block}
+  /* 字段下面的静态说明（不是报错，常显） */
+  .field .fhint{font-size:11px;color:var(--mute);margin-top:5px;line-height:1.55}
   .modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
   /* ---------- 结算结果弹窗 ---------- */
-  .settle-modal{width:620px;max-width:100%}
+  .settle-modal{
+    width:620px;max-width:100%;
+    /* 弹窗本身不超视口，内部列表滚动 —— 否则补多天时会被切掉、看不到后面几天 */
+    max-height:calc(100vh - 40px);display:flex;flex-direction:column;
+  }
+  .settle-modal .st-list{flex:1 1 auto;min-height:0}
+  .settle-modal .modal-foot{flex:0 0 auto}
   .settle-modal h2 .bar{background:var(--accent2)}
   .st-list{max-height:min(56vh,460px);overflow:auto;margin:0 -4px 0 0;padding-right:4px}
+  .settle-modal .st-list{max-height:none}
   .st-list::-webkit-scrollbar{width:8px}
   .st-list::-webkit-scrollbar-thumb{background:rgba(125,165,225,0.24);border-radius:4px}
   .st-list::-webkit-scrollbar-track{background:transparent}
@@ -508,16 +517,24 @@
     padding:12px 14px;margin-bottom:10px;background:rgba(255,255,255,0.022);
   }
   .st-day:last-child{margin-bottom:2px}
+  /* 空白日：这天一条明细都没有（流水全 0、剩余沿用前值）——淡化处理 */
+  .st-day.is-blank{
+    background:rgba(125,165,225,0.030);
+    border-style:dashed;border-color:rgba(125,165,225,0.20);
+  }
+  .st-day.is-blank .st-num .v{color:var(--dim)}
   .st-head{
     display:flex;align-items:center;gap:9px;margin-bottom:9px;
     font-size:13.5px;font-weight:800;color:var(--txt);
   }
   .st-head .dt{color:var(--accent2);font-variant-numeric:tabular-nums;letter-spacing:.4px}
+  .st-day.is-blank .st-head .dt{color:var(--dim)}
   .st-head .tag{
     font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;
     background:rgba(87,227,155,0.16);color:var(--ok);letter-spacing:.3px;
   }
   .st-head .tag.today{background:rgba(255,207,107,0.18);color:var(--gold)}
+  .st-head .tag.blank{background:rgba(125,165,225,0.13);color:var(--mute)}
   .st-head .wk{font-size:11.5px;color:var(--mute);font-weight:600}
   .st-nums{
     display:grid;grid-template-columns:repeat(4,1fr);gap:8px 6px;
@@ -535,6 +552,7 @@
     font-size:11.5px;color:var(--dim);line-height:1.75;
   }
   .st-roles b{color:var(--txt);font-weight:700}
+  .st-roles .bl{color:var(--mute);font-style:normal}
   .st-none{text-align:center;padding:26px 10px;color:var(--mute);font-size:13px;line-height:1.8}
   .st-none .big{font-size:26px;display:block;margin-bottom:8px;opacity:.6}
   @media (max-width:640px){
@@ -669,6 +687,12 @@
       <input id="fWealth" type="text" inputmode="decimal" maxlength="16" autocomplete="off" placeholder="如 12000（可留空）" />
       <div class="err">财富值请填数字</div>
     </div>
+    <div class="field">
+      <label for="fInitLeft">初始存量晶石</label>
+      <input id="fInitLeft" type="text" inputmode="decimal" maxlength="16" autocomplete="off" placeholder="开始记流水时已有多少（可留空）" />
+      <div class="err">初始存量请填数字</div>
+      <div class="fhint">留空或填 0 时，第一条录入会整条算作「本次获取」。想让首条只算增量，就填上开始记流水时手里的晶石数。</div>
+    </div>
 
     <div class="modal-foot">
       <button class="mbtn" type="button" id="mdCancel">取消</button>
@@ -703,11 +727,13 @@
  *   name      角色名
  *   level     等级    job 职业
  *   gemsLeft / gemsSold / soldValue / laborCost / chaosCost  历史累计基准
+ *   initLeft  初始存量：开始记流水之前手里已有的晶石，用作首条记录的起算基准
  *   records[] 明细 [{date, time, gemsLeft, daySold, dayValue, dayLabor, chaosCost}]
  * ============================================================ */
 let ACCOUNTS = [
   { id:'a1', account:'', name:'', level:'', job:'',
-  gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0, wealth:0, records:[], flags:{} }
+  gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
+  wealth:0, initLeft:0, records:[], flags:{} }
 ];
 
 /* 日结快照库：{ '2026-09-23': {date, accounts:[...], total:{...}}, ... }
@@ -737,6 +763,24 @@ function money(n){ return '¥' + num(n); }
 function today(){
   const d = new Date(), p = x => String(x).padStart(2,'0');
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+/* 日期加减天数：'2026-09-23' + 1 → '2026-09-24'。用 UTC 运算避开时区/夏令时干扰 */
+function addDays(dateStr, n){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ''));
+  if(!m) return '';
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  d.setUTCDate(d.getUTCDate() + (Number(n) || 0));
+  const p = x => String(x).padStart(2,'0');
+  return d.getUTCFullYear() + '-' + p(d.getUTCMonth()+1) + '-' + p(d.getUTCDate());
+}
+/* 闭区间日期列表：dateRange('2026-09-18','2026-09-22') → 5 个日期（含首尾） */
+function dateRange(from, to){
+  const out = [];
+  let cur = String(from || ''), end = String(to || '');
+  if(!cur || !end || cur > end) return out;
+  let guard = 0;
+  while(cur <= end && guard++ < 4000){ out.push(cur); cur = addDays(cur, 1); }
+  return out;
 }
 /* 当前时间 HH:MM:SS —— 录入明细时一并写入，精确到秒 */
 function nowTime(){
@@ -798,13 +842,17 @@ function latestLeft(c){
  *   本次剩余 ≤ 上次剩余  → 说明只是卖出 / 自己消耗了，本次获取记 0
  * 因此结果恒 ≥ 0，不会出现负数。
  * 用 recsAsc() 保证按录入先后遍历（同一秒内也稳定）。
+ *
+ * 基准值 leftBase()：首条记录的参考起点。
+ *   角色可以填「初始存量」——就是开始记流水之前手里已经有的晶石。
+ *   填了它，首条就从它起算，不会把老本算成「今天获取的」。
+ *   没填（=0）则退回老行为：首条相对 0，整条都算作本次获取。
  * ------------------------------------------------------------
- * 单条增量（供明细表逐条展示）：返回 deltas[]，与 recsAsc() 同序。
- * 首条以 0 为基准，即首条录入 120 → 本次获取 120。 */
+ * 单条增量（供明细表逐条展示）：返回 deltas[]，与 recsAsc() 同序。 */
 function gainedDeltas(c){
   const recs = recsAsc(c);
   const out = [];
-  let prev = 0;
+  let prev = leftBase(c);
   recs.forEach(function(r){
     const cur  = Number(r.gemsLeft) || 0;
     const diff = cur - prev;
@@ -812,6 +860,10 @@ function gainedDeltas(c){
     prev = cur;
   });
   return out;
+}
+/* 首条记录的参考起点 = 角色的「初始存量」（老数据没有则 0） */
+function leftBase(c){
+  return Number(c && c.initLeft) || 0;
 }
 function gained(c){
   return gainedDeltas(c).reduce(function(a, b){ return a + b; }, 0);
@@ -865,11 +917,24 @@ function groupRecordsByDate(c){
 }
 
 /* 算某角色「某一天的明细集合」的指标
- * 与 totals() 同口径，但只吃传入的这些记录，且不叠加基准值 */
+ * 与 totals() 同口径，但只吃传入的这些记录，且不叠加基准值。
+ *
+ * 关键：prev 的起点 = **当天第一条之前的那一条**（可能是几天前录的）——
+ *   9/21 剩100 → 9/23 剩150（9/22 没录）
+ *     9/21：prev = 初始存量        → 增长 100
+ *     9/23：prev = 100（取自 9/21）→ 增长  50      ← 不再把 150 整条算成当天获取
+ * 若当天就是首条，则以「初始存量」leftBase() 起算。 */
 function dayTotals(c, dayRecs){
   const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
               laborCost:0, profit:0, chaosCost:0, recordCount:0 };
-  let prev = 0;
+  if(!dayRecs || !dayRecs.length) return t;
+  /* 当天第一条的起点：找它在全量时序里的前一条 */
+  const asc = recsAsc(c);
+  const first = dayRecs[0];
+  const gi = asc.indexOf(first);
+  let prev = (gi > 0)
+    ? (Number(asc[gi - 1].gemsLeft) || 0)     /* 接上上一条（可能在前几天） */
+    : leftBase(c);                            /* 真是首条 → 用初始存量 */
   dayRecs.forEach(function(r){
     const cur = Number(r.gemsLeft) || 0;
     const diff = cur - prev;
@@ -882,14 +947,49 @@ function dayTotals(c, dayRecs){
     t.recordCount++;
   });
   /* 当天最后一条的剩余 = 当天收工时的存量 */
-  if(dayRecs.length){
-    t.gemsLeft = Number(dayRecs[dayRecs.length - 1].gemsLeft) || 0;
-  }
+  t.gemsLeft = Number(dayRecs[dayRecs.length - 1].gemsLeft) || 0;
   t.profit = t.soldValue - t.laborCost;
   return t;
 }
 
-/* 生成「某一天」的完整快照 */
+/* 求「某一天的起始存量」= 该天之前最后一条分录的剩余。
+ * 传 null 表示求「全时段末尾」的存量。
+ * 用途：给空白天找它当天的存量（沿用之前最后一次录入的值）。 */
+function priorLeft(c, dateOrNull){
+  const asc = recsAsc(c);
+  if(!asc.length) return Number(c && c.gemsLeft) || 0;
+  if(!dateOrNull){                            /* 末尾：最后一条的剩余 */
+    return Number(asc[asc.length - 1].gemsLeft) || 0;
+  }
+  /* 在这天之前（不含这天）的最后一条 —— 按日期比较，跨天也成立 */
+  const d = String(dateOrNull);
+  let found = null;
+  for(let i = 0; i < asc.length; i++){
+    const rd = String(asc[i].date || '').trim();
+    if(rd && rd < d) found = Number(asc[i].gemsLeft) || 0;
+  }
+  if(found !== null) return found;
+  /* 这天之前没有任何记录 → 用初始存量（可能为 0） */
+  return leftBase(c);
+}
+
+/* 空白天：某个角色当天一条明细都没有
+ * 生成的仍是一条「在册」记录，只是各项流水为 0、
+ * 剩余沿用这天的起始存量。 */
+function blankDayTotals(c, date){
+  const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
+              laborCost:0, profit:0, chaosCost:0, recordCount:0 };
+  t.gemsLeft = priorLeft(c, date);
+  return t;
+}
+
+/* 生成「某一天」的完整快照
+ * ------------------------------------------------------------
+ * 两种日子：
+ *   有明细 → 该角色算当天的实际指标
+ *   空 白 → 该角色仍**在册**（列出来），但流水全 0、剩余沿用之前的存量
+ *           ——「空白天也给一张快照」的需求，保证日历不断档。
+ * 一天一个角色都没有在册 → 返回 null（不该发生，日期区间由 settle 保证） */
 function snapshotForDay(date, accounts){
   const rows = [];
   const total = { roles:0, gemsLeft:0, gained:0, gemsSold:0,
@@ -898,16 +998,27 @@ function snapshotForDay(date, accounts){
   (accounts || ACCOUNTS).forEach(function(c){
     const byDate = groupRecordsByDate(c);
     const dayRecs = byDate[date];
-    if(!dayRecs || !dayRecs.length) return;     /* 这天没录入 → 该角色不出现在快照里 */
+    /* 角色要「这天之前已经出现过」才在册 ——
+       否则新建角色会把历史上每一天都补出一条空记录 */
+    const firstDate = firstRecordDate(c);
 
-    const t = dayTotals(c, dayRecs);
+    let t, hasRecs = !!(dayRecs && dayRecs.length);
+    if(hasRecs){
+      t = dayTotals(c, dayRecs);
+    }else{
+      /* 从没录入过，或这天早于它的首条记录 → 这天与它无关，跳过 */
+      if(!firstDate || date < firstDate) return;
+      t = blankDayTotals(c, date);            /* 空白天：在册、流水 0 */
+    }
+
     rows.push({
       id: c.id, account: c.account, name: c.name,
       level: c.level, job: c.job,
       gemsLeft:  t.gemsLeft,   gained:  t.gained,
       gemsSold:  t.gemsSold,   soldValue: t.soldValue,
       laborCost: t.laborCost,  profit:  t.profit,
-      chaosCost: t.chaosCost,  recordCount: t.recordCount
+      chaosCost: t.chaosCost,  recordCount: t.recordCount,
+      blank: !hasRecs                          /* 标记：这天空白 */
     });
     total.gemsLeft  += t.gemsLeft;   total.gained   += t.gained;
     total.gemsSold  += t.gemsSold;   total.soldValue += t.soldValue;
@@ -915,7 +1026,7 @@ function snapshotForDay(date, accounts){
     total.chaosCost += t.chaosCost;  total.recordCount += t.recordCount;
   });
 
-  if(!rows.length) return null;                 /* 全天无记录 → 不生成 */
+  if(!rows.length) return null;                 /* 这一天谁都还没在册 → 不生成 */
   total.roles = rows.length;
 
   return {
@@ -939,17 +1050,39 @@ function allRecordDates(accounts){
   return Object.keys(set).sort();
 }
 
+/* 某角色最早一条明细的日期（没有则返回 ''） */
+function firstRecordDate(c){
+  const asc = recsAsc(c);
+  for(let i = 0; i < asc.length; i++){
+    const d = String(asc[i].date || '').trim();
+    if(d) return d;
+  }
+  return '';
+}
+
+/* 要结算的完整日期区间 = 首条明细那天 → 今天（含首尾）
+ * 「空白天也给一张快照」—— 所以区间中间一天都不漏。
+ * 若首条明细在未来（日期填错），退化为只有那几天，不会拉出长城。 */
+function settleRange(accounts){
+  const all = allRecordDates(accounts);
+  if(!all.length) return [];
+  const from = all[0];
+  const t = today();
+  const to = (from > t) ? all[all.length - 1] : t;   /* 正常情况补到"今天" */
+  return dateRange(from, to);
+}
+
 /* 扫描：哪些日期还没有快照？
  * 返回 { missing:[日期...], all:[日期...], done:[日期...] } */
 function pendingSettleDates(accounts, snaps){
-  const all = allRecordDates(accounts);
+  const all = settleRange(accounts);
   const have = snaps || SNAPSHOTS || {};
   const missing = all.filter(function(d){ return !have[d]; });
   const done = all.filter(function(d){ return !!have[d]; });
   return { missing: missing, all: all, done: done };
 }
 
-/* 执行结算：补齐所有缺失日期
+/* 执行结算：补齐所有缺失日期（含无录入的"空白天"）
  * 返回 { added:[{date, snap}...], skipped:[日期...], missingBefore:[...] } */
 function settle(accounts, snaps){
   const store = snaps || SNAPSHOTS || {};
@@ -962,7 +1095,7 @@ function settle(accounts, snaps){
       store[d] = snap;
       added.push({ date: d, snap: snap });
     }else{
-      skipped.push(d);                       /* 该天其实没有明细，理论不会走到 */
+      skipped.push(d);                       /* 那天所有角色都还没在册 → 理论不会走到 */
     }
   });
 
@@ -1013,6 +1146,7 @@ function saveLocal(){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                  laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
+                 initLeft:Number(c.initLeft)||0,
                  records:c.records || [], flags:c.flags || {} };
       })
     }));
@@ -1037,6 +1171,7 @@ function loadLocal(){
       soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
       chaosCost: Number(s.chaosCost)||0,
       wealth: Number(s.wealth)||0,
+      initLeft: Number(s.initLeft)||0,
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0 */
         return { date:r.date || '', time:r.time || '00:00:00',
@@ -1110,6 +1245,7 @@ function serialize(){
       return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
+                 initLeft:Number(c.initLeft)||0,
                records:c.records || [], flags:c.flags || {} };
     })
   };
@@ -1220,6 +1356,7 @@ function adopt(data){
       soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
       chaosCost: Number(s.chaosCost)||0,
       wealth: Number(s.wealth)||0,
+      initLeft: Number(s.initLeft)||0,
       records: Array.isArray(s.records) ? s.records.map(function(r){
         return { date:r.date || '', time:r.time || '00:00:00',
                  gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
@@ -1884,7 +2021,7 @@ document.getElementById('btnCommitAll').addEventListener('click', function(){
 /* 刷新结算按钮外观与计数
  *   有待结算 → 金色呼吸 + 显示缺几天
  *   今天已结算过、且无历史缺漏 → 灰色「今日已结算」
- *   今天已结算但还有更早的缺漏 → 紫色「补 2 天」 */
+ *   今天已结算但还有更早的缺漏 → 紫色「补 N 天」 */
 function syncSettleBtn(){
   const btn = document.getElementById('btnSettle');
   if(!btn) return;
@@ -1892,8 +2029,9 @@ function syncSettleBtn(){
   const cnt = document.getElementById('settleCnt');
   const pend = pendingSettleDates(ACCOUNTS, SNAPSHOTS);
   const n = pend.missing.length;
-  const todayDone = !!SNAPSHOTS[today()];
-  const hasTodayRecs = pend.all.indexOf(today()) >= 0;
+  /* 有没有录入过明细（而不是"今天有没有"）——空白天也要补快照，所以只看整体 */
+  const hasAnyRecs = pend.all.length > 0;
+  const todayDone  = !!SNAPSHOTS[today()];
 
   btn.classList.remove('on','done');
 
@@ -1904,13 +2042,20 @@ function syncSettleBtn(){
       /* 只有「今天」这一天缺 → 写「今日结算」；含历史缺漏 → 写「补结算」 */
       txt.textContent = (n === 1 && pend.missing[0] === today()) ? '今日结算' : '补结算';
     }
-    btn.title = '待结算 ' + n + ' 天：' + pend.missing.join('、');
-  }else if(!hasTodayRecs){
-    /* 今天还没录入任何明细 —— 没什么可结算的 */
+    btn.title = '待结算 ' + n + ' 天（含无录入的空白日）：'
+              + pend.missing.join('、');
+  }else if(!hasAnyRecs){
+    /* 一条明细都还没有 —— 没什么可结算的 */
     btn.classList.add('done');
     if(cnt){ cnt.textContent = '—'; cnt.style.display = ''; }
-    if(txt) txt.textContent = '今日无记录';
-    btn.title = '今天还没有录入明细，先在卡片里填数值并点「记录全部」';
+    if(txt) txt.textContent = '暂无明细';
+    btn.title = '还没有任何明细记录 —— 先在卡片里填数值并点「记录全部」';
+  }else if(!todayDone){
+    /* 有明细但今天还没结 —— 理论走不到，兜底 */
+    btn.classList.add('on');
+    if(cnt){ cnt.textContent = '1'; cnt.style.display = ''; }
+    if(txt) txt.textContent = '今日结算';
+    btn.title = '点一下补齐 ' + today();
   }else{
     /* 全部结清 */
     btn.classList.add('done');
@@ -1955,7 +2100,7 @@ function renderSettleModal(result, mode){
   const added = result.added;
   if(!added.length){
     title.textContent = '无需结算';
-    hint.textContent = '所有有明细的日期都已经结算过了。';
+    hint.textContent = '从首条明细到今天，所有日期都已经结算过了。';
     const dates = settledDates().reverse();
     list.innerHTML = dates.slice(0, 6).map(function(d){
       return dayCardHTML(SNAPSHOTS[d], false);
@@ -1963,12 +2108,15 @@ function renderSettleModal(result, mode){
     return;
   }
 
+  const blankN = added.filter(function(a){ return a.snap && a.snap.total && !a.snap.total.recordCount; }).length;
   title.textContent = '结算完成 · ' + added.length + ' 天';
   const ds = added.map(function(a){ return a.date; });
   const first = ds[0], last = ds[ds.length - 1];
-  hint.textContent = (added.length === 1)
+  let msg = (added.length === 1)
     ? '已生成 ' + first + ' 的日结快照'
     : '已补齐 ' + first + ' ～ ' + last + ' 共 ' + added.length + ' 天的日结快照';
+  if(blankN) msg += '；其中 ' + blankN + ' 天没有录入，按空白日记录（流水为 0、剩余沿用前值）。';
+  hint.textContent = msg;
   list.innerHTML = added.map(function(a){
     return dayCardHTML(a.snap, true);
   }).join('');
@@ -1979,9 +2127,12 @@ function dayCardHTML(snap, isNew){
   if(!snap) return '';
   const t = snap.total || {};
   const isToday = snap.date === today();
-  const tag = isNew
-    ? '<span class="tag">' + (isToday ? '本次结算' : '补录') + '</span>'
-    : (isToday ? '<span class="tag today">今天</span>' : '<span class="tag">已结算</span>');
+  const isBlank = !(t.recordCount > 0);      /* 当天一条明细都没有 */
+  const tag = isBlank
+    ? '<span class="tag blank">空白日</span>'
+    : (isNew
+        ? '<span class="tag">' + (isToday ? '本次结算' : '补录') + '</span>'
+        : (isToday ? '<span class="tag today">今天</span>' : '<span class="tag">已结算</span>'));
 
   const cell = function(k, v, cls){
     return '<div class="st-num"><span class="k">' + k + '</span>'
@@ -1990,16 +2141,16 @@ function dayCardHTML(snap, isNew){
 
   const profitCls = (t.profit || 0) > 0 ? 'pos' : ((t.profit || 0) < 0 ? 'neg' : 'dim');
 
-  /* 角色摘要：名称 已获取/剩余 */
+  /* 角色摘要：名称 已获取/剩余；空白天标一下 */
   const lines = (snap.accounts || []).map(function(a){
+    const tail = a.blank
+      ? '<span class="bl">（无录入）</span>'
+      : ' 获取 ' + num(a.gained) + ' · 已售 ' + num(a.gemsSold) + ' · 净利 ' + money(a.profit);
     return '<b>' + esc(a.name || a.account || '未命名') + '</b>'
-         + ' 剩余 ' + num(a.gemsLeft)
-         + ' · 获取 ' + num(a.gained)
-         + ' · 已售 ' + num(a.gemsSold)
-         + ' · 净利 ' + money(a.profit);
+         + ' 剩余 ' + num(a.gemsLeft) + tail;
   });
 
-  return '<div class="st-day">'
+  return '<div class="st-day' + (isBlank ? ' is-blank' : '') + '">'
     + '<div class="st-head">'
     +   '<span class="dt">' + snap.date + '</span>'
     +   '<span class="wk">' + weekdayOf(snap.date) + '</span>'
@@ -2085,6 +2236,7 @@ const fName    = document.getElementById('fName');
 const fJob     = document.getElementById('fJob');
 const fLevel   = document.getElementById('fLevel');
 const fWealth  = document.getElementById('fWealth');
+const fInitLeft = document.getElementById('fInitLeft');
 let modalMode = 'add';   // 'add' | 'edit'
 let modalIdx  = -1;
 
@@ -2102,7 +2254,9 @@ function openModal(mode, idx){
   /* 财富值：与等级一样，直接回填独立数值 */
   fWealth.value = c ? (Number(c.wealth) ? String(c.wealth) : '') : '';
   fWealth.placeholder = '如 12000（可留空）';
-  [fAccount, fName, fJob, fLevel, fWealth].forEach(function(el){
+  /* 初始存量：同理，直接回填独立数值 */
+  fInitLeft.value = c ? (Number(c.initLeft) ? String(c.initLeft) : '') : '';
+  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
@@ -2118,6 +2272,7 @@ function modalOk(){
   const job     = fJob.value.trim();
   const lvRaw   = fLevel.value.trim();
   const wRaw    = fWealth.value.trim();
+  const ilRaw   = fInitLeft.value.trim();
 
   /* 账号必填 */
   let bad = false;
@@ -2131,20 +2286,28 @@ function modalOk(){
   if(wRaw !== '' && !/^-?\d+(\.\d+)?$/.test(wRaw)){
     fWealth.classList.add('bad'); fWealth.closest('.field').classList.add('bad'); bad = true;
   } else { fWealth.classList.remove('bad'); fWealth.closest('.field').classList.remove('bad'); }
+  /* 初始存量必须是数字（可留空） */
+  if(ilRaw !== '' && !/^-?\d+(\.\d+)?$/.test(ilRaw)){
+    fInitLeft.classList.add('bad'); fInitLeft.closest('.field').classList.add('bad'); bad = true;
+  } else { fInitLeft.classList.remove('bad'); fInitLeft.closest('.field').classList.remove('bad'); }
   if(bad){
     (fAccount.classList.contains('bad') ? fAccount
-      : fLevel.classList.contains('bad') ? fLevel : fWealth).focus();
+      : fLevel.classList.contains('bad') ? fLevel
+      : fWealth.classList.contains('bad') ? fWealth : fInitLeft).focus();
     return;
   }
 
   const level = lvRaw === '' ? '' : Number(lvRaw);
   /* 财富值：独立数值，留空按 0 计 */
   const wealthVal = (wRaw === '') ? 0 : Number(wRaw);
+  /* 初始存量：独立数值，留空按 0 计（= 首条整条算获取，老行为） */
+  const initLeftVal = (ilRaw === '') ? 0 : Number(ilRaw);
 
   if(modalMode === 'edit'){
     const c = ACCOUNTS[modalIdx];
     c.account = account; c.name = name; c.job = job; c.level = level;
     c.wealth = wealthVal;
+    c.initLeft = initLeftVal;
     /* 同步更新已展开明细的标题 */
     const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
     if(tt) tt.textContent = (name || '未命名角色') + ' · 每日明细';
@@ -2154,7 +2317,8 @@ function modalOk(){
   } else {
     ACCOUNTS.push({
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
-      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0, wealth: wealthVal,
+      gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
+      wealth: wealthVal, initLeft: initLeftVal,
       records:[], flags:{}
     });
     render();
@@ -2167,7 +2331,7 @@ function modalOk(){
 document.getElementById('mdCancel').addEventListener('click', closeModal);
 document.getElementById('mdOk').addEventListener('click', modalOk);
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
-[fAccount, fName, fJob, fLevel, fWealth].forEach(function(el){
+[fAccount, fName, fJob, fLevel, fWealth, fInitLeft].forEach(function(el){
   el.addEventListener('input', function(){
     el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
   });
@@ -2289,6 +2453,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
           chaosCost: Number(s.chaosCost)||0,
           wealth: Number(s.wealth)||0,
+          initLeft: Number(s.initLeft)||0,
           records: Array.isArray(s.records) ? s.records.map(function(r){
             return { date:r.date || '', time:r.time || '00:00:00',
                      gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
