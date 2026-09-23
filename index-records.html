@@ -713,6 +713,13 @@
   </div>
 </div>
 
+<!-- 数据文件名。单独放一个 script（而不是写在下面的大脚本里），是为了让它
+     在「任何页面脚本跑之前」就已是可读的全局值。
+     端到端测试另有一个更靠网络层的钩子 window.__DATA_FILENAME__（见下面
+     dataFilename() 的注释），优先于这个变量。
+     页面自己只用这一个变量，改成别的值不影响正常使用。 -->
+<script>window.__DATA_PATH__ = 'data.json';</script>
+
 <script>
 /* ============================================================
  * 数据区 —— 初始角色（其余角色用顶部 ＋ 按钮新增）
@@ -1208,7 +1215,7 @@ const CFG = {
   api   : '',
   owner : 'dycxlcvxv00',
   repo  : 'baozhan-data',
-  path  : 'data.json',
+  path  : (typeof window !== 'undefined' && window.__DATA_PATH__) || 'data.json',
   token : '',                 /* 仅本机调试可填；填了会被 GitHub 推送保护拦下，别提交 */
   branch: 'main'
 };
@@ -1280,16 +1287,25 @@ function apiBase(){
 }
 function useWorker(){ return !!apiBase(); }
 
-/* 端点：Worker 模式下是 /data.json，直连模式下是 GitHub Contents API */
+/* 端点：Worker 模式下是 /data.json，直连模式下是 GitHub Contents API
+ *
+ * __DATA_FILENAME__ 是给端到端测试留的「网络层改写钩子」：
+ * 测试要把数据文件换成 data.test.json（与正式数据隔离），这件事只能在
+ * 页面加载前、由网络层决定 —— 页面的 CFG.path 是常量，而 cloudInit() 在页面
+ * 加载瞬间就按它去拉云端，等测试跑到 page.evaluate 再改路径，首次拉取早已发出。
+ * 不设这个钩子时，行为与从前完全一致（就是 CFG.path = data.json）。 */
+function dataFilename(){
+  return (typeof window !== 'undefined' && window.__DATA_FILENAME__) || CFG.path;
+}
 function readURL(){
   const b = apiBase();
-  return (b ? b + '/' + CFG.path : 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + CFG.path)
+  return (b ? b + '/' + dataFilename() : 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + dataFilename())
          + '?t=' + Date.now();
 }
 function writeURL(){
   const b = apiBase();
-  return b ? b + '/' + CFG.path
-           : 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + CFG.path;
+  return b ? b + '/' + dataFilename()
+           : 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + dataFilename();
 }
 function cloudHeaders(){
   if(useWorker()) return { 'Content-Type':'application/json' };
@@ -1380,9 +1396,24 @@ function writeCache(data){
 let pushTimer = null, pushPending = false, pushRetry = 0, retryTimer = null;
 const RETRY_DELAYS = [3000, 8000, 20000, 60000];
 
+/* 改动序号：每产生一次待推送的改动就 +1。
+ *
+ * 为什么需要它（修的是一个真实的数据丢失竞态）：
+ *   doPush() 里有 await cloudPush() —— 请求在飞的这段时间（几十毫秒到几秒），
+ *   用户完全可能又改了一次，schedulePush() 会正确地再次 pushPending = true、
+ *   再排一次 doPush。可是等在飞的那个请求回来时，老代码会**无条件**
+ *   pushPending = false，把用户刚产生的那次改动标记给抹掉。
+ *   接着下一次 doPush() 一进来看到 pushPending 已是 false，直接 return ——
+ *   于是最后那次改动永远推不上去，本地看着是对的、云端是旧的。
+ *   （端到端测试里每跑必现：结算 → 追录 → 再结算，最后一份快照进不了云端。）
+ * 修法：推送前记下序号，回来时若序号已经变了，说明推送期间有新改动，
+ *   就不能清 pushPending，而要立刻再推一次。 */
+let pushSeq = 0;
+
 function schedulePush(delay){
   if(!useWorker() && !CFG.token) return;    /* 纯本地模式不推送 */
   pushPending = true;
+  pushSeq++;
   clearTimeout(retryTimer);
   cloudUI('syncing', '同步中…');
   clearTimeout(pushTimer);
@@ -1390,12 +1421,19 @@ function schedulePush(delay){
 }
 async function doPush(){
   if(!pushPending) return;
+  const seqAtSend = pushSeq;                /* 记住这次推的是第几版数据 */
   const payload = serialize();
   try{
     const res = await cloudPush(payload);
+    clearTimeout(retryTimer);
+    if(pushSeq !== seqAtSend){
+      /* 推送期间又有新改动 → 别清标记，马上再推一次 */
+      pushRetry = 0;
+      pushTimer = setTimeout(doPush, 0);
+      return;
+    }
     pushPending = false;
     pushRetry = 0;
-    clearTimeout(retryTimer);
     /* Worker 会把云端独有的快照日期并进来，这里把合并结果收回本地，
        避免下次推送又"少"了那几天 */
     if(res && res.mergedSnapshots && typeof res.mergedSnapshots === 'object'
@@ -1456,8 +1494,9 @@ async function cloudManual(){
     }
 
     /* 本机有数据 → 推上去（Worker 负责合并云端独有的快照） */
+    const seqAtSend = pushSeq;              /* 同 doPush：别抹掉推送期间的新改动 */
     const res = await cloudPush(serialize());
-    pushPending = false;
+    if(pushSeq === seqAtSend) pushPending = false;
     if(res && res.mergedSnapshots && Array.isArray(res.mergedFromCloud)){
       res.mergedFromCloud.forEach(function(d){
         if(res.mergedSnapshots[d] && !SNAPSHOTS[d]) SNAPSHOTS[d] = res.mergedSnapshots[d];
