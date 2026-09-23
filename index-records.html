@@ -290,9 +290,11 @@
   .cell .v.gold{color:var(--ok)}          /* 已出售晶石总价格 → 绿 */
   .cell .v.plain{color:#ff6b6b}           /* 人工费用 → 红 */
   .cell .v.chaos{color:#c77bff}           /* 秘境消耗晶石 → 紫 */
-  .cell .v.inc{color:var(--txt)}          /* 已获取 / 净利润 → 正绿负红，见下 */
+  .cell .v.inc{color:var(--txt)}          /* 净利润 → 正绿负红，见下 */
   .cell .v.inc.pos{color:var(--ok)}
   .cell .v.inc.neg{color:#ff6b6b}
+  /* 已获取晶石：纯白偏亮，压成灰色，视觉上退到次要层级 */
+  .cell .v.gain{color:var(--dim)}
   .cell .v.hit{animation:flash .7s ease}
 
   /* 只读格（当日收入）：上方数值 + 下方「自动」占位，与录入格等高对齐 */
@@ -845,11 +847,9 @@ function refreshNumbers(i){
     const t = totals(c);
     /* 7 列：当前剩余 / 已获取 / 已出售 / 收入 / 人工费用 / 净利润 / 秘境消耗 */
     setV(row,'gemsLeft',  intNum(t.gemsLeft), 'hit');
-    /* 已获取晶石：逐条累加相邻剩余之差，允许负数 */
+    /* 已获取晶石：累加相邻剩余的增长量，恒 ≥ 0；显示为灰色，弱化视觉层级 */
     const g = gained(c);
     setV(row,'gained', g, 'hit');
-    const gEl = row.querySelector('[data-v="gained"]');
-    if(gEl) gEl.classList.toggle('neg', g < 0);
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
@@ -1035,9 +1035,8 @@ function whoHTML(c, i){
 function cardHTML(c, i){
   const color = THEME[i % THEME.length];
   const t = totals(c);
-  /* 已获取晶石：逐条累加相邻剩余之差，允许负数 */
+  /* 已获取晶石：累加相邻剩余的增长量，恒 ≥ 0 */
   const g = gained(c);
-  const gCls = g < 0 ? ' neg' : '';
   /* 净利润 = 收入 − 人工费用 */
   const p = t.soldValue - t.laborCost;
   const pCls = p > 0 ? ' pos' : (p < 0 ? ' neg' : '');
@@ -1068,7 +1067,7 @@ function cardHTML(c, i){
     +   '<div class="cells">'
     +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '现有多少填多少', '当前剩余晶石',
     +            '当前剩余晶石是「时点值」：每次录入以最新一次为准，不累加。现在还剩多少就填多少。')
-    +     roCell('gained', g, 'inc' + gCls,
+    +     roCell('gained', g, 'gain',
     +            '已获取晶石 = 逐条累加「本次剩余 − 上次剩余」的增长量；本次剩余未超过上次则记 0', '已获取晶石')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售',      '已出售晶石')
     +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入',      '收入')
