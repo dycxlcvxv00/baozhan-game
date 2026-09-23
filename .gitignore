@@ -14,3 +14,10 @@ Thumbs.db
 
 # 本地临时
 *.local
+
+# 凭据 / 密钥 —— 绝不提交
+.env
+.env.*
+.secrets/
+*.token
+*.pem
