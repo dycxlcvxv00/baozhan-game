@@ -25,7 +25,7 @@
     --el:var(--accent);
     /* 行内布局：序号 / 角色信息 / 4 数据列 / 展开 —— 列头与卡片共用，保证对齐 */
     --c-idx:56px; --c-who:344px; --c-exp:44px;
-    --cols:5;   /* 数据列数：当前剩余 / 当日收入 / 已出售总数 / 已出售总价 / 人工费用 */
+    --cols:6;   /* 数据列数：当前剩余 / 当日收入 / 角色总收入 / 已出售总数 / 已出售总价 / 人工费用 */
   }
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
@@ -290,6 +290,10 @@
   table.dt td{padding:6px 10px;border-bottom:1px solid rgba(125,165,225,0.06);white-space:nowrap;text-align:center;overflow:hidden;text-overflow:ellipsis}
   table.dt tbody tr:hover{background:rgba(255,255,255,0.025)}
   table.dt td.d{color:var(--dim)}
+  table.dt td.t{color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:11.5px;letter-spacing:-.2px;opacity:.92}
+  table.dt td.n.cum{color:var(--accent)}
+  table.dt th.th-t{color:var(--mute)}
   table.dt td.n{font-weight:800}
   table.dt td.n.ok{color:var(--ok)} table.dt td.n.purple{color:var(--accent2)}
   table.dt td.n.gold{color:var(--gold)} table.dt td.n.plain{color:var(--txt)}
@@ -418,6 +422,7 @@
     <div class="h-cells">
       <div class="h-cell">当前剩余晶石</div>
       <div class="h-cell">当日收入</div>
+      <div class="h-cell">角色总收入</div>
       <div class="h-cell">已出售晶石总数</div>
       <div class="h-cell">已出售晶石总价格</div>
       <div class="h-cell">人工费用</div>
@@ -511,9 +516,23 @@ function today(){
   const d = new Date(), p = x => String(x).padStart(2,'0');
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
 }
+/* 当前时间 HH:MM:SS —— 录入明细时一并写入，精确到秒 */
+function nowTime(){
+  const d = new Date(), p = x => String(x).padStart(2,'0');
+  return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+/* 排序用：把「日期 + 时间」拼成可比字符串；旧记录无 time 视为 00:00:00 */
+function recStamp(r){ return String(r.date || '') + ' ' + String(r.time || '00:00:00'); }
 /* 当日收入 = 当日售价 - 当日人工（自动算） */
 function income(r){ return (Number(r.dayValue)||0) - (Number(r.dayLabor)||0); }
 function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v); }
+/* 卡片的「当日收入」只统计今天的记录（按日期筛选），跨天自动归零 */
+function todayIncome(c){
+  const d = today();
+  return (c.records||[]).reduce(function(a, r){
+    return String(r.date||'') === d ? a + income(r) : a;
+  }, 0);
+}
 
 /* 累计值 = 基准 + 明细 */
 function totals(c){
@@ -535,8 +554,8 @@ function summarize(list){
     return a;
   }, { roles:list.length, gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0 });
 }
-/* 当日收入累计 = 累计售价 − 累计人工 */
-function incomeOf(c){ const t = totals(c); return t.soldValue - t.laborCost; }
+/* 角色总收入 = 该角色累计售价 − 累计人工 */
+function roleIncome(c){ const t = totals(c); return t.soldValue - t.laborCost; }
 
 /* ============================================================
  * 存储
@@ -597,7 +616,12 @@ function loadLocal(){
       gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
       soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
       wealth: Number(s.wealth)||0,
-      records: Array.isArray(s.records) ? s.records : [],
+      records: Array.isArray(s.records) ? s.records.map(function(r){
+        /* 兼容旧记录：没有 time 的补 00:00:00，保证排序稳定 */
+        return { date:r.date || '', time:r.time || '00:00:00',
+                 gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
+                 dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0 };
+      }) : [],
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
@@ -643,14 +667,24 @@ function renderSummary(sum, animate){
 function refreshNumbers(i){
   const row = document.querySelector('.row[data-i="'+i+'"]');
   if(row){
-    const t = totals(ACCOUNTS[i]);
+    const c = ACCOUNTS[i];
+    const t = totals(c);
     setV(row,'gemsLeft',  intNum(t.gemsLeft), 'hit');
-    const dInc = t.soldValue - t.laborCost;
-    setV(row,'dayIncome', money(dInc), 'hit');
+    /* 当日收入：只算今天 */
+    const tInc = todayIncome(c);
+    setV(row,'dayIncome', money(tInc), 'hit');
     const dEl = row.querySelector('[data-v="dayIncome"]');
     if(dEl){
-      dEl.classList.toggle('pos', dInc > 0);
-      dEl.classList.toggle('neg', dInc < 0);
+      dEl.classList.toggle('pos', tInc > 0);
+      dEl.classList.toggle('neg', tInc < 0);
+    }
+    /* 角色总收入：累计售价 − 累计人工 */
+    const rInc = t.soldValue - t.laborCost;
+    setV(row,'roleIncome', money(rInc), 'hit');
+    const rEl = row.querySelector('[data-v="roleIncome"]');
+    if(rEl){
+      rEl.classList.toggle('pos', rInc > 0);
+      rEl.classList.toggle('neg', rInc < 0);
     }
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
@@ -680,26 +714,43 @@ function setText(sel, html, anim){
   if(anim){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
 }
 
-/* 明细表：含「当日收入」= 当日售价 - 当日人工 */
+/* 明细表：日期+时间 | 剩余 | 当日收入 | 角色总收入 | 当日出售 | 当日售价 | 当日人工 | 操作 */
 function detailHTML(i){
   const c = ACCOUNTS[i];
   const recs = c.records || [];
-  const rows = recs.length ? recs.slice().reverse().map(function(r){
+  /* 按「日期+时间」倒序：同一天可录入多条，时间精确到秒，最新的排最前 */
+  const ordered = recs.slice().sort(function(a, b){
+    return recStamp(b).localeCompare(recStamp(a));
+  });
+  /* 逐行累计「角色总收入」，让明细里也能看到累计口径 */
+  const asc = recs.slice().sort(function(a, b){
+    return recStamp(a).localeCompare(recStamp(b));
+  });
+  const runIncome = {};
+  asc.reduce(function(acc, r){
+    acc += income(r);
+    runIncome[recStamp(r)] = acc;
+    return acc;
+  }, 0);
+  const rows = ordered.length ? ordered.map(function(r){
     const oi = recs.indexOf(r);
     const z = v => (Number(v)||0) === 0 ? ' zero' : '';
     const inc = income(r);
     const icls = inc === 0 ? ' inc-zero' : ' income';
+    const cum = runIncome[recStamp(r)] || 0;
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + '</td>'
+      + '<td class="t">' + esc(r.time || '--:--:--') + '</td>'
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
       + '<td class="n'+icls+'">' + incomeText(r) + '</td>'
+      + '<td class="n cum'+(cum===0?' zero':'')+'">' + money(cum) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
       + '<td class="n plain'+z(r.dayLabor)+'">' + num(r.dayLabor) + '</td>'
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
-  }).join('') : '<tr><td colspan="7"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入『当日』数据，回车即自动记一条</div></td></tr>';
+  }).join('') : '<tr><td colspan="9"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入『当日』数据，回车即自动记一条</div></td></tr>';
 
   const s = recs.reduce(function(a,r){
     a.gemsLeft += Number(r.gemsLeft)||0; a.daySold += Number(r.daySold)||0;
@@ -709,9 +760,10 @@ function detailHTML(i){
   }, {gemsLeft:0,daySold:0,dayValue:0,dayLabor:0,inc:0});
 
   const foot = recs.length ? '<tfoot><tr>'
-    + '<td>合计 ' + recs.length + ' 条</td>'
+    + '<td colspan="2">合计 ' + recs.length + ' 条</td>'
     + '<td>' + intNum(s.gemsLeft) + '</td>'
     + '<td>' + (s.inc > 0 ? '+' : '') + num(s.inc) + '</td>'
+    + '<td>' + money(s.inc) + '</td>'
     + '<td>' + intNum(s.daySold) + '</td>'
     + '<td>' + num(s.dayValue) + '</td>'
     + '<td>' + num(s.dayLabor) + '</td>'
@@ -724,19 +776,20 @@ function detailHTML(i){
     +   '<span class="right2"><button class="mini danger" type="button" data-clear="' + i + '">清空明细</button></span>'
     + '</div>'
     + '<table class="dt">'
-    + '<colgroup><col class="c-date" />'
+    + '<colgroup><col class="c-date" /><col class="c-time" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" />'
-    +   '<col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
+    +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
     + '<thead><tr>'
-    +   '<th>日期</th><th>剩余晶石</th><th>当日收入</th><th>当日出售</th>'
-    +   '<th>当日售价</th><th>当日人工</th><th></th>'
+    +   '<th>日期</th><th>时间</th><th>剩余晶石</th><th>当日收入</th><th>角色总收入</th>'
+    +   '<th>当日出售</th><th>当日售价</th><th>当日人工</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
     + foot
     + '</table></div>';
 }
 
-/* 明细表列宽按上方卡片实际像素对齐（序号+角色信息 = 日期列，4 数据列 = 四个数值列） */
+/* 明细表列宽按上方卡片实际像素对齐
+   colgroup: [日期, 时间, 剩余, 当日收入, 角色总收入, 当日出售, 当日售价, 当日人工, 展开] */
 function syncDetailCols(i){
   const row = document.querySelector('.row[data-i="' + i + '"]');
   if(!row) return;
@@ -756,15 +809,18 @@ function syncDetailCols(i){
   const cellEls = row.querySelectorAll('.cell');
   const px = v => Math.round(v * 100) / 100 + 'px';
 
-  cols[0].style.width = px(dateW);
-  /* colgroup: [日期, 剩余, 当日收入, 当日出售, 当日售价, 当日人工, 展开]
-     —— 5 个数据列逐一按卡片 .cell 的实际宽度写入，保证与顶部 5 栏严格对齐 */
-  const order = [0, 1, 2, 3, 4];
-  order.forEach(function(ci, k){
-    const w = cellEls[ci] ? cellEls[ci].getBoundingClientRect().width : (tblW - dateW - actW) / 5;
-    cols[k + 1].style.width = px(w);
-  });
-  cols[6].style.width = px(actW);
+  /* 时间列独立占一小段，从日期列右侧「借」出，不破坏数据列与卡片的对齐 */
+  const timeW = 78;
+  cols[0].style.width = px(Math.max(dateW - timeW, 60));
+  cols[1].style.width = px(timeW);
+  /* 6 个数据列逐一按卡片 .cell 的实际宽度写入，保证与列标题条 6 栏严格对齐 */
+  const n = cellEls.length;
+  for(let k = 0; k < n; k++){
+    const w = cellEls[k] ? cellEls[k].getBoundingClientRect().width
+                         : (tblW - dateW - actW) / Math.max(n, 1);
+    if(cols[k + 2]) cols[k + 2].style.width = px(w);
+  }
+  if(cols[n + 2]) cols[n + 2].style.width = px(actW);
 }
 
 function syncAllDetailCols(){
@@ -817,20 +873,23 @@ function whoHTML(c, i){
     + '</div>';
 }
 
-/* 一行一卡：序号 | 角色信息（只读/可编辑） | 4 数值格(居中) + 录入框 | ▼ */
+/* 一行一卡：序号 | 角色信息（只读/可编辑） | 6 数值格(居中) + 录入框 | ▼ */
 function cardHTML(c, i){
   const color = THEME[i % THEME.length];
   const t = totals(c);
-  /* 当日收入 = 累计售价 − 累计人工（自动计算），正绿负红 */
-  const dInc = t.soldValue - t.laborCost;
-  const dIncCls = dInc > 0 ? ' pos' : (dInc < 0 ? ' neg' : '');
+  /* 当日收入 = 只统计「今天」录入的记录，正绿负红 */
+  const tInc = todayIncome(c);
+  const tIncCls = tInc > 0 ? ' pos' : (tInc < 0 ? ' neg' : '');
+  /* 角色总收入 = 累计售价 − 累计人工 */
+  const rInc = t.soldValue - t.laborCost;
+  const rIncCls = rInc > 0 ? ' pos' : (rInc < 0 ? ' neg' : '');
   const cell = (vkey, vhtml, cls, ph) =>
     '<div class="cell">'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
     + '<input class="input" type="number" inputmode="decimal" step="any" '
     +   'data-i="' + i + '" data-f="' + vkey + '" placeholder="' + ph + '" />'
     + '</div>';
-  /* 只读数值格（如「当日收入」，由售价−人工自动算出，无需录入） */
+  /* 只读数值格（如「当日收入」「角色总收入」，自动算出，无需录入） */
   const roCell = (vkey, vhtml, cls, tip) =>
     '<div class="cell ro" title="' + tip + '">'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
@@ -843,8 +902,10 @@ function cardHTML(c, i){
     +   whoHTML(c, i)
     +   '<div class="cells">'
     +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '当日剩余')
-    +     roCell('dayIncome', money(dInc), 'inc' + dIncCls,
-    +            '当日收入 = 当日售价 − 当日人工，自动计算')
+    +     roCell('dayIncome', money(tInc), 'inc' + tIncCls,
+    +            '当日收入 = 今日（' + today() + '）录入的售价 − 人工，每天自动归零')
+    +     roCell('roleIncome', money(rInc), 'inc' + rIncCls,
+    +            '角色总收入 = 该角色累计售价 − 累计人工')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '当日出售')
     +     cell('soldValue', money(t.soldValue), 'gold',   '当日售价')
     +     cell('laborCost', money(t.laborCost), 'plain',  '当日人工')
@@ -898,7 +959,9 @@ function commitEntry(i){
     return;
   }
   ACCOUNTS[i].records = ACCOUNTS[i].records || [];
-  const rec = { date:today(), gemsLeft:vals[0], daySold:vals[1], dayValue:vals[2], dayLabor:vals[3] };
+  /* 同时记录日期与时间，时间精确到秒 */
+  const rec = { date:today(), time:nowTime(),
+                gemsLeft:vals[0], daySold:vals[1], dayValue:vals[2], dayLabor:vals[3] };
   ACCOUNTS[i].records.push(rec);
   Array.prototype.forEach.call(ins, function(el){ el.value = ''; });
   refreshNumbers(i);
@@ -909,7 +972,7 @@ function commitEntry(i){
     if(wasOpen) syncDetailCols(i);
   }
   saveLocal();
-  toast('已记录（当日收入 ' + incomeText(rec) + '）');
+  toast('已记录 ' + rec.time + '（当日收入 ' + incomeText(rec) + '）');
 }
 
 /* 键盘 */
