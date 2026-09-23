@@ -525,13 +525,17 @@
 /* ============================================================
  * 数据区 —— 初始角色（其余角色用顶部 ＋ 按钮新增）
  * ------------------------------------------------------------
- * 累计值 = 基准值 + 所有明细累加
+ * 两类字段语义不同：
+ *   ① 时点状态「当前剩余晶石」—— 以最新一条录入为准（覆盖，不累加）
+ *      录多少就是当前还剩多少，代表盘点实际值
+ *   ② 流水「已出售 / 收入 / 人工费用 / 秘境消耗」—— 基准值 + 明细累加
+ *      代表"累计发生了多少"
  *   id        内部唯一标识
  *   account   账号（可留空，即在卡片「角色名」处直接录入）
  *   name      角色名
  *   level     等级    job 职业
- *   gemsLeft / gemsSold / soldValue / laborCost  历史累计基准
- *   records[] 每日明细 [{date, gemsLeft, daySold, dayValue, dayLabor}]
+ *   gemsLeft / gemsSold / soldValue / laborCost / chaosCost  历史累计基准
+ *   records[] 明细 [{date, time, gemsLeft, daySold, dayValue, dayLabor, chaosCost}]
  * ============================================================ */
 let ACCOUNTS = [
   { id:'a1', account:'', name:'', level:'', job:'',
@@ -573,30 +577,53 @@ function recStamp(r){ return String(r.date || '') + ' ' + String(r.time || '00:0
 function income(r){ return (Number(r.dayValue)||0) - (Number(r.dayLabor)||0); }
 function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v); }
 
-/* 累计值 = 基准 + 明细
+/* 汇总角色数据
+ * 「当前剩余晶石」= 时点状态 —— 以最新一条录入为准（覆盖，不累加）
+ * 其余 4 项 = 流水 —— 基准值 + 明细累加
  * 字段：gemsLeft 当前剩余 / gemsSold 已出售 / soldValue 收入 /
  *       laborCost 人工费用 / chaosCost 秘境消耗晶石 */
 function totals(c){
-  const t = { gemsLeft:Number(c.gemsLeft)||0, gemsSold:Number(c.gemsSold)||0,
+  /* 流水字段：累加 */
+  const t = { gemsLeft:0, gemsSold:Number(c.gemsSold)||0,
               soldValue:Number(c.soldValue)||0, laborCost:Number(c.laborCost)||0,
               chaosCost:Number(c.chaosCost)||0 };
   (c.records||[]).forEach(function(r){
-    t.gemsLeft  += Number(r.gemsLeft)  || 0;
     t.gemsSold  += Number(r.daySold)   || 0;
     t.soldValue += Number(r.dayValue)  || 0;
     t.laborCost += Number(r.dayLabor)  || 0;
     t.chaosCost += Number(r.chaosCost) || 0;
   });
+  /* 剩余：取时序上最后一条录入的值；没有明细时退回基准值 */
+  t.gemsLeft = latestLeft(c);
   return t;
+}
+
+/* 按时间升序排列明细
+ * 注意：日期+时间只精确到秒，同一秒内可能有多条，排序结果不稳定。
+ * 而 records 数组本身是「只追加」的，天然就是录入顺序，
+ * 因此以「数组下标」为主键、时间为辅键排序，保证同一秒内也按录入先后排列。 */
+function recsAsc(c){
+  return (c.records||[]).map(function(r, i){ return { r:r, i:i }; })
+    .sort(function(a, b){
+      const ka = recStamp(a.r) + '#' + String(a.i).padStart(6,'0');
+      const kb = recStamp(b.r) + '#' + String(b.i).padStart(6,'0');
+      return ka.localeCompare(kb);
+    })
+    .map(function(x){ return x.r; });
+}
+/* 最新一次的剩余晶石 —— 时序上最后一条；无明细则为基准值 */
+function latestLeft(c){
+  const recs = c.records || [];
+  if(!recs.length) return Number(c.gemsLeft) || 0;
+  const asc = recsAsc(c);
+  return Number(asc[asc.length - 1].gemsLeft) || 0;
 }
 
 /* 已获取晶石 = 逐条累加「本条剩余 − 上一条剩余」（首条 = 本条剩余 − 0）
  * 允许负数：剩余下降时该条增量为负，如实累加。
- * 按「日期+时间」升序遍历，保证时序正确。 */
+ * 用 recsAsc() 保证按录入先后遍历（同一秒内也稳定）。 */
 function gained(c){
-  const recs = (c.records||[]).slice().sort(function(a, b){
-    return recStamp(a).localeCompare(recStamp(b));
-  });
+  const recs = recsAsc(c);
   let prev = 0, acc = 0;
   recs.forEach(function(r){
     const cur = Number(r.gemsLeft) || 0;
@@ -609,6 +636,7 @@ function gained(c){
 /* 净利润 = 收入 − 人工费用（角色级） */
 function netProfit(c){ const t = totals(c); return t.soldValue - t.laborCost; }
 
+/* 顶部汇总：gemsLeft = 各角色「最新剩余」相加（盘库总额），其余为流水累加 */
 function summarize(list){
   return list.reduce(function(a,c){
     const t = totals(c);
@@ -796,29 +824,27 @@ function setText(sel, html, anim){
 function detailHTML(i){
   const c = ACCOUNTS[i];
   const recs = c.records || [];
-  /* 按「日期+时间」倒序：同一天可录入多条，时间精确到秒，最新的排最前 */
-  const ordered = recs.slice().sort(function(a, b){
-    return recStamp(b).localeCompare(recStamp(a));
-  });
-  /* 升序遍历，逐条算出「已获取增量」与「净利润」，供每行展示 */
-  const asc = recs.slice().sort(function(a, b){
-    return recStamp(a).localeCompare(recStamp(b));
-  });
-  const runGain = {}, runProfit = {};
+  /* 稳定时序：先按时间升序（同一秒按录入先后），再反转得到"最新在最上" */
+  const asc = recsAsc(c);
+  const ordered = asc.slice().reverse();
+  /* 逐条累计「已获取」与「净利润」，用下标做键，避免同秒记录互相覆盖 */
+  const runGain = [], runProfit = [];
   let prevLeft = 0, accGain = 0, accProfit = 0;
-  asc.forEach(function(r){
+  asc.forEach(function(r, k){
     const cur = Number(r.gemsLeft) || 0;
     accGain += (cur - prevLeft);          /* 已获取：允许负数 */
     prevLeft = cur;
     accProfit += income(r);
-    runGain[recStamp(r)] = accGain;
-    runProfit[recStamp(r)] = accProfit;
+    runGain[k] = accGain;
+    runProfit[k] = accProfit;
   });
+  const idxOf = new Map();
+  asc.forEach(function(r, k){ idxOf.set(r, k); });
   const rows = ordered.length ? ordered.map(function(r){
     const oi = recs.indexOf(r);
+    const k  = idxOf.get(r);
     const z = v => (Number(v)||0) === 0 ? ' zero' : '';
-    const gInc = runGain[recStamp(r)] || 0;
-    const pInc = runProfit[recStamp(r)] || 0;
+    const gInc = runGain[k] || 0;
     const pSingle = income(r);
     const pCls = pSingle > 0 ? ' income' : (pSingle < 0 ? ' neg' : ' inc-zero');
     return '<tr>'
@@ -836,30 +862,6 @@ function detailHTML(i){
       + '</tr>';
   }).join('') : '<tr><td colspan="10"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
 
-  const s = recs.reduce(function(a,r){
-    a.gemsLeft += Number(r.gemsLeft)||0; a.daySold += Number(r.daySold)||0;
-    a.dayValue += Number(r.dayValue)||0; a.dayLabor += Number(r.dayLabor)||0;
-    a.chaosCost += Number(r.chaosCost)||0;
-    a.profit += income(r);
-    return a;
-  }, {gemsLeft:0,daySold:0,dayValue:0,dayLabor:0,chaosCost:0,profit:0});
-
-  /* 合计行的「已获取」= 末次剩余 − 首次剩余（与卡片 gained() 同口径的净变化） */
-  const firstLeft = Number((asc[0]||{}).gemsLeft)||0;
-  const lastLeft  = Number((asc[asc.length-1]||{}).gemsLeft)||0;
-  const totalGain = lastLeft - firstLeft;
-
-  const foot = recs.length ? '<tfoot><tr>'
-    + '<td colspan="2">合计 ' + recs.length + ' 条</td>'
-    + '<td>' + intNum(s.gemsLeft) + '</td>'
-    + '<td class="' + (totalGain<0?'neg':'') + '">' + num(totalGain) + '</td>'
-    + '<td>' + intNum(s.daySold) + '</td>'
-    + '<td>' + num(s.dayValue) + '</td>'
-    + '<td>' + num(s.dayLabor) + '</td>'
-    + '<td>' + money(s.profit) + '</td>'
-    + '<td>' + intNum(s.chaosCost) + '</td>'
-    + '<td></td></tr></tfoot>' : '';
-
   return '<div class="detail-inner panel">'
     + '<div class="detail-head">'
     +   '<span class="ttl2">' + esc(c.name || '未命名角色') + ' · 每日明细</span>'
@@ -875,7 +877,6 @@ function detailHTML(i){
     +   '<th>收入</th><th>人工费用</th><th>净利润</th><th>秘境消耗</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
-    + foot
     + '</table></div>';
 }
 
@@ -976,8 +977,8 @@ function cardHTML(c, i){
   /* 净利润 = 收入 − 人工费用 */
   const p = t.soldValue - t.laborCost;
   const pCls = p > 0 ? ' pos' : (p < 0 ? ' neg' : '');
-  const cell = (vkey, vhtml, cls, ph, k) =>
-    '<div class="cell">'
+  const cell = (vkey, vhtml, cls, ph, k, tip) =>
+    '<div class="cell"' + (tip ? ' title="' + tip + '"' : '') + '>'
     + '<span class="k">' + (k || '') + '</span>'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
     + '<input class="input" type="number" inputmode="decimal" step="any" '
@@ -996,7 +997,8 @@ function cardHTML(c, i){
     +   '<div class="idx">' + serial(i+1) + '</div>'
     +   whoHTML(c, i)
     +   '<div class="cells">'
-    +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '当前剩余',      '当前剩余晶石')
+    +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '现有多少填多少', '当前剩余晶石',
+    +            '当前剩余晶石是「时点值」：每次录入以最新一次为准，不累加。现在还剩多少就填多少。')
     +     roCell('gained', g, 'inc' + gCls,
     +            '已获取晶石 = 逐条累加「本次剩余 − 上次剩余」，允许负数', '已获取晶石')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售',      '已出售晶石')
@@ -1046,9 +1048,13 @@ function flashSaved(){
   savedTimer = setTimeout(function(){ el.textContent = '已自动保存'; }, 2600);
 }
 
-/* 录入提交：把 5 个录入框收成一条记录（未填按 0）
+/* 录入提交：把 5 个录入框收成一条记录
    录入项：当前剩余 / 已出售 / 收入 / 人工费用 / 秘境消耗晶石
-   另有两项自动：已获取晶石、净利润，不在此录入 */
+   另有两项自动：已获取晶石、净利润，不在此录入
+   —— 语义区别 ——
+   「当前剩余晶石」是时点值：填了就以填的为准，留空表示本次不改动，
+                    沿用当前最新剩余，绝不写成 0。
+   其余 4 项是流水：填多少记多少（留空按 0） */
 function commitEntry(i){
   const row = document.querySelector('.row[data-i="'+i+'"]');
   if(!row) return;
@@ -1056,10 +1062,13 @@ function commitEntry(i){
   /* 按 data-f 字段名收集，避免依赖 DOM 顺序 */
   const v = {};
   let anyFilled = false;
+  let leftFilled = false;
   Array.prototype.forEach.call(ins, function(el){
-    const n = parseFloat(el.value);
+    const raw = el.value == null ? '' : String(el.value).trim();
+    const n = parseFloat(raw);
     const ok = isFinite(n);
     if(ok && n !== 0) anyFilled = true;
+    if(el.dataset.f === 'gemsLeft' && raw !== '' && ok) leftFilled = true;
     v[el.dataset.f] = ok ? n : 0;
   });
   if(!anyFilled){
@@ -1067,10 +1076,12 @@ function commitEntry(i){
     return;
   }
   ACCOUNTS[i].records = ACCOUNTS[i].records || [];
+  /* 剩余留空 → 沿用当前最新剩余（覆盖语义下，"不改动"才是正确默认） */
+  const curLeft = latestLeft(ACCOUNTS[i]);
   /* 同时记录日期与时间，时间精确到秒 */
   const rec = {
     date: today(), time: nowTime(),
-    gemsLeft:  v.gemsLeft  || 0,
+    gemsLeft:  leftFilled ? v.gemsLeft : curLeft,
     daySold:   v.gemsSold  || 0,
     dayValue:  v.soldValue || 0,
     dayLabor:  v.laborCost || 0,
