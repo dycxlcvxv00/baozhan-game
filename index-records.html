@@ -23,9 +23,12 @@
     --txt:#eaf0ff; --dim:#93a4c4; --mute:#6c7da0;
     --accent:#2fe6d0; --accent2:#9b7bff; --gold:#ffcf6b; --ok:#57e39b;
     --el:var(--accent);
-    /* 行内布局：序号 / 角色信息 / 4 数据列 / 展开 —— 列头与卡片共用，保证对齐 */
-    --c-idx:82px; --c-who:344px; --c-exp:44px;
+    /* 行内布局：序号 / 角色信息 / 7 数据列 / 展开 —— 列头与卡片共用，保证对齐 */
+    --c-idx:82px; --c-who:262px; --c-exp:44px;
     --cols:7;   /* 数据列数：当前剩余 / 已获取 / 已出售 / 收入 / 人工费用 / 净利润 / 秘境消耗 */
+    /* 7 个数据列的总宽 = 整行宽 − 序号 − 角色信息 − 展开。汇总区复用同一条公式，
+       这样顶部「角色数量」正好压住「序号＋角色信息」，后 7 项与 7 个数据列逐列对齐。 */
+    --c-cells: calc(100% - var(--c-idx) - var(--c-who) - var(--c-exp));
   }
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
@@ -116,9 +119,36 @@
   body.fs #topbar{position:sticky;top:0;z-index:30}
 
   /* ---------- 汇总统计 ---------- */
-  #summary{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:16px}
-  @media (max-width:1680px){ #summary{grid-template-columns:repeat(4,1fr)} }
-  @media (max-width:980px){ #summary{grid-template-columns:repeat(2,1fr)} }
+  /* 汇总区：与下方 .colhead 同构（同为 flex + 相同的 flex 基准），
+     保证任意视口宽度下都与数据列逐列对齐。
+     —— 为什么不用 grid：.colhead 的 7 个数据列是 flex:1 会随视口压缩，
+        而 grid 的固定 calc 列宽不会，窄视口下右侧几项会逐列偏移。
+     结构：角色数量(跨 序号+角色信息) + 7 个数据格 + 展开占位 */
+  #summary{
+    display:flex;align-items:stretch;margin-bottom:16px;
+  }
+  /* 第 1 格：跨「序号 + 角色信息」，右边界正好压在「当前剩余晶石」左边界 */
+  #summary .sm.s-roles{
+    flex:0 0 auto;width:calc(var(--c-idx) + var(--c-who) + 1px);
+    padding:11px 16px;
+  }
+  /* 7 个数据格：与 .cells 的 7 列同比例伸缩 */
+  #summary .sm.s-data{flex:1 1 0;min-width:0}
+  /* 展开按钮占位：让末项右边界与最后一个数据列一致 */
+  #summary .sm.s-exp{display:block;flex:0 0 calc(var(--c-exp) + 1px);width:calc(var(--c-exp) + 1px);
+    padding:0;background:none;border:0;box-shadow:none;backdrop-filter:none}
+  /* 窄视口：放弃逐列对齐，退回等分网格
+     断点 1660px = .wrap 的 max-width(1600) + 左右 padding(52)，
+     即视口宽到能容纳完整 1600px 内容时才启用逐列对齐 */
+  @media (max-width:1660px){
+    #summary{display:grid;grid-template-columns:repeat(4,1fr);column-gap:10px}
+    #summary .sm.s-roles{width:auto;flex:none;padding:11px 16px}
+    #summary .sm.s-data{flex:none}
+    #summary .sm.s-exp{display:none}
+  }
+  @media (max-width:980px){
+    #summary{grid-template-columns:repeat(2,1fr)}
+  }
   .sm{padding:11px 16px;display:flex;flex-direction:column;gap:2px;overflow:hidden;align-items:center;text-align:center}
   .sm::after{content:none}
   .sm .k{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px}
@@ -353,7 +383,7 @@
   table.dt td.d{color:var(--dim)}
   table.dt td.t{color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     font-size:11.5px;letter-spacing:-.2px;opacity:.92}
-  table.dt td.n.cum{color:var(--accent)}
+  table.dt td.n.inc{color:var(--accent)}       /* 本次获取晶石：单次增量，恒 ≥ 0 */
   table.dt th.th-t{color:var(--mute)}
   table.dt td.n{font-weight:800}
   table.dt td.n.ok{color:var(--ok)} table.dt td.n.purple{color:var(--accent2)}
@@ -779,22 +809,24 @@ const ICONS = {
 function ico(name){ return '<span class="ico">' + (ICONS[name] || '') + '</span>'; }
 
 function renderSummary(sum, animate){
+  /* 第 1 项 s-roles 跨「序号 + 角色信息」；后 7 项 s-data 各占 1 个数据列宽；
+     末尾 s-exp 是展开按钮的占位，无内容 —— 与 .colhead 结构一一对应 */
   const items = [
-    { cls:'c-roles', ico:'roles', key:'roles',      k:'角色数量',         v:num(sum.roles) },
-    { cls:'c-left',  ico:'gem',   key:'gemsLeft',   k:'剩余晶石总量',     v:intNum(sum.gemsLeft) },
-    { cls:'c-gain',  ico:'gain',  key:'gained',     k:'已获取晶石总量',   v:num(sum.gained) },
-    { cls:'c-sold',  ico:'box',   key:'gemsSold',   k:'出售晶石总量',     v:intNum(sum.gemsSold) },
-    { cls:'c-money', ico:'money', key:'soldValue',  k:'总收入',           v:money(sum.soldValue) },
-    { cls:'c-labor', ico:'tool',  key:'laborCost',  k:'总支出（人工支出）', v:money(sum.laborCost) },
-    { cls:'c-net',   ico:'trend', key:'profit',     k:'净利润（总）',     v:money(sum.profit) },
-    { cls:'c-chaos', ico:'chaos', key:'chaosCost',  k:'秘境消耗晶石总量', v:intNum(sum.chaosCost) }
+    { cls:'c-roles', slot:'s-roles', ico:'roles', key:'roles',      k:'角色数量',         v:num(sum.roles) },
+    { cls:'c-left',  slot:'s-data',  ico:'gem',   key:'gemsLeft',   k:'剩余晶石总量',     v:intNum(sum.gemsLeft) },
+    { cls:'c-gain',  slot:'s-data',  ico:'gain',  key:'gained',     k:'已获取晶石总量',   v:num(sum.gained) },
+    { cls:'c-sold',  slot:'s-data',  ico:'box',   key:'gemsSold',   k:'出售晶石总量',     v:intNum(sum.gemsSold) },
+    { cls:'c-money', slot:'s-data',  ico:'money', key:'soldValue',  k:'总收入',           v:money(sum.soldValue) },
+    { cls:'c-labor', slot:'s-data',  ico:'tool',  key:'laborCost',  k:'总支出（人工支出）', v:money(sum.laborCost) },
+    { cls:'c-net',   slot:'s-data',  ico:'trend', key:'profit',     k:'净利润（总）',     v:money(sum.profit) },
+    { cls:'c-chaos', slot:'s-data',  ico:'chaos', key:'chaosCost',  k:'秘境消耗晶石总量', v:intNum(sum.chaosCost) }
   ];
   document.getElementById('summary').innerHTML = items.map(function(i){
-    return '<div class="sm panel ' + i.cls + '">'
+    return '<div class="sm panel ' + i.cls + ' ' + i.slot + '">'
       + '<span class="k">' + ico(i.ico) + i.k + '</span>'
       + '<span class="v" data-sum="' + i.key + '">' + i.v + '</span>'
       + '</div>';
-  }).join('');
+  }).join('') + '<div class="sm s-exp" aria-hidden="true"></div>';
   /* 负值标红：已获取、净利润、秘境消耗都可能为负 */
   [['gained','neg'],['profit','neg'],['chaosCost','neg']].forEach(function(pair){
     const el = document.querySelector('[data-sum="'+pair[0]+'"]');
@@ -865,30 +897,25 @@ function detailHTML(i){
   /* 稳定时序：先按时间升序（同一秒按录入先后），再反转得到"最新在最上" */
   const asc = recsAsc(c);
   const ordered = asc.slice().reverse();
-  /* 逐条累计「已获取」与「净利润」，用下标做键，避免同秒记录互相覆盖 */
+  /* 「本次获取晶石」= 单次增量（不是累计）：本次剩余 − 上次剩余，负数记 0。
+     直接用 gainedDeltas()，与卡片上的「已获取晶石」总数共用同一份计算，
+     明细各行的增量之和 === 卡片显示的总数，两处永远一致。
+     净利润仍是单条记录的「收入 − 人工」，本就与累计无关。 */
   const deltas = gainedDeltas(c);          /* 与 asc 同序，负增量已归 0 */
-  const runGain = [], runProfit = [];
-  let accGain = 0, accProfit = 0;
-  asc.forEach(function(r, k){
-    accGain += deltas[k];                  /* 已获取：只累加增长，恒 ≥ 0 */
-    accProfit += income(r);
-    runGain[k] = accGain;
-    runProfit[k] = accProfit;
-  });
   const idxOf = new Map();
   asc.forEach(function(r, k){ idxOf.set(r, k); });
   const rows = ordered.length ? ordered.map(function(r){
     const oi = recs.indexOf(r);
     const k  = idxOf.get(r);
     const z = v => (Number(v)||0) === 0 ? ' zero' : '';
-    const gInc = runGain[k] || 0;
+    const gInc = deltas[k] || 0;           /* 本次获取晶石：单次增量，恒 ≥ 0 */
     const pSingle = income(r);
     const pCls = pSingle > 0 ? ' income' : (pSingle < 0 ? ' neg' : ' inc-zero');
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + '</td>'
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
-      + '<td class="n cum' + (gInc === 0 ? ' zero' : '') + '">' + num(gInc) + '</td>'
+      + '<td class="n inc' + (gInc === 0 ? ' zero' : '') + '">' + num(gInc) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
       + '<td class="n plain'+z(r.dayLabor)+'">' + num(r.dayLabor) + '</td>'
@@ -910,7 +937,7 @@ function detailHTML(i){
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
     + '<thead><tr>'
-    +   '<th>日期</th><th>时间</th><th>剩余晶石</th><th>已获取</th><th>已出售</th>'
+    +   '<th>日期</th><th>时间</th><th>剩余晶石</th><th>本次获取晶石</th><th>已出售晶石</th>'
     +   '<th>收入</th><th>人工费用</th><th>净利润</th><th>秘境消耗</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
