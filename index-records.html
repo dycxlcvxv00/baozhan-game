@@ -24,7 +24,7 @@
     --accent:#2fe6d0; --accent2:#9b7bff; --gold:#ffcf6b; --ok:#57e39b;
     --el:var(--accent);
     /* 行内布局：序号 / 角色信息 / 4 数据列 / 展开 —— 列头与卡片共用，保证对齐 */
-    --c-idx:56px; --c-who:344px; --c-exp:44px;
+    --c-idx:82px; --c-who:344px; --c-exp:44px;
     --cols:7;   /* 数据列数：当前剩余 / 已获取 / 已出售 / 收入 / 人工费用 / 净利润 / 秘境消耗 */
   }
   *{box-sizing:border-box}
@@ -82,6 +82,30 @@
   }
   .chip.add:hover{background:rgba(47,230,208,0.18)}
   .chip.add .plus{font-size:16px;line-height:1;font-weight:800;margin-top:-1px}
+  /* 记录全部：一键提交所有卡片里填了值的录入框 */
+  .chip.commitall{
+    color:var(--accent);border-color:rgba(47,230,208,0.55);
+    background:linear-gradient(180deg,rgba(47,230,208,0.16),rgba(47,230,208,0.08));
+    font-weight:700;padding:0 14px;
+  }
+  .chip.commitall .tick{font-size:14px;line-height:1;font-weight:900;margin-top:-1px}
+  .chip.commitall .cnt{
+    min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:rgba(47,230,208,0.22);color:var(--accent);
+    font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+    transition:.18s;
+  }
+  /* 有内容待提交：金色高亮 + 呼吸，提示"该记录了" */
+  .chip.commitall.on{
+    color:var(--gold);border-color:rgba(255,207,107,0.62);
+    background:linear-gradient(180deg,rgba(255,207,107,0.22),rgba(255,207,107,0.10));
+    animation:pulse 1.7s ease-in-out infinite;
+  }
+  .chip.commitall.on .cnt{background:rgba(255,207,107,0.3);color:var(--gold)}
+  .chip.commitall:hover{transform:translateY(-1px)}
+  .chip.commitall:active{transform:translateY(0) scale(0.97)}
+  .chip.commitall.ok{animation:none}
   /* 全屏按钮：图标随状态切换 */
   .chip.iconbtn{padding:0 10px;font-size:15px;line-height:1}
   .chip.iconbtn .fs-off{display:none}
@@ -157,9 +181,8 @@
   .idx{
     flex:0 0 var(--c-idx);display:flex;align-items:center;justify-content:center;
     font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;
-    color:var(--el);letter-spacing:0;
+    color:var(--el);letter-spacing:0;gap:7px;
   }
-
   /* 角色信息区（靠左）—— 默认只读展示，点「修改」才变可编辑 */
   .who{
     flex:0 0 var(--c-who);min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;
@@ -267,29 +290,28 @@
   .input::-webkit-outer-spin-button,.input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .input[type=number]{-moz-appearance:textfield;appearance:textfield}
 
-  /* ---------- 录入区统一「记录」按钮（手机端主要提交入口） ---------- */
-  .savebar{
-    flex:0 0 auto;display:flex;align-items:center;justify-content:center;
-    padding:0 4px;
-  }
+  /* ---------- 卡片内「记录」按钮（序号右侧小圆钮） ---------- */
   .btnrec{
-    height:34px;padding:0 13px;border-radius:9px;cursor:pointer;
-    display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
-    background:linear-gradient(180deg,rgba(47,230,208,0.22),rgba(47,230,208,0.12));
-    border:1px solid rgba(47,230,208,0.55);color:var(--accent);
-    font-size:12.5px;font-weight:800;font-family:inherit;
-    transition:.16s;letter-spacing:.3px;
+    flex:0 0 30px;width:30px;height:30px;border-radius:50%;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:rgba(47,230,208,0.10);
+    border:1px solid rgba(47,230,208,0.34);color:rgba(47,230,208,0.6);
+    font-size:13px;font-family:inherit;transition:.16s;
   }
-  .btnrec:hover{background:linear-gradient(180deg,rgba(47,230,208,0.34),rgba(47,230,208,0.2))}
-  .btnrec:active{transform:scale(0.96)}
-  .btnrec .tick{font-size:14px;line-height:1;font-weight:900;margin-top:-1px}
-  /* 有未提交内容时高亮，提示"该保存了" */
+  .btnrec:hover{
+    background:rgba(47,230,208,0.22);border-color:rgba(47,230,208,0.7);
+    color:var(--accent);transform:scale(1.08);
+  }
+  .btnrec:active{transform:scale(0.94)}
+  .btnrec .tick{line-height:1;font-weight:900;margin-top:-1px}
+  /* 有未提交内容时高亮，提示"该记录了" */
   .btnrec.dirty{
     background:linear-gradient(180deg,rgba(255,207,107,0.26),rgba(255,207,107,0.14));
     border-color:rgba(255,207,107,0.62);color:var(--gold);
     animation:pulse 1.5s ease-in-out infinite;
+    box-shadow:0 0 12px rgba(255,207,107,0.35);
   }
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.62}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 
   /* 展开按钮 */
   .expand{
@@ -420,9 +442,7 @@
     .cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10);--cols:2}
     .cell:nth-child(2n){border-right:0}
     .cell:nth-child(-n+4){border-bottom:1px solid rgba(125,165,225,0.08)}
-    /* 窄屏：记录按钮独占一行、加高加大，手指好按 */
-    .savebar{flex:1 1 100%;border-top:1px solid rgba(125,165,225,0.10);padding:8px 10px}
-    .btnrec{width:100%;height:40px;font-size:14px;justify-content:center}
+    /* 窄屏：记录按钮随序号区一起放大，手指好按 */
     .expand{flex:0 0 100%;height:26px;border-left:0;border-top:1px solid rgba(125,165,225,0.10)}
     .colhead .h-exp{display:none}
     .colhead{display:none}   /* 窄屏字段名回填到每格 */
@@ -433,7 +453,8 @@
     #summary{grid-template-columns:repeat(2,1fr)}
     #topbar{padding:10px 14px;min-height:0;gap:10px}
     .sm .v{font-size:20px}
-    .idx{flex:0 0 44px;font-size:20px}
+    .idx{flex:0 0 84px;font-size:20px;gap:9px}
+    .btnrec{flex:0 0 34px;width:34px;height:34px;font-size:14px}
   }
 </style>
 </head>
@@ -443,6 +464,11 @@
   <!-- ========== 顶部栏 ========== -->
   <header id="topbar" class="panel">
     <span class="brand">角色晶石台账</span>
+    <button class="chip commitall" id="btnCommitAll" type="button"
+            title="一次性记录所有卡片里填写了数值的内容">
+      <span class="tick">✓</span>记录全部
+      <span class="cnt" id="commitCnt">0</span>
+    </button>
     <span class="sep"></span>
     <span class="chip on" id="tbCount">0 个角色</span>
     <span class="chip time" id="tbChanged" title="本次数据改动时间">最后更改 --:--</span>
@@ -619,18 +645,30 @@ function latestLeft(c){
   return Number(asc[asc.length - 1].gemsLeft) || 0;
 }
 
-/* 已获取晶石 = 逐条累加「本条剩余 − 上一条剩余」（首条 = 本条剩余 − 0）
- * 允许负数：剩余下降时该条增量为负，如实累加。
- * 用 recsAsc() 保证按录入先后遍历（同一秒内也稳定）。 */
-function gained(c){
+/* 已获取晶石 = 逐条累加「本条剩余 − 上一条剩余」，但只统计「增长」
+ * ------------------------------------------------------------
+ * 规则：
+ *   本次剩余 > 上次剩余  → 差值即为本次获取的晶石，累加
+ *   本次剩余 ≤ 上次剩余  → 说明只是卖出 / 自己消耗了，本次获取记 0
+ * 因此结果恒 ≥ 0，不会出现负数。
+ * 用 recsAsc() 保证按录入先后遍历（同一秒内也稳定）。
+ * ------------------------------------------------------------
+ * 单条增量（供明细表逐条展示）：返回 deltas[]，与 recsAsc() 同序。
+ * 首条以 0 为基准，即首条录入 120 → 本次获取 120。 */
+function gainedDeltas(c){
   const recs = recsAsc(c);
-  let prev = 0, acc = 0;
+  const out = [];
+  let prev = 0;
   recs.forEach(function(r){
-    const cur = Number(r.gemsLeft) || 0;
-    acc += (cur - prev);      /* 允许负数，如实累加 */
+    const cur  = Number(r.gemsLeft) || 0;
+    const diff = cur - prev;
+    out.push(diff > 0 ? diff : 0);   /* 下降/持平 → 本次获取 0 */
     prev = cur;
   });
-  return acc;
+  return out;
+}
+function gained(c){
+  return gainedDeltas(c).reduce(function(a, b){ return a + b; }, 0);
 }
 
 /* 净利润 = 收入 − 人工费用（角色级） */
@@ -828,12 +866,11 @@ function detailHTML(i){
   const asc = recsAsc(c);
   const ordered = asc.slice().reverse();
   /* 逐条累计「已获取」与「净利润」，用下标做键，避免同秒记录互相覆盖 */
+  const deltas = gainedDeltas(c);          /* 与 asc 同序，负增量已归 0 */
   const runGain = [], runProfit = [];
-  let prevLeft = 0, accGain = 0, accProfit = 0;
+  let accGain = 0, accProfit = 0;
   asc.forEach(function(r, k){
-    const cur = Number(r.gemsLeft) || 0;
-    accGain += (cur - prevLeft);          /* 已获取：允许负数 */
-    prevLeft = cur;
+    accGain += deltas[k];                  /* 已获取：只累加增长，恒 ≥ 0 */
     accProfit += income(r);
     runGain[k] = accGain;
     runProfit[k] = accProfit;
@@ -851,7 +888,7 @@ function detailHTML(i){
       + '<td class="d">' + esc(r.date || '') + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + '</td>'
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
-      + '<td class="n cum'+(gInc<0?' neg':'')+'">' + num(gInc) + '</td>'
+      + '<td class="n cum' + (gInc === 0 ? ' zero' : '') + '">' + num(gInc) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
       + '<td class="n plain'+z(r.dayLabor)+'">' + num(r.dayLabor) + '</td>'
@@ -994,24 +1031,24 @@ function cardHTML(c, i){
 
   return '<div class="row" data-i="' + i + '">'
     + '<article class="card panel" style="--el:' + color + '">'
-    +   '<div class="idx">' + serial(i+1) + '</div>'
+    +   '<div class="idx">'
+    +     serial(i+1)
+    +     '<button class="btnrec" type="button" data-save="' + i + '" '
+    +       'title="记录本卡片填写的数值，并自动保存">'
+    +       '<span class="tick">✓</span></button>'
+    +   '</div>'
     +   whoHTML(c, i)
     +   '<div class="cells">'
     +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '现有多少填多少', '当前剩余晶石',
     +            '当前剩余晶石是「时点值」：每次录入以最新一次为准，不累加。现在还剩多少就填多少。')
     +     roCell('gained', g, 'inc' + gCls,
-    +            '已获取晶石 = 逐条累加「本次剩余 − 上次剩余」，允许负数', '已获取晶石')
+    +            '已获取晶石 = 逐条累加「本次剩余 − 上次剩余」的增长量；本次剩余未超过上次则记 0', '已获取晶石')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售',      '已出售晶石')
     +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入',      '收入')
     +     cell('laborCost', money(t.laborCost), 'plain',  '本次人工',      '人工费用')
     +     roCell('profit', money(p), 'inc' + pCls,
     +            '净利润 = 收入 − 人工费用', '净利润')
     +     cell('chaosCost', intNum(t.chaosCost), 'chaos', '秘境消耗晶石',  '秘境消耗晶石')
-    +   '</div>'
-    +   '<div class="savebar">'
-    +     '<button class="btnrec" type="button" data-save="' + i + '" '
-    +       'title="把本卡片填写的数值记录成一条，并自动保存">'
-    +       '<span class="tick">✓</span>记录</button>'
     +   '</div>'
     +   '<button class="expand" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
     +     '<span class="arw">▼</span></button>'
@@ -1027,6 +1064,7 @@ function render(){
     : '<div class="empty-tip panel">暂无角色 —— 点右上角「＋ 新增角色」添加</div>';
   renderSummary(summarize(ACCOUNTS));
   document.getElementById('tbCount').textContent = ACCOUNTS.length + ' 个角色';
+  syncCommitAll();
 }
 
 /* ============================================================
@@ -1048,47 +1086,51 @@ function flashSaved(){
   savedTimer = setTimeout(function(){ el.textContent = '已自动保存'; }, 2600);
 }
 
-/* 录入提交：把 5 个录入框收成一条记录
-   录入项：当前剩余 / 已出售 / 收入 / 人工费用 / 秘境消耗晶石
-   另有两项自动：已获取晶石、净利润，不在此录入
+/* 收集单张卡片录入框里的值
    —— 语义区别 ——
    「当前剩余晶石」是时点值：填了就以填的为准，留空表示本次不改动，
                     沿用当前最新剩余，绝不写成 0。
-   其余 4 项是流水：填多少记多少（留空按 0） */
-function commitEntry(i){
-  const row = document.querySelector('.row[data-i="'+i+'"]');
-  if(!row) return;
+   其余 4 项是流水：填多少记多少（留空按 0）
+   返回 null 表示该卡片没有任何待提交内容。 */
+function collectRow(i){
+  const row = document.querySelector('.row[data-i="' + i + '"]');
+  if(!row) return null;
   const ins = row.querySelectorAll('.input');
-  /* 按 data-f 字段名收集，避免依赖 DOM 顺序 */
   const v = {};
-  let anyFilled = false;
-  let leftFilled = false;
+  let anyFilled = false, leftFilled = false, filledCount = 0;
   Array.prototype.forEach.call(ins, function(el){
     const raw = el.value == null ? '' : String(el.value).trim();
     const n = parseFloat(raw);
-    const ok = isFinite(n);
-    if(ok && n !== 0) anyFilled = true;
-    if(el.dataset.f === 'gemsLeft' && raw !== '' && ok) leftFilled = true;
+    const ok = isFinite(n) && raw !== '';
+    if(ok && n !== 0){ anyFilled = true; filledCount++; }
+    if(el.dataset.f === 'gemsLeft' && ok) leftFilled = true;
     v[el.dataset.f] = ok ? n : 0;
   });
-  if(!anyFilled){
-    toast('未填写任何数值（未录入按 0 计）');
-    return;
-  }
+  if(!anyFilled) return null;
+  return { ins:ins, v:v, leftFilled:leftFilled, filledCount:filledCount };
+}
+
+/* 把收集到的值落成一条记录 */
+function pushRec(i, got){
   ACCOUNTS[i].records = ACCOUNTS[i].records || [];
   /* 剩余留空 → 沿用当前最新剩余（覆盖语义下，"不改动"才是正确默认） */
   const curLeft = latestLeft(ACCOUNTS[i]);
   /* 同时记录日期与时间，时间精确到秒 */
   const rec = {
     date: today(), time: nowTime(),
-    gemsLeft:  leftFilled ? v.gemsLeft : curLeft,
-    daySold:   v.gemsSold  || 0,
-    dayValue:  v.soldValue || 0,
-    dayLabor:  v.laborCost || 0,
-    chaosCost: v.chaosCost || 0
+    gemsLeft:  got.leftFilled ? got.v.gemsLeft : curLeft,
+    daySold:   got.v.gemsSold  || 0,
+    dayValue:  got.v.soldValue || 0,
+    dayLabor:  got.v.laborCost || 0,
+    chaosCost: got.v.chaosCost || 0
   };
   ACCOUNTS[i].records.push(rec);
-  Array.prototype.forEach.call(ins, function(el){ el.value = ''; });
+  Array.prototype.forEach.call(got.ins, function(el){ el.value = ''; });
+  return rec;
+}
+
+/* 记录后刷新该卡片的显示与明细 */
+function afterCommit(i){
   markDirty(i, false);
   refreshNumbers(i);
   const d = document.getElementById('detail-' + i);
@@ -1097,8 +1139,45 @@ function commitEntry(i){
     d.innerHTML = detailHTML(i);
     if(wasOpen) syncDetailCols(i);
   }
+}
+
+/* 单卡提交：「记录」按钮 */
+function commitEntry(i){
+  const got = collectRow(i);
+  if(!got){ toast('未填写任何数值（未录入按 0 计）'); return; }
+  const rec = pushRec(i, got);
+  afterCommit(i);
   saveLocal();
+  syncCommitAll();
   toast('已记录 ' + rec.time + '（净利润 ' + incomeText(rec) + '）');
+}
+
+/* 一键提交所有有变动的卡片（顶部「记录全部」）
+   逐卡收集，只提交真的填了值的卡片，没填的跳过、不产生空记录 */
+function commitAll(){
+  const rows = document.querySelectorAll('.row[data-i]');
+  const pending = [];
+  Array.prototype.forEach.call(rows, function(row){
+    const i = Number(row.dataset.i);
+    const got = collectRow(i);
+    if(got) pending.push({ i:i, got:got });
+  });
+  if(!pending.length){
+    toast('没有需要记录的内容 —— 先在卡片里填入数值');
+    return;
+  }
+  const times = [];
+  pending.forEach(function(p){
+    const rec = pushRec(p.i, p.got);
+    times.push(rec.time);
+    afterCommit(p.i);
+  });
+  saveLocal();
+  syncCommitAll();
+  const who = pending.length === 1
+    ? '1 个角色'
+    : pending.length + ' 个角色';
+  toast('已记录 ' + who + '（' + times[times.length - 1] + '）');
 }
 
 /* 「记录」按钮高亮状态：有未提交内容时闪烁提示 */
@@ -1107,22 +1186,47 @@ function markDirty(i, dirty){
   if(!row) return;
   const btn = row.querySelector('.btnrec');
   if(btn) btn.classList.toggle('dirty', !!dirty);
+  syncCommitAll();
+}
+
+/* 顶部「记录全部」按钮：统计有多少卡片有待提交内容 */
+function countPending(){
+  let n = 0;
+  Array.prototype.forEach.call(document.querySelectorAll('.row[data-i]'), function(row){
+    if(collectRow(Number(row.dataset.i))) n++;
+  });
+  return n;
+}
+function syncCommitAll(){
+  const btn = document.getElementById('btnCommitAll');
+  if(!btn) return;
+  const n = countPending();
+  const cnt = document.getElementById('commitCnt');
+  if(cnt) cnt.textContent = String(n);
+  btn.classList.toggle('on', n > 0);
+  btn.classList.remove('ok');
 }
 function anyInputFilled(row){
   const ins = row.querySelectorAll('.input');
   return Array.prototype.some.call(ins, function(el){
-    const n = parseFloat(el.value);
-    return isFinite(n) && n !== 0;
+    const raw = el.value == null ? '' : String(el.value).trim();
+    const n = parseFloat(raw);
+    return isFinite(n) && raw !== '' && n !== 0;
   });
 }
 
-/* 录入框内容变化 → 「记录」按钮闪烁提示（手机端不容易看出是否填了） */
+/* 录入框内容变化 → 按钮闪烁提示 + 更新顶部计数 */
 document.addEventListener('input', function(e){
   const t = e.target;
   if(!(t.classList && t.classList.contains('input'))) return;
   const row = t.closest('.row');
   if(!row) return;
   markDirty(Number(t.dataset.i), anyInputFilled(row));
+});
+
+/* 顶部「记录全部」按钮 */
+document.getElementById('btnCommitAll').addEventListener('click', function(){
+  commitAll();
 });
 
 /* 键盘 */
