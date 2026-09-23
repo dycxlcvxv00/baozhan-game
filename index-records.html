@@ -82,6 +82,14 @@
   }
   .chip.add:hover{background:rgba(47,230,208,0.18)}
   .chip.add .plus{font-size:16px;line-height:1;font-weight:800;margin-top:-1px}
+  /* 全屏按钮：图标随状态切换 */
+  .chip.iconbtn{padding:0 10px;font-size:15px;line-height:1}
+  .chip.iconbtn .fs-off{display:none}
+  .chip.iconbtn.on .fs-on{display:none}
+  .chip.iconbtn.on .fs-off{display:inline}
+  /* 全屏态：铺满视口，内容更宽松 */
+  body.fs .wrap{max-width:100%;padding:10px 16px 26px}
+  body.fs #topbar{position:sticky;top:0;z-index:30}
 
   /* ---------- 汇总统计 ---------- */
   #summary{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:16px}
@@ -215,6 +223,9 @@
     padding:7px 12px;display:flex;flex-direction:column;gap:5px;min-width:0;align-items:center;
     border-right:1px solid rgba(125,165,225,0.08);
   }
+  /* 字段名：宽屏由顶部列标题条统一提供，窄屏(列标题条隐藏)才在每格内显示 */
+  .cell .k{display:none;font-size:10.5px;color:var(--mute);letter-spacing:.2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .cell:last-child{border-right:0}
   .cell .v{
     font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;
@@ -255,6 +266,30 @@
   }
   .input::-webkit-outer-spin-button,.input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .input[type=number]{-moz-appearance:textfield;appearance:textfield}
+
+  /* ---------- 录入区统一「记录」按钮（手机端主要提交入口） ---------- */
+  .savebar{
+    flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    padding:0 4px;
+  }
+  .btnrec{
+    height:34px;padding:0 13px;border-radius:9px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+    background:linear-gradient(180deg,rgba(47,230,208,0.22),rgba(47,230,208,0.12));
+    border:1px solid rgba(47,230,208,0.55);color:var(--accent);
+    font-size:12.5px;font-weight:800;font-family:inherit;
+    transition:.16s;letter-spacing:.3px;
+  }
+  .btnrec:hover{background:linear-gradient(180deg,rgba(47,230,208,0.34),rgba(47,230,208,0.2))}
+  .btnrec:active{transform:scale(0.96)}
+  .btnrec .tick{font-size:14px;line-height:1;font-weight:900;margin-top:-1px}
+  /* 有未提交内容时高亮，提示"该保存了" */
+  .btnrec.dirty{
+    background:linear-gradient(180deg,rgba(255,207,107,0.26),rgba(255,207,107,0.14));
+    border-color:rgba(255,207,107,0.62);color:var(--gold);
+    animation:pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.62}}
 
   /* 展开按钮 */
   .expand{
@@ -385,6 +420,9 @@
     .cells{flex:1 1 100%;grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(125,165,225,0.10);--cols:2}
     .cell:nth-child(2n){border-right:0}
     .cell:nth-child(-n+4){border-bottom:1px solid rgba(125,165,225,0.08)}
+    /* 窄屏：记录按钮独占一行、加高加大，手指好按 */
+    .savebar{flex:1 1 100%;border-top:1px solid rgba(125,165,225,0.10);padding:8px 10px}
+    .btnrec{width:100%;height:40px;font-size:14px;justify-content:center}
     .expand{flex:0 0 100%;height:26px;border-left:0;border-top:1px solid rgba(125,165,225,0.10)}
     .colhead .h-exp{display:none}
     .colhead{display:none}   /* 窄屏字段名回填到每格 */
@@ -413,6 +451,9 @@
       <span class="chip saved" id="tbSaved">已自动保存</span>
       <button class="chip" id="btnExport" type="button">导出备份</button>
       <button class="chip" id="btnImport" type="button">导入备份</button>
+      <button class="chip iconbtn" id="btnFull" type="button" title="全屏显示" aria-label="全屏显示">
+        <span class="fs-on">⛶</span><span class="fs-off">⤡</span>
+      </button>
     </span>
   </header>
 
@@ -935,15 +976,17 @@ function cardHTML(c, i){
   /* 净利润 = 收入 − 人工费用 */
   const p = t.soldValue - t.laborCost;
   const pCls = p > 0 ? ' pos' : (p < 0 ? ' neg' : '');
-  const cell = (vkey, vhtml, cls, ph) =>
+  const cell = (vkey, vhtml, cls, ph, k) =>
     '<div class="cell">'
+    + '<span class="k">' + (k || '') + '</span>'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
     + '<input class="input" type="number" inputmode="decimal" step="any" '
     +   'data-i="' + i + '" data-f="' + vkey + '" placeholder="' + ph + '" />'
     + '</div>';
   /* 只读数值格（自动算出，无需录入） */
-  const roCell = (vkey, vhtml, cls, tip) =>
+  const roCell = (vkey, vhtml, cls, tip, k) =>
     '<div class="cell ro" title="' + tip + '">'
+    + '<span class="k">' + (k || '') + '</span>'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
     + '<span class="auto">自动</span>'
     + '</div>';
@@ -953,15 +996,20 @@ function cardHTML(c, i){
     +   '<div class="idx">' + serial(i+1) + '</div>'
     +   whoHTML(c, i)
     +   '<div class="cells">'
-    +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '当前剩余')
+    +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '当前剩余',      '当前剩余晶石')
     +     roCell('gained', g, 'inc' + gCls,
-    +            '已获取晶石 = 逐条累加「本次剩余 − 上次剩余」，允许负数')
-    +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售')
-    +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入')
-    +     cell('laborCost', money(t.laborCost), 'plain',  '本次人工')
+    +            '已获取晶石 = 逐条累加「本次剩余 − 上次剩余」，允许负数', '已获取晶石')
+    +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售',      '已出售晶石')
+    +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入',      '收入')
+    +     cell('laborCost', money(t.laborCost), 'plain',  '本次人工',      '人工费用')
     +     roCell('profit', money(p), 'inc' + pCls,
-    +            '净利润 = 收入 − 人工费用')
-    +     cell('chaosCost', intNum(t.chaosCost), 'chaos', '秘境消耗晶石')
+    +            '净利润 = 收入 − 人工费用', '净利润')
+    +     cell('chaosCost', intNum(t.chaosCost), 'chaos', '秘境消耗晶石',  '秘境消耗晶石')
+    +   '</div>'
+    +   '<div class="savebar">'
+    +     '<button class="btnrec" type="button" data-save="' + i + '" '
+    +       'title="把本卡片填写的数值记录成一条，并自动保存">'
+    +       '<span class="tick">✓</span>记录</button>'
     +   '</div>'
     +   '<button class="expand" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
     +     '<span class="arw">▼</span></button>'
@@ -1030,6 +1078,7 @@ function commitEntry(i){
   };
   ACCOUNTS[i].records.push(rec);
   Array.prototype.forEach.call(ins, function(el){ el.value = ''; });
+  markDirty(i, false);
   refreshNumbers(i);
   const d = document.getElementById('detail-' + i);
   if(d){
@@ -1040,6 +1089,30 @@ function commitEntry(i){
   saveLocal();
   toast('已记录 ' + rec.time + '（净利润 ' + incomeText(rec) + '）');
 }
+
+/* 「记录」按钮高亮状态：有未提交内容时闪烁提示 */
+function markDirty(i, dirty){
+  const row = document.querySelector('.row[data-i="' + i + '"]');
+  if(!row) return;
+  const btn = row.querySelector('.btnrec');
+  if(btn) btn.classList.toggle('dirty', !!dirty);
+}
+function anyInputFilled(row){
+  const ins = row.querySelectorAll('.input');
+  return Array.prototype.some.call(ins, function(el){
+    const n = parseFloat(el.value);
+    return isFinite(n) && n !== 0;
+  });
+}
+
+/* 录入框内容变化 → 「记录」按钮闪烁提示（手机端不容易看出是否填了） */
+document.addEventListener('input', function(e){
+  const t = e.target;
+  if(!(t.classList && t.classList.contains('input'))) return;
+  const row = t.closest('.row');
+  if(!row) return;
+  markDirty(Number(t.dataset.i), anyInputFilled(row));
+});
 
 /* 键盘 */
 document.addEventListener('keydown', function(e){
@@ -1157,6 +1230,9 @@ mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); 
  * 卡片交互
  * ============================================================ */
 document.addEventListener('click', function(e){
+  /* 记录按钮：提交本卡片录入（手机端主要入口） */
+  const sv = e.target.closest('[data-save]');
+  if(sv){ commitEntry(Number(sv.dataset.save)); return; }
   /* 展开 / 收起 */
   const tg = e.target.closest('[data-toggle]');
   if(tg){
@@ -1264,8 +1340,14 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           level: s.level != null ? s.level : '', job: s.job || '',
           gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
           soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
+          chaosCost: Number(s.chaosCost)||0,
           wealth: Number(s.wealth)||0,
-          records: Array.isArray(s.records) ? s.records : [],
+          records: Array.isArray(s.records) ? s.records.map(function(r){
+            return { date:r.date || '', time:r.time || '00:00:00',
+                     gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
+                     dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
+                     chaosCost:Number(r.chaosCost)||0 };
+          }) : [],
           flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
         };
       });
@@ -1277,11 +1359,49 @@ document.getElementById('fileInput').addEventListener('change', function(e){
   fr.readAsText(f);
 });
 
+/* ---------- 全屏 ---------- */
+const btnFull = document.getElementById('btnFull');
+function fsActive(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function syncFullBtn(){
+  const on = fsActive();
+  btnFull.classList.toggle('on', on);
+  btnFull.title = on ? '退出全屏' : '全屏显示';
+  btnFull.setAttribute('aria-label', on ? '退出全屏' : '全屏显示');
+  document.body.classList.toggle('fs', on);
+}
+btnFull.addEventListener('click', function(){
+  const el = document.documentElement;
+  if(fsActive()){
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  }else{
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if(req){
+      const r = req.call(el);
+      /* iOS Safari 的 iPhone 不支持元素全屏，降级为「铺满视口」的伪全屏 */
+      if(r && r.catch) r.catch(function(){ document.body.classList.toggle('fs'); syncFullBtn(); });
+    }else{
+      document.body.classList.toggle('fs');
+      syncFullBtn();
+    }
+  }
+});
+document.addEventListener('fullscreenchange', function(){
+  syncFullBtn();
+  /* 全屏切换会改变宽度，重新对齐明细列 */
+  setTimeout(syncAllDetailCols, 260);
+});
+document.addEventListener('webkitfullscreenchange', function(){
+  syncFullBtn(); setTimeout(syncAllDetailCols, 260);
+});
+
 /* ---------- 启动 ---------- */
 const lastSavedAt = loadLocal();
 render();
 restoreChanged(lastSavedAt);   /* 恢复「最后更改」为上次改动时间 */
 window.addEventListener('resize', function(){ syncAllDetailCols(); });
+syncFullBtn();                 /* 初始化全屏按钮状态 */
 </script>
 </body>
 </html>
