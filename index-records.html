@@ -1115,6 +1115,58 @@ function settledDates(){
   return Object.keys(SNAPSHOTS || {}).sort();
 }
 
+/* 自动快照：不用手动点「今日结算」，页面在恰当时机自己补齐/刷新
+ * ------------------------------------------------------------
+ * 由调用方在四个时机触发（本函数只管算，不落库不推送）：
+ *   启动加载后 / 云端数据 adopt 后 / 每次录入提交后 / 手动拉取云端后
+ *
+ * 规则：
+ *   1. 历史缺的天（含空白天）→ 补齐 —— 与手动结算同口径（settle 的逻辑）
+ *   2. 已有快照的日期 → 全部重算一遍，但**内容比较**：
+ *      数值由明细算出而明细只追加不改 → 正常重算结果与旧快照一致，视为没动；
+ *      只有数据真的变了才覆盖（跨天补录、改名/改初始存量等都能自然跟上）。
+ *   3. 「今天」→ 总是重算：当天反复录入，快照始终反映最新状态。
+ *
+ * 为什么敢全量重算：snapshotForDay 是纯函数（数据不变结果不变），
+ *   sameContent 剔除 generatedAt / device 两个"生成痕迹"字段 —— 内容没变
+ *   就不动旧快照（generatedAt 保持首次生成时间），也不会触发多余推送。
+ *   个人台账量级（几十天 × 几角色）全量重算是毫秒级，无需增量优化。
+ *
+ * 返回 { added:[日期...], refreshed:[日期...] }，由调用方决定落库与提示。 */
+function autoSettle(){
+  const out = { added:[], refreshed:[] };
+  if(!ACCOUNTS.length) return out;
+  const store = SNAPSHOTS || {};
+  const t = today();
+
+  function sameContent(a, b){
+    return JSON.stringify({ ac:a.accounts, tt:a.total })
+        === JSON.stringify({ ac:b.accounts, tt:b.total });
+  }
+  function put(d){
+    const s = snapshotForDay(d, ACCOUNTS);
+    if(!s) return;                              /* 那天谁都还没在册 → 无从生成 */
+    if(!store[d]){ store[d] = s; out.added.push(d); }
+    else if(!sameContent(store[d], s)){ store[d] = s; out.refreshed.push(d); }
+    /* 内容一致 → 保持原样（不换 generatedAt，也不触发推送） */
+  }
+
+  /* 1) 历史缺失天（今天单独走规则 3） */
+  pendingSettleDates(ACCOUNTS, store).missing.forEach(function(d){
+    if(d !== t) put(d);
+  });
+
+  /* 2) 已有快照的日期全部重算 + 内容比较（幂等） */
+  Object.keys(store).forEach(function(d){
+    if(d !== t) put(d);
+  });
+
+  /* 3) 今天：总是重算 */
+  put(t);
+
+  return out;
+}
+
 /* ============================================================
  * 存储
  * ============================================================ */
@@ -1482,6 +1534,8 @@ async function cloudManual(){
       const { data } = await cloudPull();
       if(data && data.accounts && data.accounts.length){
         adopt(data); writeCache(data); render();
+        const _auto = autoSettle();          /* 拉回的云端数据自动补齐缺的快照 */
+        if(_auto.added.length || _auto.refreshed.length) saveLocal();
         restoreChanged(data.savedAt);
         cloudUI('ok', '已拉取云端 ' + cloudTime());
         toast('已从云端恢复数据');
@@ -1568,6 +1622,8 @@ async function cloudInit(){
   if(remoteHasData && (!localSaved || new Date(remoteSaved) > new Date(localSaved))){
     /* 云端更新 → 采用云端 */
     adopt(remote); writeCache(remote); render();
+    const _auto = autoSettle();              /* 云端数据落地后自动补齐缺的快照 */
+    if(_auto.added.length || _auto.refreshed.length) saveLocal();
     restoreChanged(remoteSaved);
     cloudUI('ok', '云端已同步 ' + cloudTime());
   }else{
@@ -1968,6 +2024,7 @@ function commitEntry(i){
   if(!got){ toast('未填写任何数值（未录入按 0 计）'); return; }
   const rec = pushRec(i, got);
   afterCommit(i);
+  autoSettle();                    /* 录入后自动刷新当天快照（幂等，通常只动今天） */
   saveLocal();
   syncCommitAll();
   toast('已记录 ' + rec.time + '（净利润 ' + incomeText(rec) + '）');
@@ -1993,6 +2050,7 @@ function commitAll(){
     times.push(rec.time);
     afterCommit(p.i);
   });
+  autoSettle();                    /* 录入后自动刷新当天快照（幂等） */
   saveLocal();
   syncCommitAll();
   const who = pending.length === 1
@@ -2549,7 +2607,12 @@ document.addEventListener('webkitfullscreenchange', function(){
 
 /* ---------- 启动 ---------- */
 const lastSavedAt = loadLocal();
+const _bootAuto = autoSettle();      /* 打开页面就自动补齐缺失快照、刷新今天 */
+if(_bootAuto.added.length || _bootAuto.refreshed.length) saveLocal();
 render();
+if(_bootAuto.added.length){
+  toast('已自动结算 ' + _bootAuto.added.length + ' 天');
+}
 restoreChanged(lastSavedAt);   /* 恢复「最后更改」为上次改动时间 */
 cloudInit();                   /* 异步连云端：比时间戳决定用本机还是云端 */
 window.addEventListener('resize', function(){ syncAllDetailCols(); });
