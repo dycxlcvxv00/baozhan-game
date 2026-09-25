@@ -1990,7 +1990,10 @@ function collectRow(i){
     const raw = el.value == null ? '' : String(el.value).trim();
     const n = parseFloat(raw);
     const ok = isFinite(n) && raw !== '';
-    if(ok && n !== 0){ anyFilled = true; filledCount++; }
+    /* 余额是「时点值」：0 也是合法状态（晶石花光了），填 0 同样算有效录入；
+       其余 4 项是流水：0 与留空等价，不触发提交。
+       —— 修复：此前余额填 0 会被当成"没填"，整次提交被拒、按钮也不亮 */
+    if(ok && (n !== 0 || el.dataset.f === 'gemsLeft')){ anyFilled = true; filledCount++; }
     if(el.dataset.f === 'gemsLeft' && ok) leftFilled = true;
     v[el.dataset.f] = ok ? n : 0;
   });
@@ -2107,6 +2110,8 @@ function anyInputFilled(row){
   return Array.prototype.some.call(ins, function(el){
     const raw = el.value == null ? '' : String(el.value).trim();
     const n = parseFloat(raw);
+    /* 与 collectRow 同口径：余额填 0 也算有效（时点值），流水 0 不算 */
+    if(el.dataset.f === 'gemsLeft') return isFinite(n) && raw !== '';
     return isFinite(n) && raw !== '' && n !== 0;
   });
 }
