@@ -430,6 +430,9 @@
   table.dt td.d{color:var(--dim)}
   table.dt td.t{color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     font-size:11.5px;letter-spacing:-.2px;opacity:.92}
+  table.dt td.t .wee{font-style:normal;font-family:inherit;font-size:10px;font-weight:700;
+    color:var(--accent2);background:rgba(155,123,255,0.14);border-radius:4px;
+    padding:1px 4px;margin-left:4px;vertical-align:1px}   /* 凌晨录入（00:00~07:59，归前一天） */
   table.dt td.n.inc{color:var(--accent)}       /* 本次获取晶石：单次增量，恒 ≥ 0 */
   table.dt th.th-t{color:var(--mute)}
   table.dt td.n{font-weight:800}
@@ -768,7 +771,12 @@ function num(n){
 function intNum(n){ return num(Math.round(Number(n) || 0)); }
 function money(n){ return '¥' + num(n); }
 function today(){
+  /* 结算日：每日 08:00 为一天的起点 —— 凌晨 0:00~7:59（熬夜时段）的录入
+     仍归属前一天，快照、「今日结算」、自动结算全部按这个口径。
+     录入的 date 字段由 pushRec 写入 today()，因此归属天然一致。
+     历史已生成的快照不受影响（已固化的不重算，重算也只由数据变化驱动）。 */
   const d = new Date(), p = x => String(x).padStart(2,'0');
+  if(d.getHours() < 8) d.setDate(d.getDate() - 1);
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
 }
 /* 日期加减天数：'2026-09-23' + 1 → '2026-09-24'。用 UTC 运算避开时区/夏令时干扰 */
@@ -1761,9 +1769,12 @@ function detailHTML(i){
     const gInc = deltas[k] || 0;           /* 本次获取晶石：单次增量，恒 ≥ 0 */
     const pSingle = income(r);
     const pCls = pSingle > 0 ? ' income' : (pSingle < 0 ? ' neg' : ' inc-zero');
+    /* 凌晨标记：00:00~07:59 的录入按结算日归属前一天，给个视觉提示 */
+    const weeHour = parseInt(String(r.time || '').split(':')[0], 10);
+    const wee = (weeHour >= 0 && weeHour < 8) ? '<i class="wee">凌晨</i>' : '';
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + '</td>'
-      + '<td class="t">' + esc(r.time || '--:--:--') + '</td>'
+      + '<td class="t">' + esc(r.time || '--:--:--') + wee + '</td>'
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
       + '<td class="n inc' + (gInc === 0 ? ' zero' : '') + '">' + num(gInc) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
@@ -2018,6 +2029,11 @@ function afterCommit(i){
   }
 }
 
+/* 凌晨时段（0:00~7:59）录入归前一天 —— toast 里明确告知归属，避免"我明明今天录的" */
+function weeNote(rec){
+  return (new Date().getHours() < 8) ? '（凌晨时段，计入 ' + rec.date + '）' : '';
+}
+
 /* 单卡提交：「记录」按钮 */
 function commitEntry(i){
   const got = collectRow(i);
@@ -2027,7 +2043,7 @@ function commitEntry(i){
   autoSettle();                    /* 录入后自动刷新当天快照（幂等，通常只动今天） */
   saveLocal();
   syncCommitAll();
-  toast('已记录 ' + rec.time + '（净利润 ' + incomeText(rec) + '）');
+  toast('已记录 ' + rec.time + '（净利润 ' + incomeText(rec) + '）' + weeNote(rec));
 }
 
 /* 一键提交所有有变动的卡片（顶部「记录全部」）
@@ -2056,7 +2072,8 @@ function commitAll(){
   const who = pending.length === 1
     ? '1 个角色'
     : pending.length + ' 个角色';
-  toast('已记录 ' + who + '（' + times[times.length - 1] + '）');
+  toast('已记录 ' + who + '（' + times[times.length - 1] + '）'
+        + (pending.length ? weeNote({ date: today() }) : ''));
 }
 
 /* 「记录」按钮高亮状态：有未提交内容时闪烁提示 */
@@ -2181,7 +2198,7 @@ function renderSettleModal(result, mode){
     const dates = settledDates().reverse();
     title.textContent = '已结算记录';
     hint.textContent = dates.length
-      ? '共 ' + dates.length + ' 天。每天按当天明细独立统计，互不影响。'
+      ? '共 ' + dates.length + ' 天。结算周期为每日 08:00 → 次日 08:00，凌晨时段（00:00~07:59）的录入归前一天。'
       : '还没有任何结算记录。先录入明细，再点「今日结算」。';
     if(!dates.length){
       list.innerHTML = '<div class="st-none"><span class="big">◷</span>还没有结算记录</div>';
