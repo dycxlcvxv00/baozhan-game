@@ -273,6 +273,8 @@
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;
   }
   .who .nm.empty{color:var(--mute);font-weight:600}
+  /* 当天（8 点重置周期内）有录入的角色 → 名字绿色，过 8 点重置回白色 */
+  .who .nm.today{color:var(--ok)}
   /* 编辑态（点「修改」后）才允许输入 */
   .who.editing .nm{
     padding:2px 7px;cursor:text;flex:0 1 auto;min-width:60px;
@@ -297,7 +299,7 @@
   .who .ob.del:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.45);background:rgba(255,107,107,0.10)}
   .who.editing{border-right-color:rgba(47,230,208,0.3)}
 
-  /* 第二行：4 个功能开关（开=绿 / 未开=灰） + 财富值 */
+  /* 第二行：4 个功能开关（开=绿 / 未开=灰） + 修改 + 财富 */
   .who .line2{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:nowrap}
   .feats{display:flex;align-items:center;gap:5px;flex:0 0 auto}
   .feat{
@@ -308,8 +310,10 @@
   .feat.off{color:var(--mute);border-color:rgba(125,165,225,0.18);background:rgba(255,255,255,0.02);opacity:.72}
   /* 已开启：绿 */
   .feat.on{color:var(--ok);border-color:rgba(87,227,155,0.55);background:rgba(87,227,155,0.12)}
+  /* 行尾整体：修改按钮 + 财富，同行相邻、垂直居中对齐 */
+  .who .tail{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
   .wealth{
-    margin-left:auto;display:flex;align-items:baseline;gap:4px;flex:0 0 auto;white-space:nowrap;
+    display:flex;align-items:baseline;gap:4px;flex:0 0 auto;white-space:nowrap;
   }
   .wealth .wk{font-size:11px;color:var(--mute)}
   .wealth .wv{font-size:12.5px;font-weight:800;color:var(--ok);font-variant-numeric:tabular-nums}
@@ -686,9 +690,9 @@
       <div class="err">等级请填数字</div>
     </div>
     <div class="field">
-      <label for="fWealth">财富值</label>
+      <label for="fWealth">财富</label>
       <input id="fWealth" type="text" inputmode="decimal" maxlength="16" autocomplete="off" placeholder="如 12000（可留空）" />
-      <div class="err">财富值请填数字</div>
+      <div class="err">财富请填数字</div>
     </div>
     <div class="field">
       <label for="fInitLeft">初始存量晶石</label>
@@ -1862,7 +1866,25 @@ const FEATURES = [
    不参与任何自动计算，也不随每日录入变化。 */
 function wealth(c){ return Number(c.wealth) || 0; }
 
-/* 角色信息：第一行 角色名+等级/职业/账号；第二行 4 个功能开关 + 财富值 */
+/* 当天有录入 → 角色名字变绿；每天早上 8 点为重置点。
+   页面每次开启时读取当前时间：起点 = 今天 08:00（未过 8 点则算昨天 08:00），
+   最后一次录入时间 ≥ 起点 → 绿色；过了 8 点重新打开页面 → 全部白色。 */
+function periodStartStr(){
+  const now = new Date();
+  const d = new Date(now);
+  if(now.getHours() < 8) d.setDate(d.getDate() - 1);
+  const p2 = function(n){ return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' 08:00:00';
+}
+function recordedToday(c){
+  const recs = c.records || [];
+  if(!recs.length) return false;
+  const r = recs[recs.length - 1];
+  return ((r.date || '') + ' ' + (r.time || '00:00:00')) >= periodStartStr();
+}
+
+/* 角色信息：第一行 角色名+等级/职业/账号+✕；第二行 4 个功能开关 + 修改 + 财富
+   「修改」按钮与「财富」文本同行相邻，垂直对齐 */
 function whoHTML(c, i){
   const meta = [];
   if(c.level !== '' && c.level != null) meta.push('<span class="lv">Lv.' + esc(c.level) + '</span>');
@@ -1870,8 +1892,8 @@ function whoHTML(c, i){
   if(c.account) meta.push('<span class="acct">' + esc(c.account) + '</span>');
   if(!meta.length) meta.push('<span class="tagnone">未填写账号信息</span>');
 
-  const ops = '<button class="ob edit" type="button" data-edit="' + i + '" title="修改账号信息">修改</button>'
-            + '<button class="ob del" type="button" data-rm="' + i + '" title="删除该角色卡片">✕</button>';
+  const btnDel = '<button class="ob del" type="button" data-rm="' + i + '" title="删除该角色卡片">✕</button>';
+  const btnEdit = '<button class="ob edit" type="button" data-edit="' + i + '" title="修改账号信息">修改</button>';
 
   const flags = c.flags || {};
   const feats = FEATURES.map(function(f){
@@ -1887,14 +1909,17 @@ function whoHTML(c, i){
 
   return '<div class="who">'
     + '<div class="line1">'
-    +   '<div class="nm' + (c.name ? '' : ' empty') + '">' + (c.name ? esc(c.name) : '未命名角色') + '</div>'
+    +   '<div class="nm' + (c.name ? '' : ' empty') + (recordedToday(c) ? ' today' : '') + '">'
+    +     (c.name ? esc(c.name) : '未命名角色') + '</div>'
     +   '<div class="meta">' + meta.join('') + '</div>'
-    +   '<span class="ops">' + ops + '</span>'
+    +   '<span class="ops">' + btnDel + '</span>'
     + '</div>'
     + '<div class="line2">'
     +   '<span class="feats">' + feats + '</span>'
-    +   '<span class="wealth"><span class="wk">财富值</span><span class="' + wCls + '" data-w="' + i + '">'
-    +     money(w) + '</span></span>'
+    +   '<span class="tail">' + btnEdit
+    +     '<span class="wealth"><span class="wk">财富</span><span class="' + wCls + '" data-w="' + i + '">'
+    +       money(w) + '</span></span>'
+    +   '</span>'
     + '</div>'
     + '</div>';
 }
