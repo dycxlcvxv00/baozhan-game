@@ -1867,8 +1867,11 @@ const FEATURES = [
 function wealth(c){ return Number(c.wealth) || 0; }
 
 /* 当天有录入 → 角色名字变绿；每天早上 8 点为重置点。
-   页面每次开启时读取当前时间：起点 = 今天 08:00（未过 8 点则算昨天 08:00），
-   最后一次录入时间 ≥ 起点 → 绿色；过了 8 点重新打开页面 → 全部白色。 */
+   页面每次开启时读取当前时间：周期 = 今天 08:00 → 次日 08:00
+   （凌晨 0:00~7:59 打开则算昨天 08:00 → 今天 08:00）。
+   判定遍历该角色**全部**明细：只要任意一条落在当前周期内就变绿——
+   不能只看数组最后一条，因为补录历史账时旧记录会追加到末尾，
+   那样"当天录过 + 后来补了旧账"的角色会被误判为白色。 */
 function periodStartStr(){
   const now = new Date();
   const d = new Date(now);
@@ -1879,8 +1882,11 @@ function periodStartStr(){
 function recordedToday(c){
   const recs = c.records || [];
   if(!recs.length) return false;
-  const r = recs[recs.length - 1];
-  return ((r.date || '') + ' ' + (r.time || '00:00:00')) >= periodStartStr();
+  const start = periodStartStr();
+  for(let k = 0; k < recs.length; k++){
+    if(recStamp(recs[k]) >= start) return true;
+  }
+  return false;
 }
 
 /* 角色信息：第一行 角色名+等级/职业/账号+✕；第二行 4 个功能开关 + 修改 + 财富
