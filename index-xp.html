@@ -77,6 +77,7 @@
   .scard .s{font-size:11.5px;color:var(--dim);margin-top:4px}
   .scard .v.acc{color:var(--accent)} .scard .v.ok{color:var(--ok)}
   .scard .v.gold{color:var(--gold)} .scard .v.pur{color:var(--accent2)}
+  .scard .v .lv{color:#ff8c33;font-weight:800}
   .bar{height:7px;border-radius:4px;background:rgba(255,255,255,0.07);margin-top:9px;overflow:hidden}
   .bar i{
     display:block;height:100%;min-width:3px;border-radius:4px;
@@ -101,6 +102,9 @@
   #daily.folded #dailyBody{display:none}
   @media (max-width:1080px){ #dailyBody{grid-template-columns:repeat(3,1fr)} }
   @media (max-width:560px){ #dailyBody{grid-template-columns:repeat(2,1fr)} }
+  /* 明细表嵌在每日面板内，折叠时一并隐藏 */
+  #dailyTable{border-top:1px solid var(--line);margin-top:2px}
+  #daily.folded #dailyTable{display:none}
 
   /* ---------- 明细表 ---------- */
   .sec-title{display:flex;align-items:center;gap:10px;padding:14px 20px 4px}
@@ -168,28 +172,29 @@
       <span class="d-arrow">▼</span>
     </button>
     <div id="dailyBody"></div>
-  </section>
 
-  <div class="panel">
-    <div class="sec-title">
-      <h2>打图明细</h2>
-      <span class="tag">按统计顺序排列 · 最新在最下</span>
+    <!-- ========== 打图明细（随每日面板一起折叠，展开后可见） ========== -->
+    <div id="dailyTable">
+      <div class="sec-title">
+        <h2>打图明细</h2>
+        <span class="tag">按统计顺序排列 · 最新在最上</span>
+      </div>
+      <div class="tscroll">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>#</th><th>日期时间</th><th>地图名称</th><th>阶级</th><th>怪物等级</th>
+              <th>怪物数量%</th><th>药水50%</th><th>药水20%</th><th>晶石掉落</th>
+              <th>上次经验值</th><th>当前经验值</th><th>本图获得经验</th>
+              <th>获得占当前等级%</th><th>等级累计进度%</th><th>备注</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
     </div>
-    <div class="tscroll">
-      <table id="tbl">
-        <thead>
-          <tr>
-            <th>#</th><th>日期时间</th><th>地图名称</th><th>阶级</th><th>怪物等级</th>
-            <th>怪物数量%</th><th>药水50%</th><th>药水20%</th><th>晶石掉落</th>
-            <th>上次经验值</th><th>当前经验值</th><th>本图获得经验</th>
-            <th>获得占当前等级%</th><th>等级累计进度%</th><th>备注</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot></tfoot>
-      </table>
-    </div>
-  </div>
+  </section>
 
   <div id="tiers" class="panel">
     <div class="sec-title">
@@ -389,18 +394,16 @@ document.getElementById('chip-updated').textContent =
 
 /* 汇总卡片 */
 const cards = [
-  { k:'当前等级',   v:'Lv.' + LAST.level, s:LAST.role, cls:'' },
-  { k:'当前经验值', v:fmt(LAST.cur),      s:'最新一条记录', cls:'acc' },
-  { k:'等级总经验', v:fmt(LEVEL_TOTAL),   s:'升级所需', cls:'' },
-  { k:'等级累计进度', v:pct(LAST.cumPct), s:'与游戏经验条一致', cls:'gold', bar:LAST.cumPct },
-  { k:'累计获得经验', v:fmt(TOTAL_GAIN),
-    s:ROWS.length + ' 张地图合计 · 平均每图 ' + fmt(AVG_GAIN), cls:'ok' },
-  { k:'累计晶石掉落', v:fmt(TOTAL_STONE), s:'晶石', cls:'pur' },
+  { k:'当前等级',   v:'Lv.' + LAST.level, cls:'' },
+  { k:'当前经验值', v:fmt(LAST.cur),      cls:'acc' },
+  { k:'等级总经验', v:fmt(LEVEL_TOTAL),   cls:'' },
+  { k:'等级累计进度', v:pct(LAST.cumPct), cls:'gold', bar:LAST.cumPct },
+  { k:'累计获得经验', v:fmt(TOTAL_GAIN),  cls:'ok' },
+  { k:'累计晶石掉落', v:fmt(TOTAL_STONE), cls:'pur' },
 ];
 document.getElementById('summary').innerHTML = cards.map(c =>
   '<div class="panel scard"><div class="k">' + c.k + '</div>' +
   '<div class="v ' + c.cls + '">' + c.v + '</div>' +
-  '<div class="s">' + c.s + '</div>' +
   (c.bar != null ? '<div class="bar"><i style="width:' +
     Math.max(c.bar * 100, 1.2).toFixed(2) + '%"></i></div>' : '') +
   '</div>'
@@ -435,32 +438,25 @@ const D_P20    = TODAY_ROWS.filter(r => r.pot20).length;
 const D_LAST   = TODAY_ROWS[TODAY_ROWS.length - 1];
 const D_AVG    = TODAY_ROWS.length ? Math.round(D_GAIN / TODAY_ROWS.length) : 0;
 
-const _nxt = new Date(TODAY_SETTLE + 'T00:00:00Z');
-_nxt.setUTCDate(_nxt.getUTCDate() + 1);
-const _p2 = x => String(x).padStart(2, '0');
-const NEXT_SETTLE = _nxt.getUTCFullYear() + '-' + _p2(_nxt.getUTCMonth() + 1) + '-' + _p2(_nxt.getUTCDate());
-document.getElementById('dailyRange').textContent =
-  TODAY_SETTLE + ' 08:00 → ' + NEXT_SETTLE + ' 08:00';
+/* 日期简写：2026-09-27 → 2026-9-27 */
+function shortDate(iso){
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(iso || ''));
+  return m ? m[1] + '-' + (+m[2]) + '-' + (+m[3]) : String(iso || '');
+}
+document.getElementById('dailyRange').textContent = shortDate(TODAY_SETTLE);
 
 const dailyCards = [
-  { k:'当日打图数',     v:TODAY_ROWS.length + ' 张',
-    s:'结算期内有记录的地图', cls:'' },
-  { k:'当日获得经验',   v:fmt(D_GAIN),
-    s:TODAY_ROWS.length ? '平均每图 ' + fmt(D_AVG) : '暂无记录', cls:'acc' },
-  { k:'当日占等级进度', v:pct(D_GAIN / LEVEL_TOTAL),
-    s:'基于等级总经验', cls:'ok' },
-  { k:'当日晶石掉落',   v:fmt(D_STONE),
-    s:'结算期内合计', cls:'pur' },
-  { k:'当日药水使用',   v:'50%×' + D_P50 + ' / 20%×' + D_P20,
-    s:'各药水使用张数', cls:'gold' },
-  { k:'当日结束进度',   v:D_LAST ? pct(D_LAST.cumPct) : '—',
-    s:D_LAST ? '最后一条 ' + D_LAST.dt.slice(11) : '暂无记录', cls:'',
+  { k:'当日打图数',     v:TODAY_ROWS.length + ' 张', cls:'' },
+  { k:'当日获得经验',   v:fmt(D_GAIN) + '：<span class="lv">Lv.' + LAST.level + '</span>', cls:'acc' },
+  { k:'当日占等级进度', v:pct(D_GAIN / LEVEL_TOTAL), cls:'ok' },
+  { k:'当日晶石掉落',   v:fmt(D_STONE), cls:'pur' },
+  { k:'当日药水使用',   v:'50%×' + D_P50 + ' / 20%×' + D_P20, cls:'gold' },
+  { k:'当日结束进度',   v:D_LAST ? pct(D_LAST.cumPct) : '—', cls:'',
     bar:D_LAST ? D_LAST.cumPct : null },
 ];
 document.getElementById('dailyBody').innerHTML = dailyCards.map(c =>
   '<div class="panel scard"><div class="k">' + c.k + '</div>' +
   '<div class="v ' + c.cls + '">' + c.v + '</div>' +
-  '<div class="s">' + c.s + '</div>' +
   (c.bar != null ? '<div class="bar"><i style="width:' +
     Math.max(c.bar * 100, 1.2).toFixed(2) + '%"></i></div>' : '') +
   '</div>'
@@ -477,10 +473,11 @@ document.getElementById('dailyBody').innerHTML = dailyCards.map(c =>
   });
 })();
 
-/* 明细表体 */
-document.querySelector('#tbl tbody').innerHTML = ROWS.map((r, i) =>
+/* 明细表体 · 最新在最上（统计序号仍按 1..N 正序标注） */
+const ROWS_DESC = ROWS.slice().reverse();
+document.querySelector('#tbl tbody').innerHTML = ROWS_DESC.map((r, i) =>
   '<tr>' +
-  '<td>' + (i + 1) + '</td>' +
+  '<td>' + (ROWS.length - i) + '</td>' +
   '<td class="dt">' + r.dt + '</td>' +
   '<td class="map">' + r.map + '</td>' +
   '<td>' + tierBadge(r.tier) + '</td>' +
