@@ -195,7 +195,7 @@
 <script>
 /* ============ 数据区：追加记录只改这里 ============ */
 const LEVEL_TOTAL = 1999268000;          // 86 级升级所需总经验
-const UPDATED_AT  = '2026-09-26 23:22';
+const UPDATED_AT  = '2026-09-26 23:31';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -254,6 +254,11 @@ const XP_RECORDS = [
     map:'贫民窟', tier:'T14', mobLv:86, mobQty:55,
     pot50:true, pot20:true, stones:615,
     prev:328849753, cur:359939306, note:'' },
+
+  { dt:'2026-09-26 23:31:21', role:'陌尘', level:86,
+    map:'贫民窟', tier:'T14', mobLv:86, mobQty:0,
+    pot50:false, pot20:false, stones:659,
+    prev:359939306, cur:373246665, note:'' },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
