@@ -803,10 +803,10 @@ function num(n){
 function intNum(n){ return num(Math.round(Number(n) || 0)); }
 function money(n){ return '¥' + num(n); }
 function today(){
-  /* 结算日：每日 08:00 为一天的起点 —— 凌晨 0:00~7:59（熬夜时段）的录入
-     仍归属前一天，快照、「今日结算」、自动结算全部按这个口径。
-     录入的 date 字段由 pushRec 写入 today()，因此归属天然一致。
-     历史已生成的快照不受影响（已固化的不重算，重算也只由数据变化驱动）。 */
+  /* 结算日：每日 08:00 为一天的起点 —— 凌晨 0:00~7:59（熬夜时段）
+     归属前一天。注意：这只是**统计口径**，
+     录入明细的 date/time 始终按实际时刻写入（pushRec / nowDate），
+     归期由 settleDateOf() 在统计时换算，两套口径互不干扰。 */
   const d = new Date(), p = x => String(x).padStart(2,'0');
   if(d.getHours() < 8) d.setDate(d.getDate() - 1);
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
@@ -834,7 +834,20 @@ function nowTime(){
   const d = new Date(), p = x => String(x).padStart(2,'0');
   return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
 }
-/* 排序用：把「日期 + 时间」拼成可比字符串；旧记录无 time 视为 00:00:00 */
+/* 实际日期（不做任何回退）—— 明细的 date/time 永远如实记录录入时刻 */
+function nowDate(){
+  const d = new Date(), p = x => String(x).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+/* 结算归期：只在统计时按 8 点分割计算，不改写明细本身。
+   新记录（real 标记）→ time < 08:00 归前一天；
+   旧记录（无标记，date 已是旧口径写入的归期）→ 直接沿用，历史数据不变。 */
+function settleDateOf(r){
+  if(!r || !r.real) return String((r && r.date) || '');
+  return String(r.time || '00:00:00') < '08:00:00' ? addDays(r.date, -1) : String(r.date || '');
+}
+/* 排序用：把「日期 + 时间」拼成可比字符串；旧记录无 time 视为 00:00:00
+   （date/time 均为实际录入时刻，排序即真实时序） */
 function recStamp(r){ return String(r.date || '') + ' ' + String(r.time || '00:00:00'); }
 /* 净利润（单条记录） = 收入 − 人工费用 */
 function income(r){ return (Number(r.dayValue)||0) - (Number(r.dayLabor)||0); }
@@ -960,7 +973,7 @@ function groupRecordsByDate(c){
   const asc = recsAsc(c);
   const map = {};
   asc.forEach(function(r){
-    const d = String(r.date || '').trim();
+    const d = settleDateOf(r);
     if(!d) return;
     if(!map[d]) map[d] = [];
     map[d].push(r);
@@ -1021,7 +1034,7 @@ function priorLeft(c, dateOrNull){
   const d = String(dateOrNull);
   let found = null;
   for(let i = 0; i < asc.length; i++){
-    const rd = String(asc[i].date || '').trim();
+    const rd = settleDateOf(asc[i]);
     if(rd && rd < d) found = Number(asc[i].gemsLeft) || 0;
   }
   if(found !== null) return found;
@@ -1099,7 +1112,7 @@ function allRecordDates(accounts){
   const set = {};
   (accounts || ACCOUNTS).forEach(function(c){
     (c.records || []).forEach(function(r){
-      const d = String(r.date || '').trim();
+      const d = settleDateOf(r);
       if(d) set[d] = true;
     });
   });
@@ -1110,7 +1123,7 @@ function allRecordDates(accounts){
 function firstRecordDate(c){
   const asc = recsAsc(c);
   for(let i = 0; i < asc.length; i++){
-    const d = String(asc[i].date || '').trim();
+    const d = settleDateOf(asc[i]);
     if(d) return d;
   }
   return '';
@@ -1904,7 +1917,7 @@ function wealth(c){ return Number(c.wealth) || 0; }
    拼出来小于 08:00 起点，会把刚录的角色误判成白色（旧版 bug）。 */
 function recordedToday(c){
   const t = today();
-  return (c.records || []).some(function(r){ return r.date === t; });
+  return (c.records || []).some(function(r){ return settleDateOf(r) === t; });
 }
 
 /* 角色信息：第一行 角色名+等级/职业/账号+✕；第二行 4 个功能开关 + 修改 + 财富
@@ -2119,9 +2132,10 @@ function pushRec(i, got){
   ACCOUNTS[i].records = ACCOUNTS[i].records || [];
   /* 剩余留空 → 沿用当前最新剩余（覆盖语义下，"不改动"才是正确默认） */
   const curLeft = latestLeft(ACCOUNTS[i]);
-  /* 同时记录日期与时间，时间精确到秒 */
+  /* date/time 永远如实记录录入时刻（精确到秒），real:1 标记"实际日期口径"；
+     归期（8 点分割）由 settleDateOf() 在统计时计算，不改写明细 */
   const rec = {
-    date: today(), time: nowTime(),
+    date: nowDate(), time: nowTime(), real: 1,
     gemsLeft:  got.leftFilled ? got.v.gemsLeft : curLeft,
     daySold:   got.v.gemsSold  || 0,
     dayValue:  got.v.soldValue || 0,
@@ -2150,7 +2164,7 @@ function afterCommit(i){
 
 /* 凌晨时段（0:00~7:59）录入归前一天 —— toast 里明确告知归属，避免"我明明今天录的" */
 function weeNote(rec){
-  return (new Date().getHours() < 8) ? '（凌晨时段，计入 ' + rec.date + '）' : '';
+  return (new Date().getHours() < 8) ? '（凌晨时段，计入 ' + settleDateOf(rec) + '）' : '';
 }
 
 /* 单卡提交：「记录」按钮 */
