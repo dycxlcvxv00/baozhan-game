@@ -850,12 +850,15 @@ function latestLeft(c){
   return Number(asc[asc.length - 1].gemsLeft) || 0;
 }
 
-/* 已获取晶石 = 逐条累加「本条剩余 − 上一条剩余」，但只统计「增长」
+/* 已获取晶石 = 逐条累加「(本条剩余 − 上一条剩余) + 本条卖出 + 本条秘境消耗」
  * ------------------------------------------------------------
- * 规则：
- *   本次剩余 > 上次剩余  → 差值即为本次获取的晶石，累加
- *   本次剩余 ≤ 上次剩余  → 说明只是卖出 / 自己消耗了，本次获取记 0
- * 因此结果恒 ≥ 0，不会出现负数。
+ * 口径（2026-09-26 定）：晶石是「先获取，再卖出/消耗，最后剩这么多」——
+ *   本条剩余 = 上一条剩余 + 本次获取 − 本次卖出 − 本次消耗
+ *   → 本次获取 = (本条剩余 − 上一条剩余) + 本条卖出 + 本条消耗
+ * 例：上次剩 100，本次卖出 20、秘境消耗 10、剩 150
+ *     → 本次实际获取 = 50 + 20 + 10 = 80（旧口径只算 50，漏了被卖掉/消耗的部分）
+ * 逆差保护：若加上卖出/消耗后仍为负（漏填流水等数据不一致），
+ *   该条获取记 0，总数恒 ≥ 0。
  * 用 recsAsc() 保证按录入先后遍历（同一秒内也稳定）。
  *
  * 基准值 leftBase()：首条记录的参考起点。
@@ -869,9 +872,11 @@ function gainedDeltas(c){
   const out = [];
   let prev = leftBase(c);
   recs.forEach(function(r){
-    const cur  = Number(r.gemsLeft) || 0;
-    const diff = cur - prev;
-    out.push(diff > 0 ? diff : 0);   /* 下降/持平 → 本次获取 0 */
+    const cur   = Number(r.gemsLeft)  || 0;
+    const sold  = Number(r.daySold)   || 0;
+    const chaos = Number(r.chaosCost) || 0;
+    const diff  = (cur - prev) + sold + chaos;   /* 剩余增量 + 卖出 + 消耗 */
+    out.push(diff > 0 ? diff : 0);   /* 逆差（数据不一致）→ 本条获取 0 */
     prev = cur;
   });
   return out;
@@ -910,8 +915,8 @@ function roleIncome(c){ return netProfit(c); }
  *
  * 统计口径：
  *   把每条明细按 date 归到那一天，**当天单独算一套指标**。
- *   「本次获取」每天独立从 0 起算（不接前一天的末尾）：
- *     当天按时间升序逐条比较剩余，增长才计，下降/持平记 0。
+ *   「本次获取」= (本条剩余 − 上一条剩余) + 本条卖出 + 本条秘境消耗，逆差记 0；
+ *     当天首条接上「上一条（可能是前几天）」的剩余起算。
  *   完全没录入明细的日子 → 跳过，不生成快照。
  *
  * 字段与 totals() 保持一致，但不含「基准值」——
@@ -938,7 +943,8 @@ function groupRecordsByDate(c){
  *   9/21 剩100 → 9/23 剩150（9/22 没录）
  *     9/21：prev = 初始存量        → 增长 100
  *     9/23：prev = 100（取自 9/21）→ 增长  50      ← 不再把 150 整条算成当天获取
- * 若当天就是首条，则以「初始存量」leftBase() 起算。 */
+ * 若当天就是首条，则以「初始存量」leftBase() 起算。
+ * 「获取」口径与 gainedDeltas() 一致：剩余增量 + 本条卖出 + 本条秘境消耗。 */
 function dayTotals(c, dayRecs){
   const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
               laborCost:0, profit:0, chaosCost:0, recordCount:0 };
@@ -951,9 +957,12 @@ function dayTotals(c, dayRecs){
     ? (Number(asc[gi - 1].gemsLeft) || 0)     /* 接上上一条（可能在前几天） */
     : leftBase(c);                            /* 真是首条 → 用初始存量 */
   dayRecs.forEach(function(r){
-    const cur = Number(r.gemsLeft) || 0;
-    const diff = cur - prev;
-    if(diff > 0) t.gained += diff;      /* 只统计增长 */
+    const cur   = Number(r.gemsLeft)  || 0;
+    const sold  = Number(r.daySold)   || 0;
+    const chaos = Number(r.chaosCost) || 0;
+    /* 获取 = 剩余增量 + 本条卖出 + 本条秘境消耗（先获取，卖掉/消耗后才剩这么多），逆差记 0 */
+    const diff = (cur - prev) + sold + chaos;
+    if(diff > 0) t.gained += diff;
     prev = cur;
     t.gemsSold  += Number(r.daySold)   || 0;
     t.soldValue += Number(r.dayValue)  || 0;
@@ -1705,7 +1714,7 @@ function refreshNumbers(i){
     const t = totals(c);
     /* 7 列：当前剩余 / 已获取 / 已出售 / 收入 / 人工费用 / 净利润 / 秘境消耗 */
     setV(row,'gemsLeft',  intNum(t.gemsLeft), 'hit');
-    /* 已获取晶石：累加相邻剩余的增长量，恒 ≥ 0；显示为灰色，弱化视觉层级 */
+    /* 已获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0；显示为灰色，弱化视觉层级 */
     const g = gained(c);
     setV(row,'gained', g, 'hit');
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
@@ -1755,7 +1764,7 @@ function detailHTML(i){
   /* 稳定时序：先按时间升序（同一秒按录入先后），再反转得到"最新在最上" */
   const asc = recsAsc(c);
   const ordered = asc.slice().reverse();
-  /* 「本次获取晶石」= 单次增量（不是累计）：本次剩余 − 上次剩余，负数记 0。
+  /* 「本次获取晶石」= 单次增量（不是累计）：剩余增量 + 本条卖出 + 本条秘境消耗，逆差记 0。
      直接用 gainedDeltas()，与卡片上的「已获取晶石」总数共用同一份计算，
      明细各行的增量之和 === 卡片显示的总数，两处永远一致。
      净利润仍是单条记录的「收入 − 人工」，本就与累计无关。 */
@@ -1896,7 +1905,7 @@ function whoHTML(c, i){
 function cardHTML(c, i){
   const color = THEME[i % THEME.length];
   const t = totals(c);
-  /* 已获取晶石：累加相邻剩余的增长量，恒 ≥ 0 */
+  /* 已获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0 */
   const g = gained(c);
   /* 净利润 = 收入 − 人工费用 */
   const p = t.soldValue - t.laborCost;
@@ -1929,7 +1938,7 @@ function cardHTML(c, i){
     +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '现有多少填多少', '当前剩余晶石',
     +            '当前剩余晶石是「时点值」：每次录入以最新一次为准，不累加。现在还剩多少就填多少。')
     +     roCell('gained', g, 'gain',
-    +            '已获取晶石 = 逐条累加「本次剩余 − 上次剩余」的增长量；本次剩余未超过上次则记 0', '已获取晶石')
+    +            '已获取晶石 = 每次「剩余增量 + 本次卖出 + 本次秘境消耗」之和：先获取，卖掉/消耗之后才剩这么多；逆差记 0', '已获取晶石')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售',      '已出售晶石')
     +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入',      '收入')
     +     cell('laborCost', money(t.laborCost), 'plain',  '本次人工',      '人工费用')
