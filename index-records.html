@@ -1866,27 +1866,16 @@ const FEATURES = [
    不参与任何自动计算，也不随每日录入变化。 */
 function wealth(c){ return Number(c.wealth) || 0; }
 
-/* 当天有录入 → 角色名字变绿；每天早上 8 点为重置点。
-   页面每次开启时读取当前时间：周期 = 今天 08:00 → 次日 08:00
-   （凌晨 0:00~7:59 打开则算昨天 08:00 → 今天 08:00）。
-   判定遍历该角色**全部**明细：只要任意一条落在当前周期内就变绿——
-   不能只看数组最后一条，因为补录历史账时旧记录会追加到末尾，
-   那样"当天录过 + 后来补了旧账"的角色会被误判为白色。 */
-function periodStartStr(){
-  const now = new Date();
-  const d = new Date(now);
-  if(now.getHours() < 8) d.setDate(d.getDate() - 1);
-  const p2 = function(n){ return String(n).padStart(2, '0'); };
-  return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' 08:00:00';
-}
+/* 当天有录入 → 角色名字变绿；判定口径与收入归期完全一致：
+   记录的归期 date（由 pushRec 写入 today()，已含 8 点分割）=== 当前结算日 today()。
+   9.27 早 8 点前录入的（含 9.26 全天 + 9.27 凌晨）归期都是 9.26，
+   与"9.27 早 8 点前录入的都算 9.26 收入"同一条规则，名字绿到 9.27 早 8 点。
+   9.27 早 8 点一过，today() 翻到 9.27，昨天的记录不再匹配 → 全部重置为白色。
+   注意不能用「date+time 拼接 ≥ 今晨8点」判定：凌晨录入 time 是 00:xx，
+   拼出来小于 08:00 起点，会把刚录的角色误判成白色（旧版 bug）。 */
 function recordedToday(c){
-  const recs = c.records || [];
-  if(!recs.length) return false;
-  const start = periodStartStr();
-  for(let k = 0; k < recs.length; k++){
-    if(recStamp(recs[k]) >= start) return true;
-  }
-  return false;
+  const t = today();
+  return (c.records || []).some(function(r){ return r.date === t; });
 }
 
 /* 角色信息：第一行 角色名+等级/职业/账号+✕；第二行 4 个功能开关 + 修改 + 财富
@@ -2064,6 +2053,9 @@ function pushRec(i, got){
 function afterCommit(i){
   markDirty(i, false);
   refreshNumbers(i);
+  /* 录入后立刻更新名字的「当日已录入」绿色，不用等刷新页面 */
+  const nm = document.querySelector('.row[data-i="' + i + '"] .nm');
+  if(nm) nm.classList.toggle('today', recordedToday(ACCOUNTS[i]));
   const d = document.getElementById('detail-' + i);
   if(d){
     const wasOpen = d.closest('.row') && d.closest('.row').classList.contains('open');
