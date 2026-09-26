@@ -84,6 +84,24 @@
     box-shadow:0 0 10px rgba(47,230,208,0.55);
   }
 
+  /* ---------- 每日信息（结算期 8 点 → 次日 8 点，可折叠） ---------- */
+  #daily{margin:-4px 0 14px;padding:0;overflow:hidden}
+  #dailyHead{
+    width:100%;display:flex;align-items:center;gap:10px;
+    padding:10px 16px;background:none;border:0;cursor:pointer;
+    color:var(--text);font:inherit;text-align:left;
+  }
+  #dailyHead:hover{background:rgba(255,255,255,0.03)}
+  #dailyHead .d-title{font-size:13px;font-weight:800;letter-spacing:.5px}
+  #dailyHead .d-range{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  #dailyHead .d-range b{color:var(--mute);font-weight:700}
+  #dailyHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
+  #daily.folded #dailyHead .d-arrow{transform:rotate(-90deg)}
+  #dailyBody{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:0 12px 12px}
+  #daily.folded #dailyBody{display:none}
+  @media (max-width:1080px){ #dailyBody{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:560px){ #dailyBody{grid-template-columns:repeat(2,1fr)} }
+
   /* ---------- 明细表 ---------- */
   .sec-title{display:flex;align-items:center;gap:10px;padding:14px 20px 4px}
   .sec-title h2{font-size:15px;margin:0;letter-spacing:1px}
@@ -141,6 +159,16 @@
   </div>
 
   <div id="summary"></div>
+
+  <!-- ========== 每日信息（结算期 08:00 → 次日 08:00，点击标题可折叠） ========== -->
+  <section id="daily" class="panel">
+    <button id="dailyHead" type="button" title="点击折叠 / 展开">
+      <span class="d-title">每日信息</span>
+      <span class="d-range">结算期 <b id="dailyRange"></b></span>
+      <span class="d-arrow">▼</span>
+    </button>
+    <div id="dailyBody"></div>
+  </section>
 
   <div class="panel">
     <div class="sec-title">
@@ -377,6 +405,77 @@ document.getElementById('summary').innerHTML = cards.map(c =>
     Math.max(c.bar * 100, 1.2).toFixed(2) + '%"></i></div>' : '') +
   '</div>'
 ).join('');
+
+/* ---- 每日信息：结算期 8 点 → 次日 8 点 ----
+   明细 dt 是实际时刻（如实记录），归期在统计时换算：
+   time < 08:00 的记录归前一天 —— 与晶石台账 settleDateOf 同一条规则。 */
+function xpSettleDate(dt){
+  const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/.exec(String(dt || ''));
+  if(!m) return '';
+  const day = m[1];
+  if(m[2] < '08:00:00'){
+    const d = new Date(day + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 1);
+    const p = x => String(x).padStart(2, '0');
+    return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+  }
+  return day;
+}
+function xpToday(){
+  const d = new Date(), p = x => String(x).padStart(2, '0');
+  if(d.getHours() < 8) d.setDate(d.getDate() - 1);
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+const TODAY_SETTLE = xpToday();
+const TODAY_ROWS = ROWS.filter(r => xpSettleDate(r.dt) === TODAY_SETTLE);
+const D_GAIN   = TODAY_ROWS.reduce((s, r) => s + r.gained, 0);
+const D_STONE  = TODAY_ROWS.reduce((s, r) => s + (r.stones || 0), 0);
+const D_P50    = TODAY_ROWS.filter(r => r.pot50).length;
+const D_P20    = TODAY_ROWS.filter(r => r.pot20).length;
+const D_LAST   = TODAY_ROWS[TODAY_ROWS.length - 1];
+const D_AVG    = TODAY_ROWS.length ? Math.round(D_GAIN / TODAY_ROWS.length) : 0;
+
+const _nxt = new Date(TODAY_SETTLE + 'T00:00:00Z');
+_nxt.setUTCDate(_nxt.getUTCDate() + 1);
+const _p2 = x => String(x).padStart(2, '0');
+const NEXT_SETTLE = _nxt.getUTCFullYear() + '-' + _p2(_nxt.getUTCMonth() + 1) + '-' + _p2(_nxt.getUTCDate());
+document.getElementById('dailyRange').textContent =
+  TODAY_SETTLE + ' 08:00 → ' + NEXT_SETTLE + ' 08:00';
+
+const dailyCards = [
+  { k:'当日打图数',     v:TODAY_ROWS.length + ' 张',
+    s:'结算期内有记录的地图', cls:'' },
+  { k:'当日获得经验',   v:fmt(D_GAIN),
+    s:TODAY_ROWS.length ? '平均每图 ' + fmt(D_AVG) : '暂无记录', cls:'acc' },
+  { k:'当日占等级进度', v:pct(D_GAIN / LEVEL_TOTAL),
+    s:'基于等级总经验', cls:'ok' },
+  { k:'当日晶石掉落',   v:fmt(D_STONE),
+    s:'结算期内合计', cls:'pur' },
+  { k:'当日药水使用',   v:'50%×' + D_P50 + ' / 20%×' + D_P20,
+    s:'各药水使用张数', cls:'gold' },
+  { k:'当日结束进度',   v:D_LAST ? pct(D_LAST.cumPct) : '—',
+    s:D_LAST ? '最后一条 ' + D_LAST.dt.slice(11) : '暂无记录', cls:'',
+    bar:D_LAST ? D_LAST.cumPct : null },
+];
+document.getElementById('dailyBody').innerHTML = dailyCards.map(c =>
+  '<div class="panel scard"><div class="k">' + c.k + '</div>' +
+  '<div class="v ' + c.cls + '">' + c.v + '</div>' +
+  '<div class="s">' + c.s + '</div>' +
+  (c.bar != null ? '<div class="bar"><i style="width:' +
+    Math.max(c.bar * 100, 1.2).toFixed(2) + '%"></i></div>' : '') +
+  '</div>'
+).join('');
+
+/* 折叠状态记忆（与晶石台账同款交互） */
+(function initDailyFold(){
+  const sec = document.getElementById('daily');
+  if(!sec) return;
+  try{ if(localStorage.getItem('xp-ledger-daily-fold') === '1') sec.classList.add('folded'); }catch(e){}
+  document.getElementById('dailyHead').addEventListener('click', function(){
+    sec.classList.toggle('folded');
+    try{ localStorage.setItem('xp-ledger-daily-fold', sec.classList.contains('folded') ? '1' : '0'); }catch(e){}
+  });
+})();
 
 /* 明细表体 */
 document.querySelector('#tbl tbody').innerHTML = ROWS.map((r, i) =>
