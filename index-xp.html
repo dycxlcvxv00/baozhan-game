@@ -242,9 +242,9 @@ function tierBadge(tier){
   const t = parseInt(String(tier).slice(1), 10);
   const c = TIER_COLORS[t] || '#98a4b5';
   if (t >= 19){
-    return '<span class="tier" style="color:#ffd9a0;background:linear-gradient(90deg,rgba(255,59,78,.20),rgba(255,207,107,.20));border:1px solid rgba(255,150,90,.62);box-shadow:0 0 10px rgba(255,90,80,.35)">T' + t + '</span>';
+    return '<span class="tier" style="color:#ffd9a0;background:linear-gradient(90deg,rgba(255,59,78,.20),rgba(255,207,107,.20));border:1px solid rgba(255,150,90,.62)">T' + t + '</span>';
   }
-  return '<span class="tier" style="color:' + c + ';background:' + c + '1f;border:1px solid ' + c + '59;box-shadow:0 0 8px ' + c + '30">T' + t + '</span>';
+  return '<span class="tier" style="color:' + c + ';background:' + c + '1f;border:1px solid ' + c + '59">T' + t + '</span>';
 }
 
 const fmt  = n => n.toLocaleString('en-US');
