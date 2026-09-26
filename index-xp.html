@@ -12,6 +12,11 @@
                与上一条记录对比算出本图获得经验与占比，追加进下方
                XP_RECORDS 数组后 push 发布。
      更新方法：只改 XP_RECORDS / LEVEL_TOTAL，其余全部自动计算。
+     字段说明：
+       dt     统计时刻，精确到分秒
+       mobQty 怪物数量加成%，null 显示 —
+       stones 晶石掉落数量，null 显示 —
+       note   备注默认留空
      ============================================================ -->
 <style>
   :root{
@@ -39,7 +44,7 @@
   ::-webkit-scrollbar-thumb{background:rgba(125,165,225,0.22);border-radius:8px}
   ::-webkit-scrollbar-thumb:hover{background:rgba(47,230,208,0.4)}
 
-  .wrap{max-width:1500px;margin:0 auto;padding:22px 22px 60px}
+  .wrap{max-width:1600px;margin:0 auto;padding:22px 22px 60px}
   .panel{
     background:var(--panel); border:1px solid var(--line); border-radius:14px;
     backdrop-filter:blur(11px) saturate(120%); -webkit-backdrop-filter:blur(11px) saturate(120%);
@@ -84,24 +89,28 @@
   .sec-title h2{font-size:15px;margin:0;letter-spacing:1px}
   .sec-title .tag{font-size:11.5px;color:var(--mute)}
   .tscroll{overflow-x:auto;padding:10px 12px 16px}
-  table{border-collapse:collapse;width:100%;min-width:1180px;font-variant-numeric:tabular-nums}
+  table{border-collapse:collapse;width:100%;min-width:1420px;font-variant-numeric:tabular-nums}
   th,td{padding:9px 10px;text-align:center;border-bottom:1px solid rgba(125,165,225,0.10);white-space:nowrap}
   thead th{
     font-size:12px;color:var(--mute);font-weight:700;letter-spacing:.5px;
     background:rgba(255,255,255,0.03);border-bottom:1px solid var(--line);
   }
   tbody tr:hover{background:rgba(47,230,208,0.05)}
-  td.note{white-space:normal;min-width:230px;max-width:360px;text-align:left;color:var(--dim);font-size:12.5px;line-height:1.55}
   td.map{text-align:left;font-weight:700}
+  td.dt{font-size:12.5px;color:var(--dim)}
   .tier{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:800}
+  .tier.t13{color:#ffb46b;background:rgba(255,180,107,0.12);border:1px solid rgba(255,180,107,0.35)}
   .tier.t14{color:var(--accent);background:rgba(47,230,208,0.12);border:1px solid rgba(47,230,208,0.35)}
   .tier.t15{color:var(--accent2);background:rgba(155,123,255,0.12);border:1px solid rgba(155,123,255,0.35)}
   .num{font-weight:700}
   .gain{color:var(--ok);font-weight:800}
   .pct{color:var(--accent);font-weight:800}
   .cum{color:var(--gold);font-weight:700}
+  .stone{color:#c77bff;font-weight:800}
+  .qty{color:var(--dim);font-weight:700}
   .pot{display:inline-block;min-width:20px;font-weight:900;font-size:14px}
   .pot.yes{color:var(--ok)} .pot.no{color:rgba(147,164,196,0.4);font-weight:400}
+  .empty{color:rgba(147,164,196,0.4)}
   tfoot td{font-weight:800;color:var(--txt);border-top:1px solid var(--line);background:rgba(255,255,255,0.03)}
 
   /* ---------- 规则 ---------- */
@@ -137,8 +146,8 @@
       <table id="tbl">
         <thead>
           <tr>
-            <th>#</th><th>日期</th><th>地图名称</th><th>阶级</th><th>怪物等级</th>
-            <th>药水50%</th><th>药水20%</th>
+            <th>#</th><th>日期时间</th><th>地图名称</th><th>阶级</th><th>怪物等级</th>
+            <th>怪物数量%</th><th>药水50%</th><th>药水20%</th><th>晶石掉落</th>
             <th>上次经验值</th><th>当前经验值</th><th>本图获得经验</th>
             <th>获得占当前等级%</th><th>等级累计进度%</th><th>备注</th>
           </tr>
@@ -153,12 +162,13 @@
     <h2>统计规则</h2>
     <ol>
       <li>每打完一张地图把截图发给 AI，自动读取<b>地图阶级与名字、怪物等级、当前经验值</b>，与上一条记录对比后追加记录并同步到本页面。</li>
+      <li><b>日期时间</b>为打完图统计时刻，精确到分秒。</li>
       <li><b>本图获得经验</b> = 当前经验值 − 上次经验值。</li>
       <li><b>获得占当前等级%</b> = 本图获得经验 ÷ 当前等级总经验。</li>
       <li><b>等级累计进度%</b> = 当前经验值 ÷ 当前等级总经验，与游戏经验条 Exp% 一致。</li>
+      <li><b>怪物数量%</b> = 该图怪物数量加成总和；<b>晶石掉落</b> = 本次地图掉落的晶石数量。</li>
       <li>86 级升级所需总经验 <span class="hl">1,999,268,000</span>；升级后按新等级总经验重新计算。</li>
-      <li>第 1 条为 86 级首张统计图，起点经验按 0 计。</li>
-      <li>经验药水两列：使用填 <b>✓</b>，未使用显示 <b>—</b>。</li>
+      <li>第 1 条为 86 级首张统计图，起点经验按 0 计；经验药水使用填 <b>✓</b>，未使用显示 <b>—</b>；备注默认留空。</li>
     </ol>
   </div>
 
@@ -171,26 +181,32 @@
 <script>
 /* ============ 数据区：追加记录只改这里 ============ */
 const LEVEL_TOTAL = 1999268000;          // 86 级升级所需总经验
-const UPDATED_AT  = '2026-09-26';
+const UPDATED_AT  = '2026-09-26 18:54';
 
+/* dt 为统计时刻，精确到分秒；
+   #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
 const XP_RECORDS = [
-  { date:'2026-09-26', role:'陌尘', level:86,
-    map:'祭祀礼堂', tier:'T14', mobLv:86,
-    pot50:false, pot20:false,
-    prev:0, cur:10907332,
-    note:'86 级后首张统计图，起点经验按 0 计' },
+  { dt:'2026-09-26 18:15:00', role:'陌尘', level:86,
+    map:'祭祀礼堂', tier:'T14', mobLv:86, mobQty:null,
+    pot50:false, pot20:false, stones:null,
+    prev:0, cur:10907332, note:'' },
 
-  { date:'2026-09-26', role:'陌尘', level:86,
-    map:'冥河河畔', tier:'T15', mobLv:88,
-    pot50:false, pot20:false,
-    prev:10907332, cur:29586534,
-    note:'虚无异界地图单人；怪物数量 +0%；灵魂晶石掉落系数 100%*100%；绘图师挑战已完成；词缀：怪物生命 +20%、大量宝箱、攻速施法 +30%、出现 NPC 流浪铁匠' },
+  { dt:'2026-09-26 18:15:00', role:'陌尘', level:86,
+    map:'冥河河畔', tier:'T15', mobLv:88, mobQty:0,
+    pot50:false, pot20:false, stones:null,
+    prev:10907332, cur:29586534, note:'' },
+
+  { dt:'2026-09-26 18:54:04', role:'陌尘', level:86,
+    map:'王城虫穴2层', tier:'T13', mobLv:84, mobQty:15,
+    pot50:false, pot20:false, stones:525,
+    prev:29586534, cur:48685259, note:'' },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
 const fmt  = n => n.toLocaleString('en-US');
 const pct  = x => (x * 100).toFixed(4) + '%';
 const pot  = u => u ? '<span class="pot yes">✓</span>' : '<span class="pot no">—</span>';
+const dash = v => v == null ? '<span class="empty">—</span>' : v;
 
 function decorate(r){
   const gained = r.cur - r.prev;
@@ -204,6 +220,7 @@ const ROWS = XP_RECORDS.map(decorate);
 const LAST = ROWS[ROWS.length - 1];
 const TOTAL_GAIN = ROWS.reduce((s, r) => s + r.gained, 0);
 const AVG_GAIN   = Math.round(TOTAL_GAIN / ROWS.length);
+const TOTAL_STONE = ROWS.reduce((s, r) => s + (r.stones || 0), 0);
 
 /* 顶部 chips */
 document.getElementById('chip-role').textContent =
@@ -219,8 +236,9 @@ const cards = [
   { k:'当前经验值', v:fmt(LAST.cur),      s:'最新一条记录', cls:'acc' },
   { k:'等级总经验', v:fmt(LEVEL_TOTAL),   s:'升级所需', cls:'' },
   { k:'等级累计进度', v:pct(LAST.cumPct), s:'与游戏经验条一致', cls:'gold', bar:LAST.cumPct },
-  { k:'累计获得经验', v:fmt(TOTAL_GAIN),  s:ROWS.length + ' 张地图合计', cls:'ok' },
-  { k:'平均每图获得', v:fmt(AVG_GAIN),    s:pct(AVG_GAIN / LEVEL_TOTAL) + ' / 张', cls:'pur' },
+  { k:'累计获得经验', v:fmt(TOTAL_GAIN),
+    s:ROWS.length + ' 张地图合计 · 平均每图 ' + fmt(AVG_GAIN), cls:'ok' },
+  { k:'累计晶石掉落', v:fmt(TOTAL_STONE), s:'晶石', cls:'pur' },
 ];
 document.getElementById('summary').innerHTML = cards.map(c =>
   '<div class="panel scard"><div class="k">' + c.k + '</div>' +
@@ -235,29 +253,31 @@ document.getElementById('summary').innerHTML = cards.map(c =>
 document.querySelector('#tbl tbody').innerHTML = ROWS.map((r, i) =>
   '<tr>' +
   '<td>' + (i + 1) + '</td>' +
-  '<td>' + r.date + '</td>' +
+  '<td class="dt">' + r.dt + '</td>' +
   '<td class="map">' + r.map + '</td>' +
-  '<td><span class="tier t' + r.tier.slice(1) + '">' + r.tier + '</span></td>' +
+  '<td><span class="tier ' + r.tier.toLowerCase() + '">' + r.tier + '</span></td>' +
   '<td>' + r.mobLv + '</td>' +
+  '<td class="qty">' + dash(r.mobQty == null ? null : '+' + r.mobQty + '%') + '</td>' +
   '<td>' + pot(r.pot50) + '</td>' +
   '<td>' + pot(r.pot20) + '</td>' +
+  '<td>' + dash(r.stones == null ? null : '<span class="stone">' + fmt(r.stones) + '</span>') + '</td>' +
   '<td>' + fmt(r.prev) + '</td>' +
   '<td>' + fmt(r.cur) + '</td>' +
   '<td class="gain">+' + fmt(r.gained) + '</td>' +
   '<td class="pct">' + pct(r.gainedPct) + '</td>' +
   '<td class="cum">' + pct(r.cumPct) + '</td>' +
-  '<td class="note">' + r.note + '</td>' +
+  '<td class="note">' + (r.note || '<span class="empty">—</span>') + '</td>' +
   '</tr>'
 ).join('');
 
 /* 表尾合计 */
 document.querySelector('#tbl tfoot').innerHTML =
   '<tr>' +
-  '<td colspan="9">合计 · ' + ROWS.length + ' 张地图</td>' +
+  '<td colspan="11">合计 · ' + ROWS.length + ' 张地图</td>' +
   '<td class="gain">+' + fmt(TOTAL_GAIN) + '</td>' +
   '<td class="pct">' + pct(TOTAL_GAIN / LEVEL_TOTAL) + '</td>' +
   '<td class="cum">' + pct(LAST.cumPct) + '</td>' +
-  '<td class="note">累计获得 ÷ 等级总经验；末列为当前等级进度</td>' +
+  '<td>晶石 ' + fmt(TOTAL_STONE) + '</td>' +
   '</tr>';
 </script>
 </body>
