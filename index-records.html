@@ -213,6 +213,24 @@
   .sm .v.flash{animation:flash .7s ease}
   @keyframes flash{0%{transform:scale(1)}35%{transform:scale(1.04)}100%{transform:scale(1)}}
 
+  /* ---------- 每日信息（当日 8 点 → 次日 8 点，可折叠） ---------- */
+  #daily{margin:-6px 0 16px;padding:0;overflow:hidden}
+  #dailyHead{
+    width:100%;display:flex;align-items:center;gap:10px;
+    padding:10px 16px;background:none;border:0;cursor:pointer;
+    color:var(--text);font:inherit;text-align:left;
+  }
+  #dailyHead:hover{background:rgba(255,255,255,0.03)}
+  #dailyHead .d-title{font-size:13px;font-weight:800;letter-spacing:.5px}
+  #dailyHead .d-range{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  #dailyHead .d-range b{color:var(--mute);font-weight:700}
+  #dailyHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
+  #daily.folded #dailyHead .d-arrow{transform:rotate(-90deg)}
+  #dailyBody{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;padding:0 12px 12px}
+  #daily.folded #dailyBody{display:none}
+  @media (max-width:1660px){#dailyBody{grid-template-columns:repeat(4,1fr)}}
+  @media (max-width:980px){#dailyBody{grid-template-columns:repeat(2,1fr)}}
+
   /* ---------- 列标题条（顶部共享一次，竖向对齐各卡片） ---------- */
   .colhead{
     display:flex;align-items:stretch;margin-bottom:6px;
@@ -640,6 +658,16 @@
 
   <!-- ========== 汇总统计 ========== -->
   <section id="summary"></section>
+
+  <!-- ========== 每日信息（结算期 08:00 → 次日 08:00，点击标题可折叠） ========== -->
+  <section id="daily" class="panel">
+    <button id="dailyHead" type="button" title="点击折叠 / 展开">
+      <span class="d-title">每日信息</span>
+      <span class="d-range">结算期 <b id="dailyRange"></b></span>
+      <span class="d-arrow">▼</span>
+    </button>
+    <div id="dailyBody"></div>
+  </section>
 
   <!-- ========== 列标题条（顶部共享一次） ========== -->
   <div class="colhead" id="colhead">
@@ -1747,6 +1775,7 @@ function refreshNumbers(i){
     const el = document.querySelector('[data-sum="'+pair[1]+'"]');
     if(el) el.classList.toggle('neg', parseFloat(String(el.textContent).replace(/[^\d.-]/g,'')) < 0);
   });
+  renderDaily();   /* 每日信息与汇总同步刷新 */
 }
 function setV(row, key, html, anim){
   const el = row.querySelector('[data-v="'+key+'"]');
@@ -1973,12 +2002,67 @@ function cardHTML(c, i){
     + '</div>';
 }
 
+/* ============================================================
+ * 每日信息：当前结算期（today() 08:00 → 次日 08:00）的全角色流水
+ * ------------------------------------------------------------
+ * 口径与「收入归期 / 日结快照」完全一致 —— 记录归期 date === today()。
+ * today() 已含 8 点分割：凌晨 0~8 点打开时 today() 返回昨天，
+ * 因此 9.27 早 8 点前录入的（含 9.27 凌晨）都归 9.26，面板也显示 9.26。
+ * 指标复用 dayTotals()：获取 = 剩余增量 + 卖出 + 秘境消耗（接上一条起算）。
+ * 可折叠：点击标题收起/展开，状态记入 localStorage，下次打开保持。
+ * ============================================================ */
+const DAILY_FOLD_KEY = 'gem-ledger-daily-fold';
+
+function daySummarize(date){
+  const acc = { roles:0, records:0, gained:0, gemsSold:0,
+                soldValue:0, laborCost:0, profit:0, chaosCost:0 };
+  ACCOUNTS.forEach(function(c){
+    const dayRecs = groupRecordsByDate(c)[date];
+    if(!dayRecs || !dayRecs.length) return;
+    acc.roles++;
+    const t = dayTotals(c, dayRecs);
+    acc.records   += t.recordCount;
+    acc.gained    += t.gained;
+    acc.gemsSold  += t.gemsSold;
+    acc.soldValue += t.soldValue;
+    acc.laborCost += t.laborCost;
+    acc.profit    += t.profit;
+    acc.chaosCost += t.chaosCost;
+  });
+  return acc;
+}
+
+function renderDaily(){
+  const body = document.getElementById('dailyBody');
+  if(!body) return;
+  const d = today();
+  const range = document.getElementById('dailyRange');
+  if(range) range.textContent = d + ' 08:00 → ' + addDays(d, 1) + ' 08:00';
+  const s = daySummarize(d);
+  const items = [
+    { cls:'c-roles', ico:'roles', k:'录入角色',     v:num(s.roles),       raw:s.roles },
+    { cls:'c-gain',  ico:'gain',  k:'当日获取晶石', v:num(s.gained),      raw:s.gained },
+    { cls:'c-sold',  ico:'box',   k:'当日出售晶石', v:intNum(s.gemsSold), raw:s.gemsSold },
+    { cls:'c-money', ico:'money', k:'当日收入',     v:money(s.soldValue), raw:s.soldValue },
+    { cls:'c-labor', ico:'tool',  k:'当日人工费用', v:money(s.laborCost), raw:s.laborCost },
+    { cls:'c-net',   ico:'trend', k:'当日净利润',   v:money(s.profit),    raw:s.profit },
+    { cls:'c-chaos', ico:'chaos', k:'当日秘境消耗', v:intNum(s.chaosCost),raw:s.chaosCost },
+    { cls:'c-left',  ico:'gem',   k:'当日录入条数', v:num(s.records),     raw:s.records }
+  ];
+  body.innerHTML = items.map(function(i){
+    return '<div class="sm panel ' + i.cls + '">'
+      + '<span class="k">' + ico(i.ico) + i.k + '</span>'
+      + '<span class="v' + (i.raw < 0 ? ' neg' : '') + '">' + i.v + '</span></div>';
+  }).join('');
+}
+
 function render(){
   const box = document.getElementById('cards');
   box.innerHTML = ACCOUNTS.length
     ? ACCOUNTS.map(cardHTML).join('')
     : '<div class="empty-tip panel">暂无角色 —— 点右上角「＋ 新增角色」添加</div>';
   renderSummary(summarize(ACCOUNTS));
+  renderDaily();
   document.getElementById('tbCount').textContent = ACCOUNTS.length + ' 个角色';
   syncCommitAll();
   syncSettleBtn();
@@ -2668,6 +2752,17 @@ if(_bootAuto.added.length){
   toast('已自动结算 ' + _bootAuto.added.length + ' 天');
 }
 restoreChanged(lastSavedAt);   /* 恢复「最后更改」为上次改动时间 */
+
+/* 每日信息折叠状态：读回上次的选择并绑定点击切换 */
+(function initDailyFold(){
+  const sec = document.getElementById('daily');
+  if(!sec) return;
+  try{ if(localStorage.getItem(DAILY_FOLD_KEY) === '1') sec.classList.add('folded'); }catch(e){}
+  document.getElementById('dailyHead').addEventListener('click', function(){
+    sec.classList.toggle('folded');
+    try{ localStorage.setItem(DAILY_FOLD_KEY, sec.classList.contains('folded') ? '1' : '0'); }catch(e){}
+  });
+})();
 cloudInit();                   /* 异步连云端：比时间戳决定用本机还是云端 */
 window.addEventListener('resize', function(){ syncAllDetailCols(); });
 syncFullBtn();                 /* 初始化全屏按钮状态 */
