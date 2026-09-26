@@ -98,10 +98,15 @@
   tbody tr:hover{background:rgba(47,230,208,0.05)}
   td.map{text-align:left;font-weight:700}
   td.dt{font-size:12.5px;color:var(--dim)}
-  .tier{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:800}
-  .tier.t13{color:#ffb46b;background:rgba(255,180,107,0.12);border:1px solid rgba(255,180,107,0.35)}
-  .tier.t14{color:var(--accent);background:rgba(47,230,208,0.12);border:1px solid rgba(47,230,208,0.35)}
-  .tier.t15{color:var(--accent2);background:rgba(155,123,255,0.12);border:1px solid rgba(155,123,255,0.35)}
+  .tier{display:inline-block;padding:1px 9px;border-radius:10px;font-size:11.5px;font-weight:800;letter-spacing:.5px}
+  /* T 级颜色由 tierBadge() 动态着色，见 JS 区 TIER_COLORS */
+
+  /* ---------- T 级颜色图例 ---------- */
+  #tiers{margin-top:14px}
+  #tier-legend{padding:4px 20px 16px;display:flex;flex-direction:column;gap:9px}
+  .tl-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .tl-name{width:46px;font-size:12.5px;font-weight:800;letter-spacing:2px;flex:none}
+  .tl-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .num{font-weight:700}
   .gain{color:var(--ok);font-weight:800}
   .pct{color:var(--accent);font-weight:800}
@@ -158,6 +163,14 @@
     </div>
   </div>
 
+  <div id="tiers" class="panel">
+    <div class="sec-title">
+      <h2>T 级颜色图例</h2>
+      <span class="tag">T1 – T19 · 按强度递进 · 档内色相一致逐级加艳</span>
+    </div>
+    <div id="tier-legend"></div>
+  </div>
+
   <div id="rules" class="panel">
     <h2>统计规则</h2>
     <ol>
@@ -167,6 +180,7 @@
       <li><b>获得占当前等级%</b> = 本图获得经验 ÷ 当前等级总经验。</li>
       <li><b>等级累计进度%</b> = 当前经验值 ÷ 当前等级总经验，与游戏经验条 Exp% 一致。</li>
       <li><b>怪物数量%</b> = 该图怪物数量加成总和；<b>晶石掉落</b> = 本次地图掉落的晶石数量。</li>
+      <li><b>T 级颜色</b>按强度分七档，档内逐级加艳，T19 为炽焰渐变，见上方图例。</li>
       <li>86 级升级所需总经验 <span class="hl">1,999,268,000</span>；升级后按新等级总经验重新计算。</li>
       <li>第 1 条为 86 级首张统计图，起点经验按 0 计；经验药水使用填 <b>✓</b>，未使用显示 <b>—</b>；备注默认留空。</li>
     </ol>
@@ -202,6 +216,36 @@ const XP_RECORDS = [
     prev:29586534, cur:48685259, note:'' },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
+
+/* ---- T 级颜色体系 T1–T19，按强度分档 ----
+   普通 T1-3 灰白 / 优良 T4-6 绿 / 稀有 T7-9 蓝 / 史诗 T10-12 紫
+   传奇 T13-14 橙 / 辉煌 T15-16 金 / 神话 T17-19 红 · T19 炽焰渐变 */
+const TIER_COLORS = {
+  1:'#98a4b5', 2:'#a9b6c7', 3:'#bcc9d9',
+  4:'#74dda5', 5:'#57e39b', 6:'#2fe97f',
+  7:'#5ec5ff', 8:'#3faeff', 9:'#2b97f5',
+  10:'#b7a1ff', 11:'#a488ff', 12:'#8f6dff',
+  13:'#ffa94d', 14:'#ff8c33',
+  15:'#ffc94d', 16:'#ffd97a',
+  17:'#ff7070', 18:'#ff5257',
+};
+const TIER_GROUPS = [
+  {name:'普通', c:'#bcc9d9', range:[1,3]},
+  {name:'优良', c:'#57e39b', range:[4,6]},
+  {name:'稀有', c:'#3faeff', range:[7,9]},
+  {name:'史诗', c:'#a488ff', range:[10,12]},
+  {name:'传奇', c:'#ff8c33', range:[13,14]},
+  {name:'辉煌', c:'#ffd97a', range:[15,16]},
+  {name:'神话', c:'#ff5257', range:[17,19]},
+];
+function tierBadge(tier){
+  const t = parseInt(String(tier).slice(1), 10);
+  const c = TIER_COLORS[t] || '#98a4b5';
+  if (t >= 19){
+    return '<span class="tier" style="color:#ffd9a0;background:linear-gradient(90deg,rgba(255,59,78,.20),rgba(255,207,107,.20));border:1px solid rgba(255,150,90,.62);box-shadow:0 0 10px rgba(255,90,80,.35)">T' + t + '</span>';
+  }
+  return '<span class="tier" style="color:' + c + ';background:' + c + '1f;border:1px solid ' + c + '59;box-shadow:0 0 8px ' + c + '30">T' + t + '</span>';
+}
 
 const fmt  = n => n.toLocaleString('en-US');
 const pct  = x => (x * 100).toFixed(4) + '%';
@@ -255,7 +299,7 @@ document.querySelector('#tbl tbody').innerHTML = ROWS.map((r, i) =>
   '<td>' + (i + 1) + '</td>' +
   '<td class="dt">' + r.dt + '</td>' +
   '<td class="map">' + r.map + '</td>' +
-  '<td><span class="tier ' + r.tier.toLowerCase() + '">' + r.tier + '</span></td>' +
+  '<td>' + tierBadge(r.tier) + '</td>' +
   '<td>' + r.mobLv + '</td>' +
   '<td class="qty">' + dash(r.mobQty == null ? null : '+' + r.mobQty + '%') + '</td>' +
   '<td>' + pot(r.pot50) + '</td>' +
@@ -279,6 +323,15 @@ document.querySelector('#tbl tfoot').innerHTML =
   '<td class="cum">' + pct(LAST.cumPct) + '</td>' +
   '<td>晶石 ' + fmt(TOTAL_STONE) + '</td>' +
   '</tr>';
+
+/* T 级颜色图例 */
+document.getElementById('tier-legend').innerHTML = TIER_GROUPS.map(g =>
+  '<div class="tl-row">' +
+  '<div class="tl-name" style="color:' + g.c + '">' + g.name + '</div>' +
+  '<div class="tl-chips">' +
+  Array.from({length: g.range[1] - g.range[0] + 1}, (_, k) => tierBadge('T' + (g.range[0] + k))).join('') +
+  '</div></div>'
+).join('');
 </script>
 </body>
 </html>
