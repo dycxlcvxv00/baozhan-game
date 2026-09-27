@@ -159,7 +159,9 @@ def cmd_add(a):
 
 
 # ---------------- 线上校验 ----------------
-def fetch_online():
+def fetch_nodes():
+    """同时探三个 CDN 节点，返回 [(ip, 内容), ...]——各节点生效有先后，不能只看一个"""
+    out = []
     for ip in IPS:
         try:
             r = subprocess.run(
@@ -167,35 +169,39 @@ def fetch_online():
                  'dycxlcvxv00.github.io:443:' + ip, URL],
                 capture_output=True, text=True)
             if r.returncode == 0 and r.stdout.strip():
-                return r.stdout
+                out.append((ip, r.stdout))
         except Exception:
             pass
-    return None
+    return out
 
 
 def wait_online(fingerprint, timeout=150, interval=10, delay=8):
-    """轮询直到线上出现新内容指纹；返回 (是否成功, 耗时秒, sha 是否一致)
+    """轮询直到任一节点内容与本地 sha256 完全一致；返回 (是否成功, 耗时秒, sha 是否一致)
+       - 判定以 sha256 为准，避免「某节点已更新、另一节点还是旧的」造成误判
+       - 超时兜底：只要有节点出现新指纹，就报告为部分生效
        delay: 首次请求前的静默期（push 后立刻请求必然拿到旧版，省一次无效往返）"""
     local = sha256_of(HTML)
     time.sleep(delay)
     t0 = time.time()
     while time.time() - t0 < timeout:
-        txt = fetch_online()
-        if txt:
-            if fingerprint and fingerprint in txt:
-                return True, round(time.time() - t0 + delay, 1), sha256_text(txt) == local
+        for ip, txt in fetch_nodes():
             if sha256_text(txt) == local:
                 return True, round(time.time() - t0 + delay, 1), True
         time.sleep(interval)
+    for ip, txt in fetch_nodes():
+        if fingerprint and fingerprint in txt:
+            return True, round(time.time() - t0 + delay, 1), False
     return False, round(time.time() - t0 + delay, 1), False
 
 
 # ---------------- publish ----------------
 def cmd_publish(a):
     html = read_html()
-    recs, _ = parse_records(html)
+    recs, m = parse_records(html)
     last = recs[-1]
-    fingerprint = str(last['cur'])
+    # 指纹取「最后一条记录的原文」：新增记录、修改已有记录都能准确命中
+    raws = re.findall(r'\{[^{}]*\}', m.group(1), re.S)
+    fingerprint = re.sub(r'\s+', '', raws[-1]) if raws else str(last['cur'])
 
     subprocess.run(['git', 'add', '-A'], cwd=REPO, check=True)
     msg = a.msg or ('经验台账：新增第%d条 %s%s 怪物%d级 晶石%s 进度%.4f%%' % (
