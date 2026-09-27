@@ -163,7 +163,7 @@ def fetch_online():
     for ip in IPS:
         try:
             r = subprocess.run(
-                ['curl', '-s', '--max-time', '20', '--resolve',
+                ['curl', '-s', '--max-time', '10', '--resolve',
                  'dycxlcvxv00.github.io:443:' + ip, URL],
                 capture_output=True, text=True)
             if r.returncode == 0 and r.stdout.strip():
@@ -173,21 +173,21 @@ def fetch_online():
     return None
 
 
-def wait_online(fingerprint, timeout=150, interval=12):
-    """轮询直到线上出现新内容指纹；返回 (是否成功, 耗时秒)"""
+def wait_online(fingerprint, timeout=150, interval=10, delay=8):
+    """轮询直到线上出现新内容指纹；返回 (是否成功, 耗时秒, sha 是否一致)
+       delay: 首次请求前的静默期（push 后立刻请求必然拿到旧版，省一次无效往返）"""
     local = sha256_of(HTML)
+    time.sleep(delay)
     t0 = time.time()
-    tried = 0
     while time.time() - t0 < timeout:
-        tried += 1
         txt = fetch_online()
         if txt:
             if fingerprint and fingerprint in txt:
-                return True, round(time.time() - t0, 1), sha256_text(txt) == local
+                return True, round(time.time() - t0 + delay, 1), sha256_text(txt) == local
             if sha256_text(txt) == local:
-                return True, round(time.time() - t0, 1), True
+                return True, round(time.time() - t0 + delay, 1), True
         time.sleep(interval)
-    return False, round(time.time() - t0, 1), False
+    return False, round(time.time() - t0 + delay, 1), False
 
 
 # ---------------- publish ----------------
