@@ -213,7 +213,7 @@ def cmd_publish(a):
         sys.exit('[ERROR] push 失败：\n' + p.stderr)
     print('[OK] 已 push')
 
-    if getattr(a, 'wait', True):
+    if not getattr(a, 'no_wait', False):
         print('[..] 等待 Pages 生效（轮询，最长 150s）')
         ok, sec, same = wait_online(fingerprint)
         if ok:
