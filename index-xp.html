@@ -85,26 +85,42 @@
     box-shadow:0 0 10px rgba(47,230,208,0.55);
   }
 
-  /* ---------- 每日信息（结算期 8 点 → 次日 8 点，可折叠） ---------- */
-  #daily{margin:-4px 0 14px;padding:0;overflow:hidden}
-  #dailyHead{
+  /* ---------- 每日信息：一天一个独立折叠面板（结算期 8 点 → 次日 8 点） ---------- */
+  #days{margin-bottom:14px}
+  .daysect{margin:0 0 12px;padding:0;overflow:hidden}
+  .dayHead{
     width:100%;display:flex;align-items:center;gap:10px;
-    padding:10px 16px;background:none;border:0;cursor:pointer;
-    color:var(--text);font:inherit;text-align:left;
+    padding:12px 16px;background:none;border:0;cursor:pointer;
+    color:var(--txt);font:inherit;text-align:left;
   }
-  #dailyHead:hover{background:rgba(255,255,255,0.03)}
-  #dailyHead .d-title{font-size:13px;font-weight:800;letter-spacing:.5px}
-  #dailyHead .d-range{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
-  #dailyHead .d-range b{color:var(--mute);font-weight:700}
-  #dailyHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
-  #daily.folded #dailyHead .d-arrow{transform:rotate(-90deg)}
-  #dailyBody{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:0 12px 12px}
-  #daily.folded #dailyBody{display:none}
-  @media (max-width:1080px){ #dailyBody{grid-template-columns:repeat(3,1fr)} }
-  @media (max-width:560px){ #dailyBody{grid-template-columns:repeat(2,1fr)} }
-  /* 明细表嵌在每日面板内，折叠时一并隐藏 */
-  #dailyTable{border-top:1px solid var(--line);margin-top:2px}
-  #daily.folded #dailyTable{display:none}
+  .dayHead:hover{background:rgba(255,255,255,0.03)}
+  .dayHead .d-date{font-size:14px;font-weight:800;letter-spacing:.5px;color:var(--gold)}
+  .dayHead .d-sum{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .dayHead .d-sum b{color:var(--txt);font-weight:700}
+  .dayHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
+  .daysect.folded .dayHead .d-arrow{transform:rotate(-90deg)}
+  .dayBody{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:0 12px 12px}
+  .daysect.folded .dayBody{display:none}
+  @media (max-width:1080px){ .dayBody{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:560px){ .dayBody{grid-template-columns:repeat(2,1fr)} }
+  /* 当日明细表，随该天面板折叠 */
+  .dayTable{border-top:1px solid var(--line)}
+  .daysect.folded .dayTable{display:none}
+  .dayTable .sec-title{padding:12px 8px 2px}
+
+  /* ---------- 全部明细（全量，默认折叠） ---------- */
+  #allWrap{margin-bottom:14px;padding:0;overflow:hidden}
+  #allHead{
+    width:100%;display:flex;align-items:center;gap:10px;
+    padding:12px 16px;background:none;border:0;cursor:pointer;
+    color:var(--txt);font:inherit;text-align:left;
+  }
+  #allHead:hover{background:rgba(255,255,255,0.03)}
+  #allHead .d-title{font-size:13px;font-weight:800;letter-spacing:.5px}
+  #allHead .d-sum{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  #allHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
+  #allWrap.folded #allHead .d-arrow{transform:rotate(-90deg)}
+  #allWrap.folded #allBody{display:none}
 
   /* ---------- 明细表 ---------- */
   .sec-title{display:flex;align-items:center;gap:10px;padding:14px 20px 4px}
@@ -164,21 +180,17 @@
 
   <div id="summary"></div>
 
-  <!-- ========== 每日信息（结算期 08:00 → 次日 08:00，点击标题可折叠） ========== -->
-  <section id="daily" class="panel">
-    <button id="dailyHead" type="button" title="点击折叠 / 展开">
-      <span class="d-title">每日信息</span>
-      <span class="d-range">结算期 <b id="dailyRange"></b></span>
+  <!-- ========== 每日信息：每个结算日一个独立折叠面板（JS 生成） ========== -->
+  <div id="days"></div>
+
+  <!-- ========== 全部明细（跨日全量，默认折叠） ========== -->
+  <div id="allWrap" class="panel folded">
+    <button id="allHead" type="button" title="点击折叠 / 展开">
+      <span class="d-title">全部明细</span>
+      <span class="d-sum" id="allSum"></span>
       <span class="d-arrow">▼</span>
     </button>
-    <div id="dailyBody"></div>
-
-    <!-- ========== 打图明细（随每日面板一起折叠，展开后可见） ========== -->
-    <div id="dailyTable">
-      <div class="sec-title">
-        <h2>打图明细</h2>
-        <span class="tag">按统计顺序排列 · 最新在最上</span>
-      </div>
+    <div id="allBody">
       <div class="tscroll">
         <table id="tbl">
           <thead>
@@ -194,7 +206,7 @@
         </table>
       </div>
     </div>
-  </section>
+  </div>
 
   <div id="tiers" class="panel">
     <div class="sec-title">
@@ -435,54 +447,36 @@ function xpToday(){
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 }
 const TODAY_SETTLE = xpToday();
-const TODAY_ROWS = ROWS.filter(r => xpSettleDate(r.dt) === TODAY_SETTLE);
-const D_GAIN   = TODAY_ROWS.reduce((s, r) => s + r.gained, 0);
-const D_STONE  = TODAY_ROWS.reduce((s, r) => s + (r.stones || 0), 0);
-const D_P50    = TODAY_ROWS.filter(r => r.pot50).length;
-const D_P20    = TODAY_ROWS.filter(r => r.pot20).length;
-const D_LAST   = TODAY_ROWS[TODAY_ROWS.length - 1];
-const D_AVG    = TODAY_ROWS.length ? Math.round(D_GAIN / TODAY_ROWS.length) : 0;
 
 /* 日期简写：2026-09-27 → 2026-9-27 */
 function shortDate(iso){
   const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(iso || ''));
   return m ? m[1] + '-' + (+m[2]) + '-' + (+m[3]) : String(iso || '');
 }
-document.getElementById('dailyRange').textContent = shortDate(TODAY_SETTLE);
 
-const dailyCards = [
-  { k:'当日打图数',     v:TODAY_ROWS.length + ' 张', cls:'' },
-  { k:'当日获得经验',   v:fmt(D_GAIN) + '：<span class="lv">Lv.' + LAST.level + '</span>', cls:'acc' },
-  { k:'当日占等级进度', v:pct(D_GAIN / LEVEL_TOTAL), cls:'ok' },
-  { k:'当日晶石掉落',   v:fmt(D_STONE), cls:'pur' },
-  { k:'当日药水使用',   v:'50%×' + D_P50 + ' / 20%×' + D_P20, cls:'gold' },
-  { k:'当日结束进度',   v:D_LAST ? pct(D_LAST.cumPct) : '—', cls:'',
-    bar:D_LAST ? D_LAST.cumPct : null },
-];
-document.getElementById('dailyBody').innerHTML = dailyCards.map(c =>
-  '<div class="panel scard"><div class="k">' + c.k + '</div>' +
-  '<div class="v ' + c.cls + '">' + c.v + '</div>' +
-  (c.bar != null ? '<div class="bar"><i style="width:' +
-    Math.max(c.bar * 100, 1.2).toFixed(2) + '%"></i></div>' : '') +
-  '</div>'
-).join('');
+/* ---- 按结算日分组：每天一个独立折叠面板，最新的一天在最上 ---- */
+const DAY_MAP = {};
+ROWS.forEach(function(r){
+  const d = xpSettleDate(r.dt);
+  (DAY_MAP[d] = DAY_MAP[d] || []).push(r);
+});
+/* 组内按实际时间正序（1、2、3…），面板之间日期倒序 */
+Object.keys(DAY_MAP).forEach(function(d){
+  DAY_MAP[d].sort(function(a, b){ return a.dt < b.dt ? -1 : (a.dt > b.dt ? 1 : 0); });
+});
+const DAY_KEYS = Object.keys(DAY_MAP).sort().reverse();
 
-/* 折叠状态记忆（与晶石台账同款交互） */
-(function initDailyFold(){
-  const sec = document.getElementById('daily');
-  if(!sec) return;
-  try{ if(localStorage.getItem('xp-ledger-daily-fold') === '1') sec.classList.add('folded'); }catch(e){}
-  document.getElementById('dailyHead').addEventListener('click', function(){
-    sec.classList.toggle('folded');
-    try{ localStorage.setItem('xp-ledger-daily-fold', sec.classList.contains('folded') ? '1' : '0'); }catch(e){}
-  });
-})();
-
-/* 明细表体 · 最新在最上（统计序号仍按 1..N 正序标注） */
-const ROWS_DESC = ROWS.slice().reverse();
-document.querySelector('#tbl tbody').innerHTML = ROWS_DESC.map((r, i) =>
+const TH_ROW =
   '<tr>' +
-  '<td>' + (ROWS.length - i) + '</td>' +
+  '<th>#</th><th>日期时间</th><th>地图名称</th><th>阶级</th><th>怪物等级</th>' +
+  '<th>怪物数量%</th><th>药水50%</th><th>药水20%</th><th>晶石掉落</th>' +
+  '<th>上次经验值</th><th>当前经验值</th><th>本图获得经验</th>' +
+  '<th>获得占当前等级%</th><th>等级累计进度%</th><th>备注</th>' +
+  '</tr>';
+
+function rowHTML(r, idx){
+  return '<tr>' +
+  '<td>' + idx + '</td>' +
   '<td class="dt">' + r.dt + '</td>' +
   '<td class="map">' + r.map + '</td>' +
   '<td>' + tierBadge(r.tier) + '</td>' +
@@ -497,7 +491,85 @@ document.querySelector('#tbl tbody').innerHTML = ROWS_DESC.map((r, i) =>
   '<td class="pct">' + pct(r.gainedPct) + '</td>' +
   '<td class="cum">' + pct(r.cumPct) + '</td>' +
   '<td class="note">' + (r.note || '<span class="empty">—</span>') + '</td>' +
-  '</tr>'
+  '</tr>';
+}
+
+function cardHTML(c){
+  return '<div class="panel scard"><div class="k">' + c.k + '</div>' +
+    '<div class="v ' + c.cls + '">' + c.v + '</div>' +
+    (c.bar != null ? '<div class="bar"><i style="width:' +
+      Math.max(c.bar * 100, 1.2).toFixed(2) + '%"></i></div>' : '') +
+    '</div>';
+}
+
+function dayCards(list){
+  const gain  = list.reduce((s, r) => s + r.gained, 0);
+  const stone = list.reduce((s, r) => s + (r.stones || 0), 0);
+  const p50   = list.filter(r => r.pot50).length;
+  const p20   = list.filter(r => r.pot20).length;
+  const lastR = list[list.length - 1];
+  return {
+    gain: gain, stone: stone,
+    html: [
+      { k:'当日打图数',     v:list.length + ' 张', cls:'' },
+      { k:'当日获得经验',   v:fmt(gain) + '：<span class="lv">Lv.' + LAST.level + '</span>', cls:'acc' },
+      { k:'当日占等级进度', v:pct(gain / LEVEL_TOTAL), cls:'ok' },
+      { k:'当日晶石掉落',   v:fmt(stone), cls:'pur' },
+      { k:'当日药水使用',   v:'50%×' + p50 + ' / 20%×' + p20, cls:'gold' },
+      { k:'当日结束进度',   v:lastR ? pct(lastR.cumPct) : '—', cls:'',
+        bar:lastR ? lastR.cumPct : null },
+    ].map(cardHTML).join('')
+  };
+}
+
+const FOLD_KEY = 'xp-ledger-day-fold-';
+document.getElementById('days').innerHTML = DAY_KEYS.map(function(d, di){
+  const list = DAY_MAP[d];
+  const stat = dayCards(list);
+  const isToday = d === TODAY_SETTLE;
+  return '<section class="panel daysect" data-day="' + d + '">' +
+    '<button class="dayHead" type="button" title="点击折叠 / 展开">' +
+      '<span class="d-date">' + shortDate(d) + (isToday ? ' <span style="color:var(--accent);font-size:11px">今天</span>' : '') + '</span>' +
+      '<span class="d-sum">' + list.length + ' 张 · 经验 <b>' + fmt(stat.gain) + '</b> · 晶石 <b>' + fmt(stat.stone) + '</b></span>' +
+      '<span class="d-arrow">▼</span>' +
+    '</button>' +
+    '<div class="dayBody">' + stat.html + '</div>' +
+    '<div class="dayTable">' +
+      '<div class="sec-title"><h2>当日明细</h2>' +
+      '<span class="tag">从 1 开始编号 · 按实际时间正序</span></div>' +
+      '<div class="tscroll"><table><thead>' + TH_ROW + '</thead><tbody>' +
+      list.map(function(r, i){ return rowHTML(r, i + 1); }).join('') +
+      '</tbody><tfoot><tr>' +
+      '<td colspan="11">当日合计 · ' + list.length + ' 张</td>' +
+      '<td class="gain">+' + fmt(stat.gain) + '</td>' +
+      '<td class="pct">' + pct(stat.gain / LEVEL_TOTAL) + '</td>' +
+      '<td class="cum">' + pct(list[list.length - 1].cumPct) + '</td>' +
+      '<td>晶石 ' + fmt(stat.stone) + '</td>' +
+      '</tr></tfoot></table></div>' +
+    '</div>' +
+  '</section>';
+}).join('');
+
+/* 折叠状态：默认最新一天展开、其余折叠；点击后按天记忆 */
+(function initDayFold(){
+  const secs = document.querySelectorAll('.daysect');
+  secs.forEach(function(sec, i){
+    const key = FOLD_KEY + sec.getAttribute('data-day');
+    let folded = null;
+    try{ const v = localStorage.getItem(key); if(v === '1') folded = true; else if(v === '0') folded = false; }catch(e){}
+    if(folded === null) folded = (i !== 0);   /* 默认：最上面（最新）一天展开 */
+    if(folded) sec.classList.add('folded');
+    sec.querySelector('.dayHead').addEventListener('click', function(){
+      sec.classList.toggle('folded');
+      try{ localStorage.setItem(key, sec.classList.contains('folded') ? '1' : '0'); }catch(e){}
+    });
+  });
+})();
+
+/* 全部明细：最新在最上（序号仍按全局 1..N 标注） */
+const ROWS_DESC = ROWS.slice().reverse();
+document.querySelector('#tbl tbody').innerHTML = ROWS_DESC.map((r, i) =>
+  rowHTML(r, ROWS.length - i)
 ).join('');
 
 /* 表尾合计 */
@@ -509,6 +581,18 @@ document.querySelector('#tbl tfoot').innerHTML =
   '<td class="cum">' + pct(LAST.cumPct) + '</td>' +
   '<td>晶石 ' + fmt(TOTAL_STONE) + '</td>' +
   '</tr>';
+
+/* 全部明细：标题摘要 + 折叠交互（默认折叠） */
+document.getElementById('allSum').textContent =
+  ROWS.length + ' 张 · 经验 ' + fmt(TOTAL_GAIN) + ' · 晶石 ' + fmt(TOTAL_STONE);
+(function initAllFold(){
+  const wrap = document.getElementById('allWrap');
+  try{ if(localStorage.getItem('xp-ledger-all-fold') === '0') wrap.classList.remove('folded'); }catch(e){}
+  document.getElementById('allHead').addEventListener('click', function(){
+    wrap.classList.toggle('folded');
+    try{ localStorage.setItem('xp-ledger-all-fold', wrap.classList.contains('folded') ? '1' : '0'); }catch(e){}
+  });
+})();
 
 /* T 级颜色图例 */
 document.getElementById('tier-legend').innerHTML = TIER_GROUPS.map(g =>
