@@ -72,7 +72,12 @@
   @media (max-width:1080px){ #summary{grid-template-columns:repeat(3,1fr)} }
   @media (max-width:560px){ #summary{grid-template-columns:repeat(2,1fr)} }
   .scard{padding:14px 16px;position:relative;overflow:hidden}
-  .scard .k{font-size:12px;color:var(--mute);letter-spacing:.5px;margin-bottom:6px}
+  .scard .k{
+    font-size:12px;color:var(--mute);letter-spacing:.5px;margin-bottom:6px;
+    display:flex;align-items:center;gap:8px;
+  }
+  /* 卡片右上角等级标签，与标题文字同一行右对齐 */
+  .scard .k .lvtag{margin-left:auto;color:#ff8c33;font-weight:800;font-size:11.5px;letter-spacing:0}
   .scard .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.25}
   .scard .s{font-size:11.5px;color:var(--dim);margin-top:4px}
   .scard .v.acc{color:var(--accent)} .scard .v.ok{color:var(--ok)}
@@ -495,7 +500,8 @@ function rowHTML(r, idx){
 }
 
 function cardHTML(c){
-  return '<div class="panel scard"><div class="k">' + c.k + '</div>' +
+  return '<div class="panel scard"><div class="k">' + c.k +
+    (c.lv != null ? '<span class="lvtag">Lv.' + c.lv + '</span>' : '') + '</div>' +
     '<div class="v ' + c.cls + '">' + c.v + '</div>' +
     (c.bar != null ? '<div class="bar"><i style="width:' +
       Math.max(c.bar * 100, 1.2).toFixed(2) + '%"></i></div>' : '') +
@@ -512,7 +518,7 @@ function dayCards(list){
     gain: gain, stone: stone,
     html: [
       { k:'当日打图数',     v:list.length + ' 张', cls:'' },
-      { k:'当日获得经验',   v:fmt(gain) + '：<span class="lv">Lv.' + LAST.level + '</span>', cls:'acc' },
+      { k:'当日获得经验',   v:fmt(gain), cls:'acc', lv:LAST.level },
       { k:'当日占等级进度', v:pct(gain / LEVEL_TOTAL), cls:'ok' },
       { k:'当日晶石掉落',   v:fmt(stone), cls:'pur' },
       { k:'当日药水使用',   v:'50%×' + p50 + ' / 20%×' + p20, cls:'gold' },
