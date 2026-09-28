@@ -781,9 +781,18 @@ function affixItemHTML(s){
   const m = /^(.*?)[\s:：]*([+\-−＋－]?\d+(?:\.\d+)?%?)$/.exec(t);
   const name = m ? (m[1] || t) : t;
   const val  = m ? m[2] : '';
-  const bad  = /[−－-]|降低|减少|减慢|变慢/.test(t);
-  const good = /[+＋]|增加|提高|提升|加快/.test(t);
-  const cls  = bad && !/[+＋]/.test(t) ? 'bad' : (good ? 'good' : 'neutral');
+
+  /* 复刻游戏配色：绿色=对玩家有利，红色=对玩家不利。
+     注意「怪物XX抗性增加」是怪物变强，对玩家是减益 → 红。 */
+  const monsterBuff = /怪物|敌人|首领|精英/.test(t) && /增加|提高|免疫|强化|伤害/.test(t);
+  let cls;
+  if (monsterBuff)                       cls = 'bad';      /* 怪物变强 → 红 */
+  else if (/减少|降低|减慢|下降|失去/.test(t)) cls = 'bad';     /* 玩家被削 / 掉落减少 → 红 */
+  else if (/增加|提高|提升|加快|出现/.test(t)) cls = 'good';    /* 玩家收益 → 绿 */
+  else if (/[+＋]/.test(t))               cls = 'good';
+  else if (/[−－-]/.test(t))              cls = 'bad';
+  else                                   cls = 'neutral';
+
   return '<li class="' + cls + '">' +
     '<span class="afx-name">' + esc(name) + '</span>' +
     (val ? '<span class="afx-val">' + esc(val) + '</span>' : '') +
