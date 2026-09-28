@@ -131,6 +131,28 @@
   #allWrap.folded #allBody{display:none}
 
   /* ---------- 明细表 ---------- */
+  /* ---------- 词缀悬停浮层 ---------- */
+  .afx{
+    display:inline-block;cursor:help;color:var(--accent2);font-weight:700;
+    border-bottom:1px dashed rgba(155,123,255,.55);padding-bottom:1px;
+  }
+  .map[data-affixes]{cursor:help}
+  #affixTip{
+    position:fixed;z-index:999;display:none;max-width:400px;
+    padding:10px 13px;border-radius:11px;
+    background:rgba(8,13,26,.98);border:1px solid rgba(125,165,225,.34);
+    box-shadow:0 10px 30px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+    font-size:12.5px;line-height:1.72;color:var(--txt);pointer-events:none;
+  }
+  #affixTip .t-hd{
+    font-weight:800;color:var(--gold);margin-bottom:5px;
+    padding-bottom:5px;border-bottom:1px solid rgba(125,165,225,.22);letter-spacing:.4px;
+  }
+  #affixTip ul{margin:0;padding-left:17px}
+  #affixTip li{margin:2px 0;color:var(--dim)}
+  #affixTip li::marker{color:var(--accent2)}
+  #affixTip .t-none{color:var(--mute);font-size:12px}
+
   .sec-title{display:flex;align-items:center;gap:10px;padding:14px 20px 4px}
   .sec-title h2{font-size:15px;margin:0;letter-spacing:1px}
   .sec-title .tag{font-size:11.5px;color:var(--mute)}
@@ -206,7 +228,7 @@
               <th>#</th><th>日期时间</th><th>地图名称</th><th>阶级</th><th>怪物等级</th>
               <th>怪物数量%</th><th>药水50%</th><th>药水20%</th><th>晶石掉落</th>
               <th>上次经验值</th><th>当前经验值</th><th>本图获得经验</th>
-              <th>获得占当前等级%</th><th>等级累计进度%</th><th>备注</th>
+              <th>获得占当前等级%</th><th>等级累计进度%</th><th>词缀</th><th>备注</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -466,7 +488,8 @@ const XP_RECORDS = [
   { dt:'2026-09-28 19:29:38', role:'陌尘', level:86,
     map:'哀嚎峡谷', tier:'T15', mobLv:88, mobQty:0,
     pot50:false, pot20:false, stones:708,
-    prev:1225938539, cur:1244588699, note:'' },
+    prev:1225938539, cur:1244588699, note:'',
+    affixes:['怪物攻速移速 +25%','掉落地图数量 +100%','角色攻速施法 −30%','怪物物理抗性 +35%'] },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
@@ -504,6 +527,20 @@ const fmt  = n => n.toLocaleString('en-US');
 const pct  = x => (x * 100).toFixed(4) + '%';
 const pot  = u => u ? '<span class="pot yes">✓</span>' : '<span class="pot no">—</span>';
 const dash = v => v == null ? '<span class="empty">—</span>' : v;
+
+/* ---- 词缀：存于记录的 affixes 数组（字符串列表），鼠标悬停可见 ---- */
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function affixList(r){
+  return Array.isArray(r.affixes) ? r.affixes.filter(x => String(x || '').trim() !== '') : [];
+}
+/* 单元格：有词缀显示「N 条」并可悬停，未记录显示灰 — */
+function affixCell(r){
+  const list = affixList(r);
+  if(!list.length) return '<span class="empty">—</span>';
+  return '<span class="afx" data-affixes="' + esc(list.join('|')) +
+    '" data-map="' + esc(r.map) + '" tabindex="0">' + list.length + ' 条</span>';
+}
 
 function decorate(r){
   const gained = r.cur - r.prev;
@@ -589,14 +626,17 @@ const TH_ROW =
   '<th>#</th><th>日期时间</th><th>地图名称</th><th>阶级</th><th>怪物等级</th>' +
   '<th>怪物数量%</th><th>药水50%</th><th>药水20%</th><th>晶石掉落</th>' +
   '<th>上次经验值</th><th>当前经验值</th><th>本图获得经验</th>' +
-  '<th>获得占当前等级%</th><th>等级累计进度%</th><th>备注</th>' +
+  '<th>获得占当前等级%</th><th>等级累计进度%</th><th>词缀</th><th>备注</th>' +
   '</tr>';
 
 function rowHTML(r, idx){
+  const afx = affixList(r);
   return '<tr>' +
   '<td>' + idx + '</td>' +
   '<td class="dt">' + r.dt + '</td>' +
-  '<td class="map">' + r.map + '</td>' +
+  /* 地图名也可悬停看词缀 */
+  '<td class="map"' + (afx.length ? ' data-affixes="' + esc(afx.join('|')) +
+    '" data-map="' + esc(r.map) + '" tabindex="0"' : '') + '>' + r.map + '</td>' +
   '<td>' + tierBadge(r.tier) + '</td>' +
   '<td>' + r.mobLv + '</td>' +
   '<td class="qty">' + dash(r.mobQty == null ? null : '+' + r.mobQty + '%') + '</td>' +
@@ -608,6 +648,7 @@ function rowHTML(r, idx){
   '<td class="gain">+' + fmt(r.gained) + '</td>' +
   '<td class="pct">' + pct(r.gainedPct) + '</td>' +
   '<td class="cum">' + pct(r.cumPct) + '</td>' +
+  '<td class="afxcell">' + affixCell(r) + '</td>' +
   '<td class="note">' + (r.note || '<span class="empty">—</span>') + '</td>' +
   '</tr>';
 }
@@ -659,7 +700,7 @@ document.getElementById('days').innerHTML = DAY_KEYS.map(function(d, di){
       '<div class="tscroll"><table><thead>' + TH_ROW + '</thead><tbody>' +
       list.map(function(r, i){ return rowHTML(r, i + 1); }).join('') +
       '</tbody><tfoot><tr>' +
-      '<td colspan="11">当日合计 · ' + list.length + ' 张</td>' +
+      '<td colspan="12">当日合计 · ' + list.length + ' 张</td>' +
       '<td class="gain">+' + fmt(stat.gain) + '</td>' +
       '<td class="pct">' + pct(stat.gain / LEVEL_TOTAL) + '</td>' +
       '<td class="cum">' + pct(list[list.length - 1].cumPct) + '</td>' +
@@ -694,7 +735,7 @@ document.querySelector('#tbl tbody').innerHTML = ROWS_DESC.map((r, i) =>
 /* 表尾合计 */
 document.querySelector('#tbl tfoot').innerHTML =
   '<tr>' +
-  '<td colspan="11">合计 · ' + ROWS.length + ' 张地图</td>' +
+  '<td colspan="12">合计 · ' + ROWS.length + ' 张地图</td>' +
   '<td class="gain">+' + fmt(TOTAL_GAIN) + '</td>' +
   '<td class="pct">' + pct(TOTAL_GAIN / LEVEL_TOTAL) + '</td>' +
   '<td class="cum">' + pct(LAST.cumPct) + '</td>' +
@@ -711,6 +752,53 @@ document.getElementById('allSum').textContent =
     wrap.classList.toggle('folded');
     try{ localStorage.setItem('xp-ledger-all-fold', wrap.classList.contains('folded') ? '1' : '0'); }catch(e){}
   });
+})();
+
+/* ---- 词缀悬停浮层：鼠标放到「词缀」单元格或地图名上，显示该图全部词缀 ---- */
+(function initAffixTip(){
+  const tip = document.createElement('div');
+  tip.id = 'affixTip';
+  document.body.appendChild(tip);
+
+  function show(el, x, y){
+    const raw = el.getAttribute('data-affixes') || '';
+    const map = el.getAttribute('data-map') || '';
+    const list = raw.split('|').filter(s => s.trim() !== '');
+    tip.innerHTML =
+      '<div class="t-hd">' + (map ? map + ' · 词缀' : '词缀') + '</div>' +
+      (list.length
+        ? '<ul>' + list.map(s => '<li>' + s + '</li>').join('') + '</ul>'
+        : '<div class="t-none">该图未记录词缀</div>');
+    tip.style.display = 'block';
+    const r = tip.getBoundingClientRect();
+    let left = x + 14, top = y + 16;
+    if(left + r.width  > window.innerWidth  - 10) left = x - r.width  - 14;
+    if(top  + r.height > window.innerHeight - 10) top  = y - r.height - 14;
+    tip.style.left = Math.max(8, left) + 'px';
+    tip.style.top  = Math.max(8, top)  + 'px';
+  }
+  function hide(){ tip.style.display = 'none'; }
+
+  document.addEventListener('mouseover', function(e){
+    const el = e.target.closest ? e.target.closest('[data-affixes]') : null;
+    if(el) show(el, e.clientX, e.clientY);
+  });
+  document.addEventListener('mousemove', function(e){
+    if(tip.style.display !== 'block') return;
+    const el = e.target.closest ? e.target.closest('[data-affixes]') : null;
+    if(el) show(el, e.clientX, e.clientY); else hide();
+  });
+  document.addEventListener('mouseout', function(e){
+    const el = e.target.closest ? e.target.closest('[data-affixes]') : null;
+    if(el && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-affixes]'))) hide();
+  });
+  /* 键盘可达：聚焦也显示 */
+  document.addEventListener('focusin', function(e){
+    const el = e.target.closest ? e.target.closest('[data-affixes]') : null;
+    if(el){ const b = el.getBoundingClientRect(); show(el, b.left, b.bottom); }
+  });
+  document.addEventListener('focusout', hide);
+  window.addEventListener('scroll', hide, true);
 })();
 
 /* T 级颜色图例 */

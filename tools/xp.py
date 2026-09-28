@@ -122,12 +122,23 @@ def cmd_add(a):
     p50   = 'true' if a.pot50 else 'false'
     p20   = 'true' if a.pot20 else 'false'
 
+    # 词缀：--affix "xxx" 可重复传，或 --affixes "a|b|c"
+    affixes = []
+    for s in (getattr(a, 'affix', None) or []):
+        affixes.append(s)
+    if getattr(a, 'affixes', None):
+        affixes += [x for x in a.affixes.split('|') if x.strip()]
+    affix_sql = ''
+    if affixes:
+        items = ','.join("'%s'" % s.replace("\\", "\\\\").replace("'", "\\'") for s in affixes)
+        affix_sql = ",\n    affixes:[%s]" % items
+
     block = ("\n  { dt:'%s', role:'%s', level:%d,\n"
              "    map:'%s', tier:'%s', mobLv:%d, mobQty:%s,\n"
              "    pot50:%s, pot20:%s, stones:%s,\n"
-             "    prev:%d, cur:%d, note:'%s' },\n"
+             "    prev:%d, cur:%d, note:'%s'%s },\n"
              % (dt, role, level, a.map, a.tier, a.mob_lv, qty, p50, p20, stone,
-                prev, a.cur, a.note or ''))
+                prev, a.cur, a.note or '', affix_sql))
 
     arr = m.group(0)
     idx = arr.rfind('];')
@@ -153,6 +164,8 @@ def cmd_add(a):
     print('     上次 %s → 当前 %s  获得 +%s (%.4f%%)  进度 %.4f%%'
           % (fmt(prev), fmt(a.cur), fmt(gained),
              gained / total * 100, a.cur / total * 100))
+    if affixes:
+        print('     词缀 %d 条: %s' % (len(affixes), ' / '.join(affixes)))
 
     if not a.no_publish:
         cmd_publish(argparse.Namespace(msg=a.msg, wait=not a.no_wait))
@@ -337,6 +350,9 @@ def main():
     p.add_argument('--pot50', action='store_true')
     p.add_argument('--pot20', action='store_true')
     p.add_argument('--note', default='')
+    p.add_argument('--affix', action='append', default=None,
+                   help='地图词缀，可重复传：--affix "怪物数量增加 25%" --affix "掉落地图数量 +100%%"')
+    p.add_argument('--affixes', default=None, help='词缀，多个用 | 分隔')
     p.add_argument('--force', action='store_true')
     p.add_argument('--no-publish', action='store_true', help='只写本地，不提交发布')
     p.add_argument('--no-wait', action='store_true', help='推送后不等待线上生效')
