@@ -148,9 +148,24 @@
     font-weight:800;color:var(--gold);margin-bottom:5px;
     padding-bottom:5px;border-bottom:1px solid rgba(125,165,225,.22);letter-spacing:.4px;
   }
-  #affixTip ul{margin:0;padding-left:17px}
-  #affixTip li{margin:2px 0;color:var(--dim)}
-  #affixTip li::marker{color:var(--accent2)}
+  /* 复刻游戏面板观感：一行一条，左名右值，增益绿 / 减益红 */
+  #affixTip ul{margin:0;padding:0;list-style:none}
+  #affixTip li{
+    display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:4px 0;border-bottom:1px dashed rgba(125,165,225,.14);font-size:12.5px;
+  }
+  #affixTip li:last-child{border-bottom:0}
+  #affixTip li::before{
+    content:'◆';font-size:8px;margin-right:8px;flex:0 0 auto;opacity:.9;
+  }
+  #affixTip li .afx-name{color:var(--dim);flex:1 1 auto;white-space:nowrap}
+  #affixTip li .afx-val{
+    font-weight:800;font-variant-numeric:tabular-nums;flex:0 0 auto;
+    text-shadow:0 0 8px rgba(0,0,0,.5);
+  }
+  #affixTip li.good::before,  #affixTip li.good .afx-val  {color:#57e39b}
+  #affixTip li.bad::before,   #affixTip li.bad .afx-val   {color:#ff6b6b}
+  #affixTip li.neutral::before,#affixTip li.neutral .afx-val{color:var(--gold)}
   #affixTip .t-none{color:var(--mute);font-size:12px}
 
   .sec-title{display:flex;align-items:center;gap:10px;padding:14px 20px 4px}
@@ -270,7 +285,7 @@
 <script>
 /* ============ 数据区：追加记录只改这里 ============ */
 const LEVEL_TOTAL = 1999268000;          // 86 级升级所需总经验
-const UPDATED_AT  = '2026-09-28 19:29';
+const UPDATED_AT  = '2026-09-28 20:40';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -490,6 +505,12 @@ const XP_RECORDS = [
     pot50:false, pot20:false, stones:708,
     prev:1225938539, cur:1244588699, note:'',
     affixes:['怪物攻速移速 +25%','掉落地图数量 +100%','角色攻速施法 −30%','怪物物理抗性 +35%'] },
+
+  { dt:'2026-09-28 20:40:23', role:'陌尘', level:86,
+    map:'贫民窟', tier:'T15', mobLv:88, mobQty:0,
+    pot50:false, pot20:false, stones:739,
+    prev:1244588699, cur:1257051225, note:'',
+    affixes:['怪物冰霜抗性增加 35%','怪物物理抗性增加 60%','怪物免疫火焰伤害','角色移动速度减少 30%','出现 1 个额外的暗金怪物','出现NPC-流浪铁匠','出现 1 个额外的暗金怪物','怪物闪电抗性增加 35%'] },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
@@ -754,6 +775,21 @@ document.getElementById('allSum').textContent =
   });
 })();
 
+/* 词缀条目：拆成「名称 + 数值」，按 +/− 判定增益(绿)/减益(红)，复刻游戏面板观感 */
+function affixItemHTML(s){
+  const t = String(s || '').trim();
+  const m = /^(.*?)[\s:：]*([+\-−＋－]?\d+(?:\.\d+)?%?)$/.exec(t);
+  const name = m ? (m[1] || t) : t;
+  const val  = m ? m[2] : '';
+  const bad  = /[−－-]|降低|减少|减慢|变慢/.test(t);
+  const good = /[+＋]|增加|提高|提升|加快/.test(t);
+  const cls  = bad && !/[+＋]/.test(t) ? 'bad' : (good ? 'good' : 'neutral');
+  return '<li class="' + cls + '">' +
+    '<span class="afx-name">' + esc(name) + '</span>' +
+    (val ? '<span class="afx-val">' + esc(val) + '</span>' : '') +
+    '</li>';
+}
+
 /* ---- 词缀悬停浮层：鼠标放到「词缀」单元格或地图名上，显示该图全部词缀 ---- */
 (function initAffixTip(){
   const tip = document.createElement('div');
@@ -767,7 +803,7 @@ document.getElementById('allSum').textContent =
     tip.innerHTML =
       '<div class="t-hd">' + (map ? map + ' · 词缀' : '词缀') + '</div>' +
       (list.length
-        ? '<ul>' + list.map(s => '<li>' + s + '</li>').join('') + '</ul>'
+        ? '<ul>' + list.map(affixItemHTML).join('') + '</ul>'
         : '<div class="t-none">该图未记录词缀</div>');
     tip.style.display = 'block';
     const r = tip.getBoundingClientRect();
