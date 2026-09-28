@@ -86,6 +86,9 @@
   .scard .v.acc{color:var(--accent)} .scard .v.ok{color:var(--ok)}
   .scard .v.gold{color:var(--gold)} .scard .v.pur{color:var(--accent2)}
   .scard .v .lv{color:#ff8c33;font-weight:800}
+  /* 负经验（通关失败被扣）标红 */
+  .neg{color:#ff6b6b}
+  td.gain .neg{font-weight:800}
   .bar{height:7px;border-radius:4px;background:rgba(255,255,255,0.07);margin-top:9px;overflow:hidden}
   .bar i{
     display:block;height:100%;min-width:3px;border-radius:4px;
@@ -285,7 +288,7 @@
 <script>
 /* ============ 数据区：追加记录只改这里 ============ */
 const LEVEL_TOTAL = 1999268000;          // 86 级升级所需总经验
-const UPDATED_AT  = '2026-09-28 21:22';
+const UPDATED_AT  = '2026-09-28 22:13';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -523,6 +526,11 @@ const XP_RECORDS = [
     pot50:false, pot20:false, stones:638,
     prev:1276567427, cur:1288971833, note:'',
     affixes:['掉落的虚无结晶数量增加 45%','地图中存在闪电陷阱','怪物冰霜抗性增加 35%','出现NPC-流浪铁匠'] },
+
+  { dt:'2026-09-28 22:13:27', role:'陌尘', level:86,
+    map:'地狱圣殿2', tier:'T16', mobLv:90, mobQty:0,
+    pot50:false, pot20:false, stones:651,
+    prev:1288971833, cur:1271371751, note:'通关失败被扣经验' },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
@@ -557,6 +565,12 @@ function tierBadge(tier){
 }
 
 const fmt  = n => n.toLocaleString('en-US');
+/* 带符号的经验值：正数 +x，负数 −x（通关失败被扣经验时出现），并标红 */
+const sign = n => (n < 0
+  ? '<span class="neg">−' + fmt(Math.abs(n)) + '</span>'
+  : '+' + fmt(n));
+/* 纯文本版（用于摘要、Excel 等不便放 HTML 的地方） */
+const signText = n => (n < 0 ? '−' + fmt(Math.abs(n)) : '+' + fmt(n));
 const pct  = x => (x * 100).toFixed(4) + '%';
 const pot  = u => u ? '<span class="pot yes">✓</span>' : '<span class="pot no">—</span>';
 const dash = v => v == null ? '<span class="empty">—</span>' : v;
@@ -678,7 +692,7 @@ function rowHTML(r, idx){
   '<td>' + dash(r.stones == null ? null : '<span class="stone">' + fmt(r.stones) + '</span>') + '</td>' +
   '<td>' + fmt(r.prev) + '</td>' +
   '<td>' + fmt(r.cur) + '</td>' +
-  '<td class="gain">+' + fmt(r.gained) + '</td>' +
+  '<td class="gain">' + sign(r.gained) + '</td>' +
   '<td class="pct">' + pct(r.gainedPct) + '</td>' +
   '<td class="cum">' + pct(r.cumPct) + '</td>' +
   '<td class="afxcell">' + affixCell(r) + '</td>' +
@@ -723,7 +737,7 @@ document.getElementById('days').innerHTML = DAY_KEYS.map(function(d, di){
   return '<section class="panel daysect" data-day="' + d + '">' +
     '<button class="dayHead" type="button" title="点击折叠 / 展开">' +
       '<span class="d-date">' + shortDate(d) + (isToday ? ' <span style="color:var(--accent);font-size:11px">今天</span>' : '') + '</span>' +
-      '<span class="d-sum">' + list.length + ' 张 · 经验 <b>' + fmt(stat.gain) + '</b> · 晶石 <b>' + fmt(stat.stone) + '</b></span>' +
+      '<span class="d-sum">' + list.length + ' 张 · 经验 <b>' + signText(stat.gain) + '</b> · 晶石 <b>' + fmt(stat.stone) + '</b></span>' +
       '<span class="d-arrow">▼</span>' +
     '</button>' +
     '<div class="dayBody">' + stat.html + '</div>' +
@@ -734,7 +748,7 @@ document.getElementById('days').innerHTML = DAY_KEYS.map(function(d, di){
       list.map(function(r, i){ return rowHTML(r, i + 1); }).join('') +
       '</tbody><tfoot><tr>' +
       '<td colspan="12">当日合计 · ' + list.length + ' 张</td>' +
-      '<td class="gain">+' + fmt(stat.gain) + '</td>' +
+      '<td class="gain">' + sign(stat.gain) + '</td>' +
       '<td class="pct">' + pct(stat.gain / LEVEL_TOTAL) + '</td>' +
       '<td class="cum">' + pct(list[list.length - 1].cumPct) + '</td>' +
       '<td>晶石 ' + fmt(stat.stone) + '</td>' +
@@ -769,7 +783,7 @@ document.querySelector('#tbl tbody').innerHTML = ROWS_DESC.map((r, i) =>
 document.querySelector('#tbl tfoot').innerHTML =
   '<tr>' +
   '<td colspan="12">合计 · ' + ROWS.length + ' 张地图</td>' +
-  '<td class="gain">+' + fmt(TOTAL_GAIN) + '</td>' +
+  '<td class="gain">' + sign(TOTAL_GAIN) + '</td>' +
   '<td class="pct">' + pct(TOTAL_GAIN / LEVEL_TOTAL) + '</td>' +
   '<td class="cum">' + pct(LAST.cumPct) + '</td>' +
   '<td>晶石 ' + fmt(TOTAL_STONE) + '</td>' +
@@ -777,7 +791,7 @@ document.querySelector('#tbl tfoot').innerHTML =
 
 /* 全部明细：标题摘要 + 折叠交互（默认折叠） */
 document.getElementById('allSum').textContent =
-  ROWS.length + ' 张 · 经验 ' + fmt(TOTAL_GAIN) + ' · 晶石 ' + fmt(TOTAL_STONE);
+  ROWS.length + ' 张 · 经验 ' + signText(TOTAL_GAIN) + ' · 晶石 ' + fmt(TOTAL_STONE);
 (function initAllFold(){
   const wrap = document.getElementById('allWrap');
   try{ if(localStorage.getItem('xp-ledger-all-fold') === '0') wrap.classList.remove('folded'); }catch(e){}
