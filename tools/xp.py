@@ -157,13 +157,16 @@ def cmd_add(a):
 
     total = level_total(html)
     gained = a.cur - prev
+    gtxt = ('+' + fmt(gained)) if gained >= 0 else ('−' + fmt(abs(gained)))
     print('[OK] 已追加 #%d  %s  %s %s  怪物%d级 +%s%%  晶石%s' %
           (len(recs) + 1, dt, a.tier, a.map, a.mob_lv,
            a.qty if a.qty is not None else 0,
            a.stones if a.stones is not None else 0))
-    print('     上次 %s → 当前 %s  获得 +%s (%.4f%%)  进度 %.4f%%'
-          % (fmt(prev), fmt(a.cur), fmt(gained),
+    print('     上次 %s → 当前 %s  获得 %s (%.4f%%)  进度 %.4f%%'
+          % (fmt(prev), fmt(a.cur), gtxt,
              gained / total * 100, a.cur / total * 100))
+    if gained < 0:
+        print('     [注意] 本次为负收益（如通关失败被扣经验），页面会标红显示')
     if affixes:
         print('     词缀 %d 条: %s' % (len(affixes), ' / '.join(affixes)))
 

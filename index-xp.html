@@ -276,6 +276,7 @@
       <li><b>T 级颜色</b>按强度分七档，档内逐级加艳，T19 为炽焰渐变，见上方图例。</li>
       <li>86 级升级所需总经验 <span class="hl">1,999,268,000</span>；升级后按新等级总经验重新计算。</li>
       <li>第 1 条为 86 级首张统计图，起点经验按 0 计；经验药水使用填 <b>✓</b>，未使用显示 <b>—</b>；备注默认留空。</li>
+      <li>通关失败被扣经验时，<b>本图获得经验可能为负</b>（页面标红显示），累计进度也会相应回退。</li>
     </ol>
   </div>
 
@@ -617,7 +618,7 @@ const cards = [
   { k:'当前经验值', v:fmt(LAST.cur),      cls:'acc' },
   { k:'等级总经验', v:fmt(LEVEL_TOTAL),   cls:'' },
   { k:'等级累计进度', v:pct(LAST.cumPct), cls:'gold', bar:LAST.cumPct },
-  { k:'累计获得经验', v:fmt(TOTAL_GAIN),  cls:'ok' },
+  { k:'累计获得经验', v:fmt(TOTAL_GAIN),  cls:'ok' },   /* 含失败扣减，可能小于理论与 */
   { k:'累计晶石掉落', v:fmt(TOTAL_STONE), cls:'pur' },
 ];
 document.getElementById('summary').innerHTML = cards.map(c =>
