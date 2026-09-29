@@ -75,6 +75,12 @@ def parse_records(html):
 
 
 def level_total(html):
+    """当前（最新）等级的升级总经验：优先取 LEVEL_TOTALS 映射的最后一个条目"""
+    m = re.search(r'const LEVEL_TOTALS\s*=\s*\{([^}]*)\}', html)
+    if m:
+        pairs = re.findall(r'(\d+)\s*:\s*(\d+)', m.group(1))
+        if pairs:
+            return int(pairs[-1][1])
     return int(re.search(r'const LEVEL_TOTAL\s*=\s*([\d_]+)', html).group(1).replace('_', ''))
 
 
