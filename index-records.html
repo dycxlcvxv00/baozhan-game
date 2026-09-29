@@ -840,15 +840,52 @@ function nowDate(){
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
 }
 /* 结算归期：只在统计时按 8 点分割计算，不改写明细本身。
-   新记录（real 标记）→ time < 08:00 归前一天；
-   旧记录（无标记，date 已是旧口径写入的归期）→ 直接沿用，历史数据不变。 */
+   有 real 标记 → date/time 就是实际录入时刻，time < 08:00 归前一天。
+   无 real 标记 → 历史遗留数据，date 语义有歧义，需要消歧：
+     · 旧口径（a1c321b 之前录入）：date 直接写的是「归期」
+     · 反序列化漏拷 real 的记录：date 其实是「自然日」
+       （loadLocal / adopt 曾漏拷 real 字段 —— 那正是「今天没录却显示已录入」的根因）
+   消歧规则：假设 date 是归期，反推自然日 = date+1（仅 time < 08:00 时）；
+   若反推出的自然日超过今天 → 不可能 → 说明 date 是自然日，归期 = date-1。 */
 function settleDateOf(r){
-  if(!r || !r.real) return String((r && r.date) || '');
-  return String(r.time || '00:00:00') < '08:00:00' ? addDays(r.date, -1) : String(r.date || '');
+  if(!r) return '';
+  const d = String(r.date || '');
+  if(!d) return '';
+  const t = String(r.time || '00:00:00');
+  if(r.real) return t < '08:00:00' ? addDays(d, -1) : d;
+  if(t < '08:00:00' && addDays(d, 1) > nowDate()) return addDays(d, -1);
+  return d;
 }
-/* 排序用：把「日期 + 时间」拼成可比字符串；旧记录无 time 视为 00:00:00
-   （date/time 均为实际录入时刻，排序即真实时序） */
-function recStamp(r){ return String(r.date || '') + ' ' + String(r.time || '00:00:00'); }
+
+/* 一次性数据自愈：把遗留的「无 real」记录统一成 real 口径。
+   做法与 settleDateOf 的消歧同源 —— 先判定 date 是归期还是自然日，
+   再统一改写成「自然日 + real:1」，归期交给 settleDateOf 现算。
+   这是恒等变换：改写前后每条记录的归期完全一致，历史统计不受影响，
+   只是明细里显示的 date 变成真实录入日（更准），且歧义彻底消除。 */
+function healRealMarks(){
+  let n = 0;
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      if(r.real || !String(r.date || '')) return;
+      const d = String(r.date), t = String(r.time || '00:00:00');
+      /* date 是归期（反推自然日未超过今天）→ 补回自然日；否则 date 本就是自然日 */
+      if(t < '08:00:00' && addDays(d, 1) <= nowDate()) r.date = addDays(d, 1);
+      r.real = 1;
+      n++;
+    });
+  });
+  return n;
+}
+
+/* 排序键：归期 + 归期内的实际时序。
+   归期内部：当天 08:00 之后录入的在前（前缀 0），
+             次日凌晨 00:00~07:59 录入的在后（前缀 1）。
+   直接拼「date+time」会把凌晨那批排到当天白天之前（历史 bug），
+   导致「最新剩余晶石」取错。 */
+function recStamp(r){
+  const t = String(r.time || '00:00:00');
+  return settleDateOf(r) + ' ' + (t < '08:00:00' ? '1' : '0') + t;
+}
 /* 净利润（单条记录） = 收入 − 人工费用 */
 function income(r){ return (Number(r.dayValue)||0) - (Number(r.dayLabor)||0); }
 function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v); }
@@ -1294,8 +1331,10 @@ function loadLocal(){
       wealth: Number(s.wealth)||0,
       initLeft: Number(s.initLeft)||0,
       records: Array.isArray(s.records) ? s.records.map(function(r){
-        /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0 */
-        return { date:r.date || '', time:r.time || '00:00:00',
+        /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0。
+           real 必须原样透传 —— 拷贝时漏掉它，归期会退化成「沿用 date」，
+           凌晨录入的记录会被算进当天（「今天没录却显示已录入」的根因）。 */
+        return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
                  gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0 };
@@ -1488,7 +1527,8 @@ function adopt(data){
       wealth: Number(s.wealth)||0,
       initLeft: Number(s.initLeft)||0,
       records: Array.isArray(s.records) ? s.records.map(function(r){
-        return { date:r.date || '', time:r.time || '00:00:00',
+        /* real 同样必须透传（与 loadLocal 一致），否则云端数据一落地归期就错 */
+        return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
                  gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0 };
@@ -1498,6 +1538,7 @@ function adopt(data){
   });
   SNAPSHOTS = (data.snapshots && typeof data.snapshots === 'object' && !Array.isArray(data.snapshots))
             ? data.snapshots : {};
+  healRealMarks();               /* 古老云端数据可能缺 real → 就地自愈 */
 }
 
 function writeCache(data){
@@ -2759,6 +2800,8 @@ document.addEventListener('webkitfullscreenchange', function(){
 
 /* ---------- 启动 ---------- */
 const lastSavedAt = loadLocal();
+/* 历史数据补 real 标记（归期不变，仅统一口径）→ 落盘一次，之后不再触发 */
+if(healRealMarks()) saveLocal();
 const _bootAuto = autoSettle();      /* 打开页面就自动补齐缺失快照、刷新今天 */
 if(_bootAuto.added.length || _bootAuto.refreshed.length) saveLocal();
 render();
