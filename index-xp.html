@@ -274,7 +274,8 @@
       <li><b>等级累计进度%</b> = 当前经验值 ÷ 当前等级总经验，与游戏经验条 Exp% 一致。</li>
       <li><b>怪物数量%</b> = 该图怪物数量加成总和；<b>晶石掉落</b> = 本次地图掉落的晶石数量。</li>
       <li><b>T 级颜色</b>按强度分七档，档内逐级加艳，T19 为炽焰渐变，见上方图例。</li>
-      <li>86 级升级所需总经验 <span class="hl">1,999,268,000</span>；升级后按新等级总经验重新计算。</li>
+      <li><b>升级总经验</b>按记录自身等级取值（<span class="hl">LEVEL_TOTALS</span> 映射）：86 级 <span class="hl">1,999,268,000</span>、87 级 <span class="hl">2,125,066,400</span>；升级后新增映射即可，历史口径不变。</li>
+      <li>升级当图（跨级）的「本图获得经验」= 补满旧级所需 + 结转新级的读数（记录带显式 <b>gained</b> 字段），当前经验值与累计进度按新等级口径。</li>
       <li>第 1 条为 86 级首张统计图，起点经验按 0 计；经验药水使用填 <b>✓</b>，未使用显示 <b>—</b>；备注默认留空。</li>
       <li>通关失败被扣经验时，<b>本图获得经验可能为负</b>（页面标红显示），累计进度也会相应回退。</li>
     </ol>
@@ -288,8 +289,12 @@
 
 <script>
 /* ============ 数据区：追加记录只改这里 ============ */
-const LEVEL_TOTAL = 1999268000;          // 86 级升级所需总经验
-const UPDATED_AT  = '2026-09-30 00:50';
+/* ---- 各等级升级总经验：升级时在 LEVEL_TOTALS 里加一行 ----
+   百分比一律按「记录自身等级」的总经验算（ltOf），跨级后历史记录口径不变 */
+const LEVEL_TOTALS = { 86: 1999268000, 87: 2125066400 };
+const LEVEL_TOTAL  = LEVEL_TOTALS[87];   /* 当前等级（87）升级总经验 */
+const ltOf = r => LEVEL_TOTALS[r.level] || LEVEL_TOTAL;
+const UPDATED_AT  = '2026-09-30 01:04';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -639,6 +644,12 @@ const XP_RECORDS = [
     pot50:false, pot20:false, stones:642,
     prev:1977023025, cur:1993502145, note:'',
     affixes:['怪物闪电抗性增加35%','图中出现 大量宝箱','怪物闪电抗性增加35%','掉落的虚无结晶数量增加25%','角色生命减少 30%','怪物闪电抗性增加40%','怪物移动速度减 40%','角色所有抗性减少 15%'] },
+
+  { dt:'2026-09-30 01:04:10', role:'陌尘', level:87,
+    map:'亡者渡口', tier:'T14', mobLv:86, mobQty:25,
+    pot50:false, pot20:false, stones:603,
+    prev:1993502145, cur:74660, note:'升级 86→87',
+    affixes:['出现NPC-流浪铁匠','角色生命减少30%','角色伤害减少15%','角色攻速施法增加20%','掉落的虚无结晶数量增加45%','怪物物理抗性增加60%','怪物数量增加25%','地图中存在 雷电陷阱'], gained:5840515 },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
@@ -698,11 +709,12 @@ function affixCell(r){
 }
 
 function decorate(r){
-  const gained = r.cur - r.prev;
+  const lt = ltOf(r);                       /* 按记录自身等级的总经验算百分比 */
+  const gained = (r.gained != null) ? r.gained : (r.cur - r.prev);
   return Object.assign({}, r, {
     gained,
-    gainedPct: gained / LEVEL_TOTAL,
-    cumPct:    r.cur   / LEVEL_TOTAL,
+    gainedPct: gained / lt,
+    cumPct:    r.cur   / lt,
   });
 }
 const ROWS = XP_RECORDS.map(decorate);
@@ -823,12 +835,13 @@ function dayCards(list){
   const p50   = list.filter(r => r.pot50).length;
   const p20   = list.filter(r => r.pot20).length;
   const lastR = list[list.length - 1];
+  const dayLt = ltOf(lastR);               /* 当日占比按该日最后一条记录的等级口径 */
   return {
     gain: gain, stone: stone,
     html: [
       { k:'当日打图数',     v:list.length + ' 张', cls:'' },
       { k:'当日获得经验',   v:fmt(gain), cls:'acc', lv:LAST.level },
-      { k:'当日占等级进度', v:pct(gain / LEVEL_TOTAL), cls:'ok' },
+      { k:'当日占等级进度', v:pct(gain / dayLt), cls:'ok' },
       { k:'当日晶石掉落',   v:fmt(stone), cls:'pur' },
       { k:'当日药水使用',   v:'50%×' + p50 + ' / 20%×' + p20, cls:'gold' },
       { k:'当日结束进度',   v:lastR ? pct(lastR.cumPct) : '—', cls:'',
@@ -857,7 +870,7 @@ document.getElementById('days').innerHTML = DAY_KEYS.map(function(d, di){
       '</tbody><tfoot><tr>' +
       '<td colspan="12">当日合计 · ' + list.length + ' 张</td>' +
       '<td class="gain">' + sign(stat.gain) + '</td>' +
-      '<td class="pct">' + pct(stat.gain / LEVEL_TOTAL) + '</td>' +
+      '<td class="pct">' + pct(stat.gain / ltOf(list[list.length - 1])) + '</td>' +
       '<td class="cum">' + pct(list[list.length - 1].cumPct) + '</td>' +
       '<td>晶石 ' + fmt(stat.stone) + '</td>' +
       '</tr></tfoot></table></div>' +
@@ -892,7 +905,7 @@ document.querySelector('#tbl tfoot').innerHTML =
   '<tr>' +
   '<td colspan="12">合计 · ' + ROWS.length + ' 张地图</td>' +
   '<td class="gain">' + sign(TOTAL_GAIN) + '</td>' +
-  '<td class="pct">' + pct(TOTAL_GAIN / LEVEL_TOTAL) + '</td>' +
+  '<td class="pct">' + pct(TOTAL_GAIN / ltOf(LAST)) + '</td>' +
   '<td class="cum">' + pct(LAST.cumPct) + '</td>' +
   '<td>晶石 ' + fmt(TOTAL_STONE) + '</td>' +
   '</tr>';

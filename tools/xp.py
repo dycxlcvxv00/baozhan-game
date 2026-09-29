@@ -33,6 +33,9 @@ XLSX      = os.path.join(WORKSPACE, '经验值记录表.xlsx')
 URL       = 'https://dycxlcvxv00.github.io/baozhan-game/index-xp.html'
 IPS       = ['185.199.108.153', '185.199.109.153', '185.199.110.153']
 
+# 各等级升级总经验（升级时新增一行；与 index-xp.html 的 LEVEL_TOTALS 保持一致）
+LT_MAP = {86: 1999268000, 87: 2125066400}
+
 # GitHub Pages 的三个 CDN 节点 IP，--resolve 绕过 DNS 缓存拿到最新内容
 IPS = ['185.199.108.153', '185.199.109.153', '185.199.110.153']
 
@@ -121,6 +124,9 @@ def cmd_add(a):
     stone = 'null' if a.stones is None else str(a.stones)
     p50   = 'true' if a.pot50 else 'false'
     p20   = 'true' if a.pot20 else 'false'
+    # 本图获得经验：默认 cur−prev；升级跨级时坐标系切换，用 --gained 显式指定
+    # （= 补满旧级所需 + 结转新级的读数），记录里写入显式 gained 字段
+    gained_val = a.gained if a.gained is not None else (a.cur - prev)
 
     # 词缀：--affix "xxx" 可重复传，或 --affixes "a|b|c"
     affixes = []
@@ -136,9 +142,10 @@ def cmd_add(a):
     block = ("\n  { dt:'%s', role:'%s', level:%d,\n"
              "    map:'%s', tier:'%s', mobLv:%d, mobQty:%s,\n"
              "    pot50:%s, pot20:%s, stones:%s,\n"
-             "    prev:%d, cur:%d, note:'%s'%s },\n"
+             "    prev:%d, cur:%d, note:'%s'%s%s },\n"
              % (dt, role, level, a.map, a.tier, a.mob_lv, qty, p50, p20, stone,
-                prev, a.cur, a.note or '', affix_sql))
+                prev, a.cur, a.note or '', affix_sql,
+                ('' if a.gained is None else ', gained:%d' % a.gained)))
 
     arr = m.group(0)
     idx = arr.rfind('];')
@@ -156,17 +163,19 @@ def cmd_add(a):
     node_check()
 
     total = level_total(html)
-    gained = a.cur - prev
-    gtxt = ('+' + fmt(gained)) if gained >= 0 else ('−' + fmt(abs(gained)))
+    gtxt = ('+' + fmt(gained_val)) if gained_val >= 0 else ('−' + fmt(abs(gained_val)))
+    lt_of_add = LT_MAP.get(level, total)
     print('[OK] 已追加 #%d  %s  %s %s  怪物%d级 +%s%%  晶石%s' %
           (len(recs) + 1, dt, a.tier, a.map, a.mob_lv,
            a.qty if a.qty is not None else 0,
            a.stones if a.stones is not None else 0))
     print('     上次 %s → 当前 %s  获得 %s (%.4f%%)  进度 %.4f%%'
           % (fmt(prev), fmt(a.cur), gtxt,
-             gained / total * 100, a.cur / total * 100))
-    if gained < 0:
+             gained_val / lt_of_add * 100, a.cur / lt_of_add * 100))
+    if gained_val < 0:
         print('     [注意] 本次为负收益（如通关失败被扣经验），页面会标红显示')
+    if a.gained is not None:
+        print('     [升级] 显式 gained=%s（补满旧级 + 结转新级），已写入记录' % fmt(a.gained))
     if affixes:
         print('     词缀 %d 条: %s' % (len(affixes), ' / '.join(affixes)))
 
@@ -281,7 +290,8 @@ def cmd_excel(a):
         cell.fill, cell.font, cell.alignment, cell.border = hf, hfont, ct, bd
 
     for i, r in enumerate(recs, start=2):
-        gained = r['cur'] - r['prev']
+        lt = LT_MAP.get(r.get('level', 86), total)   # 该记录所属等级的升级总经验
+        gained = r['gained'] if r.get('gained') is not None else r['cur'] - r['prev']
         ws.append([i - 1, r['dt'], r.get('role', ''), r.get('level', ''), r.get('map', ''),
                    r.get('tier', ''), r.get('mobLv', ''),
                    r['mobQty'] if r.get('mobQty') is not None else '—',
@@ -289,15 +299,15 @@ def cmd_excel(a):
                    '✓' if r.get('pot20') else '—',
                    r['stones'] if r.get('stones') is not None else '—',
                    r['prev'], r['cur'], gained,
-                   gained / total, total, r['cur'] / total, r.get('note', '')])
+                   gained / lt, lt, r['cur'] / lt, r.get('note', '')])
         for c in range(1, len(headers) + 1):
             ws.cell(row=i, column=c).border = bd
             ws.cell(row=i, column=c).alignment = ct
         ws.cell(row=i, column=2).number_format = 'yyyy-mm-dd hh:mm:ss'
-        for c in (13, 14, 15, 17):
+        for c in (13, 14, 16):
             ws.cell(row=i, column=c).number_format = '#,##0'
-        ws.cell(row=i, column=16).number_format = '0.0000%'
-        ws.cell(row=i, column=18).number_format = '0.0000%'
+        for c in (15, 17):
+            ws.cell(row=i, column=c).number_format = '0.0000%'
         for c in (9, 10):
             ws.cell(row=i, column=c).font = Font(bold=True, size=12)
         if i % 2 == 0:
@@ -319,10 +329,11 @@ def cmd_excel(a):
         '4. 获得经验占当前等级% = 本图获得经验值 ÷ 当前等级总经验。',
         '5. 当前等级累计进度% = 当前经验值 ÷ 当前等级总经验，与游戏经验条 Exp% 一致。',
         '6. 怪物数量% = 该图怪物数量加成总和；晶石掉落 = 本次地图掉落的晶石数量。',
-        '7. 86级升级所需总经验为 1,999,268,000；升级后请以新等级的总经验重新计算。',
+        '7. 各等级升级总经验：86级 1,999,268,000、87级 2,125,066,400（xp.py 的 LT_MAP 与页面 LEVEL_TOTALS 同步维护，升级时新增）。',
         '8. 第1条记录为 86 级首张统计图，即 T14 祭祀礼堂，起点经验按 0 计。',
         '9. 经验药水50% / 经验药水20% 两列：使用了填 ✓，未使用显示 —；备注默认留空。',
         '10. 结算日按每天 08:00 分界：08:00 前的记录归前一天。',
+        '11. 升级当图（跨级）：经验坐标系切换，"本图获得经验"= 补满旧级所需 + 结转新级的读数（记录带显式 gained 字段）；当前经验值/累计进度按新等级口径。',
     ]
     for r, line in enumerate(notes, start=1):
         cell = ws2.cell(row=r, column=1, value=line)
@@ -357,6 +368,8 @@ def main():
                    help='地图词缀，可重复传：--affix "怪物数量增加 25%" --affix "掉落地图数量 +100%%"')
     p.add_argument('--affixes', default=None, help='词缀，多个用 | 分隔')
     p.add_argument('--force', action='store_true')
+    p.add_argument('--gained', type=int, default=None,
+                   help='显式指定本图获得经验（升级跨级时用：补满旧级 + 结转新级之和）')
     p.add_argument('--no-publish', action='store_true', help='只写本地，不提交发布')
     p.add_argument('--no-wait', action='store_true', help='推送后不等待线上生效')
     p.add_argument('--msg', default=None, help='自定义 commit 信息')
