@@ -294,7 +294,7 @@
 const LEVEL_TOTALS = { 86: 1999268000, 87: 2125066400 };
 const LEVEL_TOTAL  = LEVEL_TOTALS[87];   /* 当前等级（87）升级总经验 */
 const ltOf = r => LEVEL_TOTALS[r.level] || LEVEL_TOTAL;
-const UPDATED_AT  = '2026-09-30 22:05';
+const UPDATED_AT  = '2026-09-30 22:24';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -750,6 +750,12 @@ const XP_RECORDS = [
     pot50:false, pot20:true, stones:688,
     prev:461661064, cur:488648586, note:'',
     affixes:['怪物生命增加38%','出现1个额外的暗金怪物','怪物护甲增加15%','怪物物理抗性增加15%','出现NPC-流浪铁匠','怪物冰霜抗性降低15%','怪物数量增加25%','怪物数量增加25%'] },
+
+  { dt:'2026-09-30 22:24:37', role:'陌尘', level:87,
+    map:'失神之城2层', tier:'T15', mobLv:88, mobQty:0,
+    pot50:false, pot20:true, stones:579,
+    prev:488648586, cur:503231738, note:'',
+    affixes:['出现NPC-流浪铁匠','角色所有抗性减少10%','角色攻击速度减少10%','怪物数量增加15%'] },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
