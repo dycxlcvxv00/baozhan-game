@@ -206,7 +206,7 @@ def fetch_nodes():
     return out
 
 
-def wait_online(fingerprint, timeout=150, interval=10, delay=8):
+def wait_online(fingerprint, timeout=150, interval=3, delay=5):
     """轮询直到任一节点内容与本地 sha256 完全一致；返回 (是否成功, 耗时秒, sha 是否一致)
        - 判定以 sha256 为准，避免「某节点已更新、另一节点还是旧的」造成误判
        - 超时兜底：只要有节点出现新指纹，就报告为部分生效
