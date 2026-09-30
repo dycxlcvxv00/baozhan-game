@@ -294,7 +294,7 @@
 const LEVEL_TOTALS = { 86: 1999268000, 87: 2125066400 };
 const LEVEL_TOTAL  = LEVEL_TOTALS[87];   /* 当前等级（87）升级总经验 */
 const ltOf = r => LEVEL_TOTALS[r.level] || LEVEL_TOTAL;
-const UPDATED_AT  = '2026-09-30 22:41';
+const UPDATED_AT  = '2026-09-30 22:57';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -762,6 +762,12 @@ const XP_RECORDS = [
     pot50:false, pot20:true, stones:614,
     prev:503231738, cur:515084206, note:'',
     affixes:['角色生命增加30%','怪物毒素抗性增加60%','图中出现 大量宝箱','出现1个额外的暗金怪物'] },
+
+  { dt:'2026-09-30 22:57:48', role:'陌尘', level:87,
+    map:'冥河河畔', tier:'T15', mobLv:88, mobQty:0,
+    pot50:false, pot20:true, stones:653,
+    prev:515084206, cur:542246028, note:'',
+    affixes:['怪物数量增加15%','怪物受到的创伤增加40%','怪物受到伤害增加25%','怪物火焰抗性降低60%'] },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
