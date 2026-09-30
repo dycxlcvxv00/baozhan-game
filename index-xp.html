@@ -294,7 +294,7 @@
 const LEVEL_TOTALS = { 86: 1999268000, 87: 2125066400 };
 const LEVEL_TOTAL  = LEVEL_TOTALS[87];   /* 当前等级（87）升级总经验 */
 const ltOf = r => LEVEL_TOTALS[r.level] || LEVEL_TOTAL;
-const UPDATED_AT  = '2026-09-30 23:18';
+const UPDATED_AT  = '2026-09-30 23:49';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -774,6 +774,12 @@ const XP_RECORDS = [
     pot50:false, pot20:true, stones:559,
     prev:542246028, cur:560576642, note:'',
     affixes:['怪物免疫：闪电伤害','出现1个额外的暗金怪物','出现NPC-流浪铁匠','角色生命增加30%'] },
+
+  { dt:'2026-09-30 23:49:07', role:'陌尘', level:87,
+    map:'杂货员', tier:'T15', mobLv:88, mobQty:0,
+    pot50:false, pot20:true, stones:586,
+    prev:560576642, cur:581928452, note:'',
+    affixes:['出现特殊暗金怪物：猎天者·阿斯玻罗斯','角色移动速度增加20%','怪物数量增加25%','怪物数量增加25%','角色物品掉落几率增加30%','图中出现 大量宝箱','祭司挑战的无结晶数量增加35%'] },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
