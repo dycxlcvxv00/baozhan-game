@@ -213,23 +213,30 @@
   .sm .v.flash{animation:flash .7s ease}
   @keyframes flash{0%{transform:scale(1)}35%{transform:scale(1.04)}100%{transform:scale(1)}}
 
-  /* ---------- 每日信息（当日 8 点 → 次日 8 点，可折叠） ---------- */
-  #daily{margin:-6px 0 16px;padding:0;overflow:hidden}
-  #dailyHead{
+  /* ---------- 每日信息：按结算日分组的折叠面板（8 点 → 次日 8 点） ---------- */
+  .daily-zone{margin:0 0 16px}
+  .daily-zone .zone-title{font-size:13px;font-weight:800;letter-spacing:.5px;color:var(--text);
+    padding:0 4px 8px;display:flex;align-items:center;gap:8px}
+  .daily-zone .zone-title::before{content:"";width:3px;height:14px;border-radius:2px;
+    background:linear-gradient(180deg,var(--accent),var(--accent2))}
+  .daysect{margin:0 0 12px;padding:0;overflow:hidden;border-radius:12px;
+    background:rgba(255,255,255,0.028);border:1px solid rgba(125,165,225,0.10)}
+  .dayHead{
     width:100%;display:flex;align-items:center;gap:10px;
-    padding:10px 16px;background:none;border:0;cursor:pointer;
-    color:var(--text);font:inherit;text-align:left;
+    padding:12px 16px;background:none;border:0;cursor:pointer;
+    color:var(--txt);font:inherit;text-align:left;
   }
-  #dailyHead:hover{background:rgba(255,255,255,0.03)}
-  #dailyHead .d-title{font-size:13px;font-weight:800;letter-spacing:.5px}
-  #dailyHead .d-range{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
-  #dailyHead .d-range b{color:var(--mute);font-weight:700}
-  #dailyHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
-  #daily.folded #dailyHead .d-arrow{transform:rotate(-90deg)}
-  #dailyBody{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;padding:0 12px 12px}
-  #daily.folded #dailyBody{display:none}
-  @media (max-width:1660px){#dailyBody{grid-template-columns:repeat(4,1fr)}}
-  @media (max-width:980px){#dailyBody{grid-template-columns:repeat(2,1fr)}}
+  .dayHead:hover{background:rgba(255,255,255,0.03)}
+  .dayHead .d-date{font-size:14px;font-weight:800;letter-spacing:.5px;color:var(--gold)}
+  .dayHead .today-tag{color:var(--accent);font-size:11px;margin-left:6px;font-weight:700}
+  .dayHead .d-sum{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .dayHead .d-sum b{color:var(--txt);font-weight:700}
+  .dayHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
+  .daysect.folded .dayHead .d-arrow{transform:rotate(-90deg)}
+  .dayBody{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;padding:0 12px 12px}
+  .daysect.folded .dayBody{display:none}
+  @media (max-width:1660px){ .dayBody{grid-template-columns:repeat(4,1fr)} }
+  @media (max-width:980px){ .dayBody{grid-template-columns:repeat(2,1fr)} }
 
   /* ---------- 列标题条（顶部共享一次，竖向对齐各卡片） ---------- */
   .colhead{
@@ -317,7 +324,7 @@
   .who .ob.del:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.45);background:rgba(255,107,107,0.10)}
   .who.editing{border-right-color:rgba(47,230,208,0.3)}
 
-  /* 第二行：4 个功能开关（开=绿 / 未开=灰） + 修改 + 财富 */
+  /* 第二行：4 个功能开关（开=绿 / 未开=灰） + 修改 */
   .who .line2{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:nowrap}
   .feats{display:flex;align-items:center;gap:5px;flex:0 0 auto}
   .feat{
@@ -328,14 +335,8 @@
   .feat.off{color:var(--mute);border-color:rgba(125,165,225,0.18);background:rgba(255,255,255,0.02);opacity:.72}
   /* 已开启：绿 */
   .feat.on{color:var(--ok);border-color:rgba(87,227,155,0.55);background:rgba(87,227,155,0.12)}
-  /* 行尾整体：修改按钮 + 财富，同行相邻、垂直居中对齐 */
+  /* 行尾整体：修改按钮，同行相邻、垂直居中对齐 */
   .who .tail{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
-  .wealth{
-    display:flex;align-items:baseline;gap:4px;flex:0 0 auto;white-space:nowrap;
-  }
-  .wealth .wk{font-size:11px;color:var(--mute)}
-  .wealth .wv{font-size:12.5px;font-weight:800;color:var(--ok);font-variant-numeric:tabular-nums}
-  .wealth .wv.neg{color:#ff6b6b}
 
   /* 数据 4 格：上=累计值(居中)，下=录入框 */
   .cells{flex:1;display:grid;grid-template-columns:repeat(var(--cols),1fr);min-width:0}
@@ -360,17 +361,12 @@
   .cell .v.inc{color:var(--txt)}          /* 净利润 → 正绿负红，见下 */
   .cell .v.inc.pos{color:var(--ok)}
   .cell .v.inc.neg{color:#ff6b6b}
-  /* 已获取晶石：纯白偏亮，压成灰色，视觉上退到次要层级 */
+  /* 累计获取晶石：纯白偏亮，压成灰色，视觉上退到次要层级 */
   .cell .v.gain{color:var(--dim)}
   .cell .v.hit{animation:flash .7s ease}
 
-  /* 只读格（当日收入）：上方数值 + 下方「自动」占位，与录入格等高对齐 */
-  .cell.ro{position:relative}
-  .cell.ro .auto{
-    width:100%;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;
-    font-size:10.5px;letter-spacing:.6px;color:var(--mute);
-    background:rgba(255,255,255,0.028);border:1px dashed rgba(125,165,225,0.16);
-  }
+  /* 只读格：无录入框占位，数值在格内垂直居中，与录入格视觉平衡 */
+  .cell.ro{position:relative;justify-content:center}
 
   /* 半透明录入框 */
   .input{
@@ -659,13 +655,9 @@
   <!-- ========== 汇总统计 ========== -->
   <section id="summary"></section>
 
-  <!-- ========== 每日信息（结算期 08:00 → 次日 08:00，点击标题可折叠） ========== -->
-  <section id="daily" class="panel">
-    <button id="dailyHead" type="button" title="点击折叠 / 展开">
-      <span class="d-title">每日信息</span>
-      <span class="d-range">结算期 <b id="dailyRange"></b></span>
-      <span class="d-arrow">▼</span>
-    </button>
+  <!-- ========== 每日信息（今天；结算期 08:00 → 次日 08:00） ========== -->
+  <section id="daily" class="daily-zone">
+    <div class="zone-title">每日信息</div>
     <div id="dailyBody"></div>
   </section>
 
@@ -675,7 +667,7 @@
     <div class="h-who">角色信息</div>
     <div class="h-cells">
       <div class="h-cell">当前剩余晶石</div>
-      <div class="h-cell">已获取晶石</div>
+      <div class="h-cell">累计获取晶石</div>
       <div class="h-cell">已出售晶石</div>
       <div class="h-cell">收入</div>
       <div class="h-cell">人工费用</div>
@@ -687,6 +679,13 @@
 
   <!-- ========== 角色卡片 ========== -->
   <main id="cards"></main>
+
+  <!-- ========== 历史每日信息（过去结算日，倒序；无历史则隐藏） ========== -->
+  <section id="dailyPast" class="daily-zone" hidden>
+    <div class="zone-title">历史每日信息</div>
+    <div id="dailyPastBody"></div>
+  </section>
+
   <input id="fileInput" type="file" accept="application/json,.json" hidden />
 
 </div>
@@ -932,7 +931,7 @@ function latestLeft(c){
   return Number(asc[asc.length - 1].gemsLeft) || 0;
 }
 
-/* 已获取晶石 = 逐条累加「(本条剩余 − 上一条剩余) + 本条卖出 + 本条秘境消耗」
+/* 累计获取晶石 = 逐条累加「(本条剩余 − 上一条剩余) + 本条卖出 + 本条秘境消耗」
  * ------------------------------------------------------------
  * 口径（2026-09-26 定）：晶石是「先获取，再卖出/消耗，最后剩这么多」——
  *   本条剩余 = 上一条剩余 + 本次获取 − 本次卖出 − 本次消耗
@@ -1769,7 +1768,7 @@ function renderSummary(sum, animate){
   const items = [
     { cls:'c-roles', slot:'s-roles', ico:'roles', key:'roles',      k:'角色数量',         v:num(sum.roles) },
     { cls:'c-left',  slot:'s-data',  ico:'gem',   key:'gemsLeft',   k:'剩余晶石总量',     v:intNum(sum.gemsLeft) },
-    { cls:'c-gain',  slot:'s-data',  ico:'gain',  key:'gained',     k:'已获取晶石总量',   v:num(sum.gained) },
+    { cls:'c-gain',  slot:'s-data',  ico:'gain',  key:'gained',     k:'累计获取晶石总量',   v:num(sum.gained) },
     { cls:'c-sold',  slot:'s-data',  ico:'box',   key:'gemsSold',   k:'出售晶石总量',     v:intNum(sum.gemsSold) },
     { cls:'c-money', slot:'s-data',  ico:'money', key:'soldValue',  k:'总收入',           v:money(sum.soldValue) },
     { cls:'c-labor', slot:'s-data',  ico:'tool',  key:'laborCost',  k:'总支出（人工支出）', v:money(sum.laborCost) },
@@ -1800,7 +1799,7 @@ function refreshNumbers(i){
     const t = totals(c);
     /* 7 列：当前剩余 / 已获取 / 已出售 / 收入 / 人工费用 / 净利润 / 秘境消耗 */
     setV(row,'gemsLeft',  intNum(t.gemsLeft), 'hit');
-    /* 已获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0；显示为灰色，弱化视觉层级 */
+    /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0；显示为灰色，弱化视觉层级 */
     const g = gained(c);
     setV(row,'gained', g, 'hit');
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
@@ -1852,7 +1851,7 @@ function detailHTML(i){
   const asc = recsAsc(c);
   const ordered = asc.slice().reverse();
   /* 「本次获取晶石」= 单次增量（不是累计）：剩余增量 + 本条卖出 + 本条秘境消耗，逆差记 0。
-     直接用 gainedDeltas()，与卡片上的「已获取晶石」总数共用同一份计算，
+     直接用 gainedDeltas()，与卡片上的「累计获取晶石」总数共用同一份计算，
      明细各行的增量之和 === 卡片显示的总数，两处永远一致。
      净利润仍是单条记录的「收入 − 人工」，本就与累计无关。 */
   const deltas = gainedDeltas(c);          /* 与 asc 同序，负增量已归 0 */
@@ -1982,9 +1981,6 @@ function whoHTML(c, i){
       + f.label + '</span>';
   }).join('');
 
-  const w = wealth(c);
-  const wCls = w < 0 ? 'wv neg' : 'wv';
-
   return '<div class="who">'
     + '<div class="line1">'
     +   '<div class="nm' + (c.name ? '' : ' empty') + (recordedToday(c) ? ' today' : '') + '">'
@@ -1994,21 +1990,18 @@ function whoHTML(c, i){
     + '</div>'
     + '<div class="line2">'
     +   '<span class="feats">' + feats + '</span>'
-    +   '<span class="tail">' + btnEdit
-    +     '<span class="wealth"><span class="wk">财富</span><span class="' + wCls + '" data-w="' + i + '">'
-    +       money(w) + '</span></span>'
-    +   '</span>'
+    +   '<span class="tail">' + btnEdit + '</span>'
     + '</div>'
     + '</div>';
 }
 
 /* 一行一卡：序号 | 角色信息（只读/可编辑） | 7 数值格(居中) + 录入框 | ▼
-   7 列：当前剩余晶石 / 已获取晶石 / 已出售晶石 / 收入 / 人工费用 / 净利润 / 秘境消耗晶石
-   其中「已获取晶石」「净利润」自动计算，其余 5 项可录入 */
+   7 列：当前剩余晶石 / 累计获取晶石 / 已出售晶石 / 收入 / 人工费用 / 净利润 / 秘境消耗晶石
+   其中「累计获取晶石」「净利润」自动计算，其余 5 项可录入 */
 function cardHTML(c, i){
   const color = THEME[i % THEME.length];
   const t = totals(c);
-  /* 已获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0 */
+  /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0 */
   const g = gained(c);
   /* 净利润 = 收入 − 人工费用 */
   const p = t.soldValue - t.laborCost;
@@ -2020,12 +2013,11 @@ function cardHTML(c, i){
     + '<input class="input" type="number" inputmode="decimal" step="any" '
     +   'data-i="' + i + '" data-f="' + vkey + '" placeholder="' + ph + '" />'
     + '</div>';
-  /* 只读数值格（自动算出，无需录入） */
+  /* 只读数值格（自动算出，无需录入；无录入框占位，数值居中显示） */
   const roCell = (vkey, vhtml, cls, tip, k) =>
     '<div class="cell ro" title="' + tip + '">'
     + '<span class="k">' + (k || '') + '</span>'
     + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
-    + '<span class="auto">自动</span>'
     + '</div>';
 
   return '<div class="row" data-i="' + i + '">'
@@ -2041,7 +2033,7 @@ function cardHTML(c, i){
     +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '现有多少填多少', '当前剩余晶石',
     +            '当前剩余晶石是「时点值」：每次录入以最新一次为准，不累加。现在还剩多少就填多少。')
     +     roCell('gained', g, 'gain',
-    +            '已获取晶石 = 每次「剩余增量 + 本次卖出 + 本次秘境消耗」之和：先获取，卖掉/消耗之后才剩这么多；逆差记 0', '已获取晶石')
+    +            '累计获取晶石 = 每次「剩余增量 + 本次卖出 + 本次秘境消耗」之和：先获取，卖掉/消耗之后才剩这么多；逆差记 0', '累计获取晶石')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售',      '已出售晶石')
     +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入',      '收入')
     +     cell('laborCost', money(t.laborCost), 'plain',  '本次人工',      '人工费用')
@@ -2057,15 +2049,22 @@ function cardHTML(c, i){
 }
 
 /* ============================================================
- * 每日信息：当前结算期（today() 08:00 → 次日 08:00）的全角色流水
+ * 每日信息：按结算日（today() 08:00 → 次日 08:00）分组的全角色流水
  * ------------------------------------------------------------
- * 口径与「收入归期 / 日结快照」完全一致 —— 记录归期 date === today()。
- * today() 已含 8 点分割：凌晨 0~8 点打开时 today() 返回昨天，
- * 因此 9.27 早 8 点前录入的（含 9.27 凌晨）都归 9.26，面板也显示 9.26。
- * 指标复用 dayTotals()：获取 = 剩余增量 + 卖出 + 秘境消耗（接上一条起算）。
- * 可折叠：点击标题收起/展开，状态记入 localStorage，下次打开保持。
+ * 口径与「收入归期 / 日结快照」完全一致 —— 记录归期 settleDateOf(r) === 该日。
+ * today() 已含 8 点分割：凌晨 0~8 点打开时 today() 返回昨天，面板也归昨天。
+ * 指标复用 dayTotals()：累计获取 = 剩余增量 + 卖出 + 秘境消耗（接上一条起算）。
+ * 布局：今天面板在顶部「每日信息」区；过去日期面板沉到角色列表下方的「历史每日信息」区（倒序）。
+ * 每个日期面板可独立折叠，状态按日期记入 localStorage，下次打开保持。
  * ============================================================ */
-const DAILY_FOLD_KEY = 'gem-ledger-daily-fold';
+
+function shortDate(ds){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ds || ''));
+  if(!m) return String(ds || '');
+  return m[2] + '-' + m[3];
+}
+
+const DAILY_FOLD_KEY = 'gem-ledger-day-fold-';
 
 function daySummarize(date){
   const acc = { roles:0, records:0, gained:0, gemsSold:0,
@@ -2086,28 +2085,77 @@ function daySummarize(date){
   return acc;
 }
 
-function renderDaily(){
-  const body = document.getElementById('dailyBody');
-  if(!body) return;
-  const d = today();
-  const range = document.getElementById('dailyRange');
-  if(range) range.textContent = d + ' 08:00 → ' + addDays(d, 1) + ' 08:00';
+/* 收集所有出现过的结算日（去重，倒序：最近在上） */
+function allSettleDates(){
+  const seen = {};
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      const d = settleDateOf(r);
+      if(d) seen[d] = 1;
+    });
+  });
+  return Object.keys(seen).sort().reverse();
+}
+
+/* 单个结算日的折叠面板 HTML（日期标题 + 当日汇总 + 8 项指标卡片） */
+function daySectHTML(d, isToday){
   const s = daySummarize(d);
   const items = [
-    { cls:'c-roles', ico:'roles', k:'录入角色',     v:num(s.roles),       raw:s.roles },
-    { cls:'c-gain',  ico:'gain',  k:'当日获取晶石', v:num(s.gained),      raw:s.gained },
-    { cls:'c-sold',  ico:'box',   k:'当日出售晶石', v:intNum(s.gemsSold), raw:s.gemsSold },
-    { cls:'c-money', ico:'money', k:'当日收入',     v:money(s.soldValue), raw:s.soldValue },
-    { cls:'c-labor', ico:'tool',  k:'当日人工费用', v:money(s.laborCost), raw:s.laborCost },
-    { cls:'c-net',   ico:'trend', k:'当日净利润',   v:money(s.profit),    raw:s.profit },
-    { cls:'c-chaos', ico:'chaos', k:'当日秘境消耗', v:intNum(s.chaosCost),raw:s.chaosCost },
-    { cls:'c-left',  ico:'gem',   k:'当日录入条数', v:num(s.records),     raw:s.records }
+    { cls:'c-roles', ico:'roles', k:'录入角色',         v:num(s.roles),       raw:s.roles },
+    { cls:'c-gain',  ico:'gain',  k:'当日累计获取晶石', v:num(s.gained),      raw:s.gained },
+    { cls:'c-sold',  ico:'box',   k:'当日出售晶石',     v:intNum(s.gemsSold), raw:s.gemsSold },
+    { cls:'c-money', ico:'money', k:'当日收入',         v:money(s.soldValue), raw:s.soldValue },
+    { cls:'c-labor', ico:'tool',  k:'当日人工费用',     v:money(s.laborCost), raw:s.laborCost },
+    { cls:'c-net',   ico:'trend', k:'当日净利润',       v:money(s.profit),    raw:s.profit },
+    { cls:'c-chaos', ico:'chaos', k:'当日秘境消耗',     v:intNum(s.chaosCost),raw:s.chaosCost },
+    { cls:'c-left',  ico:'gem',   k:'当日录入条数',     v:num(s.records),     raw:s.records }
   ];
-  body.innerHTML = items.map(function(i){
+  const body = items.map(function(i){
     return '<div class="sm panel ' + i.cls + '">'
       + '<span class="k">' + ico(i.ico) + i.k + '</span>'
       + '<span class="v' + (i.raw < 0 ? ' neg' : '') + '">' + i.v + '</span></div>';
   }).join('');
+  const dateLabel = shortDate(d) + (isToday ? ' <span class="today-tag">今天</span>' : '');
+  const sumLabel = s.roles + ' 个角色 · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b>';
+  return '<section class="panel daysect" data-day="' + d + '">'
+    + '<button class="dayHead" type="button" title="点击折叠 / 展开">'
+    +   '<span class="d-date">' + dateLabel + '</span>'
+    +   '<span class="d-sum">' + sumLabel + '</span>'
+    +   '<span class="d-arrow">▼</span>'
+    + '</button>'
+    + '<div class="dayBody">' + body + '</div>'
+    + '</section>';
+}
+
+/* 折叠记忆：每块容器内的日期面板分别记忆；defaultFold 指定首次打开的默认态（今天展开、历史折叠） */
+function bindDayFold(container, defaultFold){
+  if(!container) return;
+  const secs = container.querySelectorAll('.daysect');
+  Array.prototype.forEach.call(secs, function(sec){
+    const key = DAILY_FOLD_KEY + sec.getAttribute('data-day');
+    let folded = null;
+    try{ const v = localStorage.getItem(key); if(v === '1') folded = true; else if(v === '0') folded = false; }catch(e){}
+    if(folded === null) folded = defaultFold;
+    if(folded) sec.classList.add('folded');
+    sec.querySelector('.dayHead').addEventListener('click', function(){
+      sec.classList.toggle('folded');
+      try{ localStorage.setItem(key, sec.classList.contains('folded') ? '1' : '0'); }catch(e){}
+    });
+  });
+}
+
+function renderDaily(){
+  const todayD = today();
+  const dates = allSettleDates();
+  const pastDates = dates.filter(function(d){ return d !== todayD; });
+  const todayBody = document.getElementById('dailyBody');
+  const pastBody  = document.getElementById('dailyPastBody');
+  const pastZone  = document.getElementById('dailyPast');
+  if(todayBody) todayBody.innerHTML = daySectHTML(todayD, true);
+  if(pastBody)  pastBody.innerHTML  = pastDates.map(function(d){ return daySectHTML(d, false); }).join('');
+  if(pastZone)  pastZone.hidden = pastDates.length === 0;
+  bindDayFold(document.getElementById('daily'), false);
+  bindDayFold(pastZone, true);
 }
 
 function render(){
@@ -2449,7 +2497,7 @@ function dayCardHTML(snap, isNew){
     + '<div class="st-nums">'
     +   cell('角色数量', num(t.roles), 'acc')
     +   cell('剩余晶石总量', num(t.gemsLeft))
-    +   cell('已获取晶石总量', num(t.gained))
+    +   cell('累计获取晶石总量', num(t.gained))
     +   cell('已出售晶石总量', num(t.gemsSold))
     +   cell('总收入', money(t.soldValue), 'gold')
     +   cell('人工支出', money(t.laborCost))
@@ -2810,16 +2858,6 @@ if(_bootAuto.added.length){
 }
 restoreChanged(lastSavedAt);   /* 恢复「最后更改」为上次改动时间 */
 
-/* 每日信息折叠状态：读回上次的选择并绑定点击切换 */
-(function initDailyFold(){
-  const sec = document.getElementById('daily');
-  if(!sec) return;
-  try{ if(localStorage.getItem(DAILY_FOLD_KEY) === '1') sec.classList.add('folded'); }catch(e){}
-  document.getElementById('dailyHead').addEventListener('click', function(){
-    sec.classList.toggle('folded');
-    try{ localStorage.setItem(DAILY_FOLD_KEY, sec.classList.contains('folded') ? '1' : '0'); }catch(e){}
-  });
-})();
 cloudInit();                   /* 异步连云端：比时间戳决定用本机还是云端 */
 window.addEventListener('resize', function(){ syncAllDetailCols(); });
 syncFullBtn();                 /* 初始化全屏按钮状态 */
