@@ -294,7 +294,7 @@
 const LEVEL_TOTALS = { 86: 1999268000, 87: 2125066400 };
 const LEVEL_TOTAL  = LEVEL_TOTALS[87];   /* 当前等级（87）升级总经验 */
 const ltOf = r => LEVEL_TOTALS[r.level] || LEVEL_TOTAL;
-const UPDATED_AT  = '2026-10-02 02:40';
+const UPDATED_AT  = '2026-10-02 02:44';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -915,6 +915,11 @@ const XP_RECORDS = [
     pot50:false, pot20:false, stones:553,
     prev:1479575115, cur:1497212969, note:'',
     affixes:['怪物冰霜抗性增加35%','怪物冰霜抗性增加35%','角色生命增加30%','怪物毒素抗性增加35%','图中出现大量宝箱','怪物冰霜抗性增加60%'] },
+
+  { dt:'2026-10-02 02:44:21', role:'陌尘', level:87,
+    map:'破灭堡垒', tier:'T15', mobLv:88, mobQty:null,
+    pot50:false, pot20:false, stones:541,
+    prev:1497212969, cur:1514213500, note:'补录（无截图）：经验按约0.8%估算，词缀未记录' },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
