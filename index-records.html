@@ -237,6 +237,14 @@
   .daysect.folded .dayBody{display:none}
   @media (max-width:1660px){ .dayBody{grid-template-columns:repeat(4,1fr)} }
   @media (max-width:980px){ .dayBody{grid-template-columns:repeat(2,1fr)} }
+  /* 代练勾选行：每天面板内一行，按角色勾选是否计人工费（15/天） */
+  .labor-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;
+    margin:0 12px 10px;padding:8px 12px;border-radius:9px;
+    background:rgba(255,138,92,0.07);border:1px solid rgba(255,138,92,0.18)}
+  .labor-row .lr-label{font-size:12px;font-weight:700;color:#ff8a5c}
+  .lr-item{display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+    font-size:12.5px;color:var(--text);user-select:none}
+  .lr-item input{width:15px;height:15px;accent-color:#ff8a5c;cursor:pointer}
 
   /* ---------- 列标题条（顶部共享一次，竖向对齐各卡片） ---------- */
   .colhead{
@@ -885,9 +893,22 @@ function recStamp(r){
   const t = String(r.time || '00:00:00');
   return settleDateOf(r) + ' ' + (t < '08:00:00' ? '1' : '0') + t;
 }
-/* 净利润（单条记录） = 收入 − 人工费用 */
-function income(r){ return (Number(r.dayValue)||0) - (Number(r.dayLabor)||0); }
+/* 单条记录「收入」= 本次出售所得（人工费已改为按天计，不再有单条人工） */
+function income(r){ return (Number(r.dayValue)||0); }
 function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v); }
+
+/* 人工费（新口径 2026-10-01）：按「角色×天」计费，每天 15 元；
+   默认不勾选 = 自己打的（免单，0）；勾选 = 用了代练（15）。
+   laborDays 只存「用了代练」的日期（例外集合），其余天默认免单。 */
+function laborDaysOf(c){ return (c && Array.isArray(c.laborDays)) ? c.laborDays : []; }
+function laborOfDay(c, date){ return laborDaysOf(c).indexOf(date) >= 0 ? 15 : 0; }
+function laborTotal(c){
+  const days = {};
+  (c.records || []).forEach(function(r){ const d = settleDateOf(r); if(d) days[d] = 1; });
+  let s = 0;
+  Object.keys(days).forEach(function(d){ s += laborOfDay(c, d); });
+  return s;
+}
 
 /* 汇总角色数据
  * 「当前剩余晶石」= 时点状态 —— 以最新一条录入为准（覆盖，不累加）
@@ -897,14 +918,15 @@ function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v);
 function totals(c){
   /* 流水字段：累加 */
   const t = { gemsLeft:0, gemsSold:Number(c.gemsSold)||0,
-              soldValue:Number(c.soldValue)||0, laborCost:Number(c.laborCost)||0,
+              soldValue:Number(c.soldValue)||0, laborCost:0,
               chaosCost:Number(c.chaosCost)||0 };
   (c.records||[]).forEach(function(r){
     t.gemsSold  += Number(r.daySold)   || 0;
     t.soldValue += Number(r.dayValue)  || 0;
-    t.laborCost += Number(r.dayLabor)  || 0;
     t.chaosCost += Number(r.chaosCost) || 0;
   });
+  /* 人工费（新口径）：按「角色×天」派生，不再读 dayLabor 累加 */
+  t.laborCost = laborTotal(c);
   /* 剩余：取时序上最后一条录入的值；没有明细时退回基准值 */
   t.gemsLeft = latestLeft(c);
   return t;
@@ -1037,6 +1059,8 @@ function dayTotals(c, dayRecs){
   let prev = (gi > 0)
     ? (Number(asc[gi - 1].gemsLeft) || 0)     /* 接上上一条（可能在前几天） */
     : leftBase(c);                            /* 真是首条 → 用初始存量 */
+  /* 人工费（新口径）：按天计一次 15（勾选了代练的当天），不按录入条数累加 */
+  t.laborCost = laborOfDay(c, settleDateOf(dayRecs[0]));
   dayRecs.forEach(function(r){
     const cur   = Number(r.gemsLeft)  || 0;
     const sold  = Number(r.daySold)   || 0;
@@ -1047,7 +1071,6 @@ function dayTotals(c, dayRecs){
     prev = cur;
     t.gemsSold  += Number(r.daySold)   || 0;
     t.soldValue += Number(r.dayValue)  || 0;
-    t.laborCost += Number(r.dayLabor)  || 0;
     t.chaosCost += Number(r.chaosCost) || 0;
     t.recordCount++;
   });
@@ -1304,7 +1327,8 @@ function saveLocal(){
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                  laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
                  initLeft:Number(c.initLeft)||0,
-                 records:c.records || [], flags:c.flags || {} };
+                 records:c.records || [], flags:c.flags || {},
+                 laborDays:c.laborDays || [] };
       })
     }));
     stampChanged();
@@ -1338,8 +1362,24 @@ function loadLocal(){
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0 };
       }) : [],
+      /* 人工费新口径：只存「用了代练」的日期（例外集合），其余天默认免单。
+         老数据没有该字段 → 置 null，下面统一做一次性迁移。 */
+      laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
+  });
+  /* 历史兼容迁移（一次性）：老数据用「每条 dayLabor 累加」记人工费，
+     这里把"历史上 dayLabor>0 的那些天"并入 laborDays（按 15/天 标准化），
+     保留"哪些天用了代练"的信息；之后以 laborDays 为准。 */
+  ACCOUNTS.forEach(function(c){
+    if(c.laborDays === null){
+      const byDay = {};
+      (c.records || []).forEach(function(r){
+        const d = settleDateOf(r);
+        byDay[d] = (byDay[d] || 0) + (Number(r.dayLabor) || 0);
+      });
+      c.laborDays = Object.keys(byDay).filter(function(d){ return byDay[d] > 0; });
+    }
   });
   /* 日结快照：老数据没有这个字段，补空对象 */
   SNAPSHOTS = (data.snapshots && typeof data.snapshots === 'object' && !Array.isArray(data.snapshots))
@@ -1857,13 +1897,20 @@ function detailHTML(i){
   const deltas = gainedDeltas(c);          /* 与 asc 同序，负增量已归 0 */
   const idxOf = new Map();
   asc.forEach(function(r, k){ idxOf.set(r, k); });
+  let prevDate = '__none__';
   const rows = ordered.length ? ordered.map(function(r){
     const oi = recs.indexOf(r);
     const k  = idxOf.get(r);
+    const d  = settleDateOf(r);
+    /* desc 序下，同一结算日的第一行 = 当天最新一笔；把当天代练费（15）记在这一笔上，
+       其余同天记录记 0，避免按条数重复累加。人工费已改为按天计。 */
+    const isLastOfDay = (d !== prevDate);
+    prevDate = d;
+    const dayLabor = isLastOfDay ? laborOfDay(c, d) : 0;
     const z = v => (Number(v)||0) === 0 ? ' zero' : '';
     const gInc = deltas[k] || 0;           /* 本次获取晶石：单次增量，恒 ≥ 0 */
-    const pSingle = income(r);
-    const pCls = pSingle > 0 ? ' income' : (pSingle < 0 ? ' neg' : ' inc-zero');
+    const net = (Number(r.dayValue)||0) - dayLabor;
+    const pCls = net > 0 ? ' income' : (net < 0 ? ' neg' : ' inc-zero');
     /* 凌晨标记：00:00~07:59 的录入按结算日归属前一天，给个视觉提示 */
     const weeHour = parseInt(String(r.time || '').split(':')[0], 10);
     const wee = (weeHour >= 0 && weeHour < 8) ? '<i class="wee">凌晨</i>' : '';
@@ -1874,8 +1921,9 @@ function detailHTML(i){
       + '<td class="n inc' + (gInc === 0 ? ' zero' : '') + '">' + num(gInc) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
-      + '<td class="n plain'+z(r.dayLabor)+'">' + num(r.dayLabor) + '</td>'
-      + '<td class="n'+pCls+'">' + money(pSingle) + '</td>'
+      + '<td class="n plain'+z(dayLabor)+'" title="代练费按天计（15/天），记在当天最后一笔">'
+        + num(dayLabor) + '</td>'
+      + '<td class="n'+pCls+'">' + money(net) + '</td>'
       + '<td class="n chaos'+z(r.chaosCost)+'">' + intNum(r.chaosCost) + '</td>'
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
@@ -1997,7 +2045,8 @@ function whoHTML(c, i){
 
 /* 一行一卡：序号 | 角色信息（只读/可编辑） | 7 数值格(居中) + 录入框 | ▼
    7 列：当前剩余晶石 / 累计获取晶石 / 已出售晶石 / 收入 / 人工费用 / 净利润 / 秘境消耗晶石
-   其中「累计获取晶石」「净利润」自动计算，其余 5 项可录入 */
+   其中「累计获取晶石」「净利润」「人工费用」自动计算（人工费用按天在每日信息面板勾选代练计 15/天），
+   其余 4 项（当前剩余 / 已出售 / 收入 / 秘境消耗）可录入 */
 function cardHTML(c, i){
   const color = THEME[i % THEME.length];
   const t = totals(c);
@@ -2036,7 +2085,8 @@ function cardHTML(c, i){
     +            '累计获取晶石 = 每次「剩余增量 + 本次卖出 + 本次秘境消耗」之和：先获取，卖掉/消耗之后才剩这么多；逆差记 0', '累计获取晶石')
     +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售',      '已出售晶石')
     +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入',      '收入')
-    +     cell('laborCost', money(t.laborCost), 'plain',  '本次人工',      '人工费用')
+    +     roCell('laborCost', money(t.laborCost), 'plain',
+    +            '累计人工支出：按「角色×天」在每日信息面板勾选「代练」计 15/天；不勾=自己打的免单', '人工费用')
     +     roCell('profit', money(p), 'inc' + pCls,
     +            '净利润 = 收入 − 人工费用', '净利润')
     +     cell('chaosCost', intNum(t.chaosCost), 'chaos', '秘境消耗晶石',  '秘境消耗晶石')
@@ -2117,12 +2167,25 @@ function daySectHTML(d, isToday){
   }).join('');
   const dateLabel = shortDate(d) + (isToday ? ' <span class="today-tag">今天</span>' : '');
   const sumLabel = s.roles + ' 个角色 · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b>';
+  /* 代练勾选行：列出当天有记录的角色，勾选=该角色当天用了代练（15），不勾=自己打的免单 */
+  const lr = ACCOUNTS.map(function(c, i){ return { c:c, i:i }; })
+    .filter(function(o){ const g = groupRecordsByDate(o.c)[d]; return g && g.length; })
+    .map(function(o){
+      const on = laborOfDay(o.c, d) > 0;
+      return '<label class="lr-item"><input type="checkbox" data-labor="' + o.i
+        + '" data-day="' + d + '"' + (on ? ' checked' : '') + ' /><span>'
+        + esc(o.c.name || '未命名') + '</span></label>';
+    }).join('');
+  const laborRow = lr
+    ? ('<div class="labor-row"><span class="lr-label">代练（15/天）：</span>' + lr + '</div>')
+    : '';
   return '<section class="panel daysect" data-day="' + d + '">'
     + '<button class="dayHead" type="button" title="点击折叠 / 展开">'
     +   '<span class="d-date">' + dateLabel + '</span>'
     +   '<span class="d-sum">' + sumLabel + '</span>'
     +   '<span class="d-arrow">▼</span>'
     + '</button>'
+    + laborRow
     + '<div class="dayBody">' + body + '</div>'
     + '</section>';
 }
@@ -2142,6 +2205,25 @@ function bindDayFold(container, defaultFold){
       try{ localStorage.setItem(key, sec.classList.contains('folded') ? '1' : '0'); }catch(e){}
     });
   });
+}
+
+/* 代练勾选：切换某角色某天是否计人工费（15）；默认不勾=自己打的免单 */
+function toggleLabor(i, d, checked){
+  const c = ACCOUNTS[i]; if(!c) return;
+  c.laborDays = c.laborDays || [];
+  const k = c.laborDays.indexOf(d);
+  if(checked && k < 0) c.laborDays.push(d);
+  if(!checked && k >= 0) c.laborDays.splice(k, 1);
+  saveLocal();                 /* 落本地 + 推送云端 */
+  renderDaily();               /* 重建每日面板：指标与勾选态跟随（折叠态由 localStorage 记忆保留） */
+  refreshNumbers(i);           /* 卡片累计人工 + 顶部总支出联动 */
+  /* 若明细已展开，立即重渲染，反映人工费勾选 */
+  const dEl = document.getElementById('detail-' + i);
+  if(dEl && dEl.closest('.row') && dEl.closest('.row').classList.contains('open')){
+    dEl.innerHTML = detailHTML(i);
+  }
+  const nm = c.name || '未命名';
+  toast(checked ? (nm + ' ' + shortDate(d) + '：记代练（15）') : (nm + ' ' + shortDate(d) + '：自己打的（免单）'));
 }
 
 function renderDaily(){
@@ -2265,7 +2347,7 @@ function commitEntry(i){
   autoSettle();                    /* 录入后自动刷新当天快照（幂等，通常只动今天） */
   saveLocal();
   syncCommitAll();
-  toast('已记录 ' + rec.time + '（净利润 ' + incomeText(rec) + '）' + weeNote(rec));
+  toast('已记录 ' + rec.time + '（收入 ' + incomeText(rec) + '）' + weeNote(rec));
 }
 
 /* 一键提交所有有变动的卡片（顶部「记录全部」）
@@ -2565,6 +2647,14 @@ document.addEventListener('keydown', function(e){
   }
 });
 
+/* 代练勾选框：事件委托，切换某角色某天的人工费（15 / 免单） */
+document.addEventListener('change', function(e){
+  const t = e.target;
+  if(t && t.matches && t.matches('input[data-labor]')){
+    toggleLabor(Number(t.getAttribute('data-labor')), t.getAttribute('data-day'), t.checked);
+  }
+});
+
 /* ============================================================
  * 弹窗：新增 / 编辑角色（账号 / 角色名 / 职业 / 等级）
  * ============================================================ */
@@ -2690,6 +2780,8 @@ document.addEventListener('click', function(e){
     tg.setAttribute('aria-expanded', open ? 'true' : 'false');
     if(open){
       const i = Number(tg.dataset.toggle);
+      /* 展开时惰性重渲染明细，保证人工费勾选等数据变更即时反映 */
+      document.getElementById('detail-' + i).innerHTML = detailHTML(i);
       /* 展开动画结束后再按实际宽度对齐明细列 */
       setTimeout(function(){ syncDetailCols(i); }, 320);
     }
