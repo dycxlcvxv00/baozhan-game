@@ -235,6 +235,7 @@
   .daysect.folded .dayHead .d-arrow{transform:rotate(-90deg)}
   .dayBody{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;padding:0 12px 12px}
   .daysect.folded .dayBody{display:none}
+  .dayBody .labor-row{grid-column:1 / -1;margin-bottom:2px}
   @media (max-width:1660px){ .dayBody{grid-template-columns:repeat(4,1fr)} }
   @media (max-width:980px){ .dayBody{grid-template-columns:repeat(2,1fr)} }
   /* 代练勾选行：每天面板内一行，按角色勾选是否计人工费（15/天） */
@@ -2185,8 +2186,7 @@ function daySectHTML(d, isToday){
     +   '<span class="d-sum">' + sumLabel + '</span>'
     +   '<span class="d-arrow">▼</span>'
     + '</button>'
-    + laborRow
-    + '<div class="dayBody">' + body + '</div>'
+    + '<div class="dayBody">' + laborRow + body + '</div>'
     + '</section>';
 }
 
