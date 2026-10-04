@@ -294,7 +294,7 @@
 const LEVEL_TOTALS = { 86: 1999268000, 87: 2125066400, 88: 2260637300 };
 const LEVEL_TOTAL  = LEVEL_TOTALS[87];   /* 当前等级（87）升级总经验 */
 const ltOf = r => LEVEL_TOTALS[r.level] || LEVEL_TOTAL;
-const UPDATED_AT  = '2026-10-04 15:57';
+const UPDATED_AT  = '2026-10-04 20:35';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -1209,6 +1209,23 @@ const XP_RECORDS = [
     pot50:false, pot20:false, stones:662,
     prev:286847997, cur:297145846, note:'',
     affixes:['掉落物数量增加50%、怪物闪电抗性增加35%、怪物毒素抗性增加35%、怪物物理抗性增加60%'] },
+
+  { dt:'2026-10-04 19:15:00', role:'陌尘', level:88,
+    map:'哀嚎峡谷', tier:'T15', mobLv:88, mobQty:null,
+    pot50:false, pot20:false, stones:2200,
+    prev:297145846, cur:392092613, note:'补录（无截图）：今晚第2次，2200晶石超大图，经验按历史哀嚎峡谷T15水平折算（无+100%词缀），词缀未记录' },
+
+  { dt:'2026-10-04 20:00:00', role:'陌尘', level:88,
+    map:'祭祀礼堂', tier:'T14', mobLv:86, mobQty:null,
+    pot50:false, pot20:false, stones:850,
+    prev:392092613, cur:405656437, note:'造数记录（用户授权）：今晚第3次（无截图无信息），图与词缀按近期常见搭配，经验按T14中等图水平',
+    affixes:['怪物生命增加20%、掉落物数量增加50%、怪物物理抗性增加35%、角色移动速度增加40%'] },
+
+  { dt:'2026-10-04 20:35:00', role:'陌尘', level:88,
+    map:'失落之城2层', tier:'T15', mobLv:88, mobQty:null,
+    pot50:false, pot20:false, stones:557,
+    prev:405656437, cur:415439798, note:'',
+    affixes:['怪物无视负面状态、出现特殊暗金怪物-虚空支配者·艾利欧格、角色攻速和施法增加30%、怪物物理抗性增加60%'] },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
