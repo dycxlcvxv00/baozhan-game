@@ -294,7 +294,7 @@
 const LEVEL_TOTALS = { 86: 1999268000, 87: 2125066400, 88: 2260637300 };
 const LEVEL_TOTAL  = LEVEL_TOTALS[87];   /* 当前等级（87）升级总经验 */
 const ltOf = r => LEVEL_TOTALS[r.level] || LEVEL_TOTAL;
-const UPDATED_AT  = '2026-10-04 07:45';
+const UPDATED_AT  = '2026-10-04 15:57';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -1203,6 +1203,12 @@ const XP_RECORDS = [
     pot50:false, pot20:false, stones:517,
     prev:283608486, cur:286847997, note:'造数记录（用户授权）：经验取最近6把平均值，晶石取近期T11-T13均值，词缀为常见搭配',
     affixes:['角色移动速度增加40%、怪物生命增加20%、掉落物数量增加50%、怪物物理抗性增加35%'] },
+
+  { dt:'2026-10-04 15:57:06', role:'陌尘', level:88,
+    map:'破灭堡垒', tier:'T15', mobLv:88, mobQty:null,
+    pot50:false, pot20:false, stones:662,
+    prev:286847997, cur:297145846, note:'',
+    affixes:['掉落物数量增加50%、怪物闪电抗性增加35%、怪物毒素抗性增加35%、怪物物理抗性增加60%'] },
 ];
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
