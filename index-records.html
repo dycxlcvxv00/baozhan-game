@@ -705,7 +705,7 @@
 <div class="mask" id="mask">
   <div class="modal panel" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
     <h2 id="mdTitle"><span class="bar"></span><span id="mdTitleTxt">新增角色</span></h2>
-    <div class="hint" id="mdHint">填写以下 4 项信息，保存后生成一张角色卡片</div>
+    <div class="hint" id="mdHint">填写以下信息，保存后生成一张角色卡片</div>
 
     <div class="field">
       <label for="fAccount">账号<span class="req">*</span></label>
@@ -735,6 +735,12 @@
       <input id="fInitLeft" type="text" inputmode="decimal" maxlength="16" autocomplete="off" placeholder="开始记流水时已有多少（可留空）" />
       <div class="err">初始存量请填数字</div>
       <div class="fhint">留空或填 0 时，第一条录入会整条算作「本次获取」。想让首条只算增量，就填上开始记流水时手里的晶石数。</div>
+    </div>
+    <div class="field">
+      <label for="fOrder">排序序号</label>
+      <input id="fOrder" type="text" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="如 1、2、3（可留空）" />
+      <div class="err">序号请填数字</div>
+      <div class="fhint">填了序号的角色按序号从小到大排在前面；留空的角色按原顺序排在后面。留空 = 不参与排序。</div>
     </div>
 
     <div class="modal-foot">
@@ -1327,7 +1333,7 @@ function saveLocal(){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                  laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
-                 initLeft:Number(c.initLeft)||0,
+                 initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
                  records:c.records || [], flags:c.flags || {},
                  laborDays:c.laborDays || [] };
       })
@@ -1337,6 +1343,21 @@ function saveLocal(){
     schedulePush();          /* 本地先落地，云端防抖合并推送 */
   }catch(e){}
 }
+/* 老数据兼容（loadLocal / adopt / 导入备份共用）：laborDays === null 时，
+   从「dayLabor>0 的历史记录」重建例外集合 —— 云端数据与备份文件都可能是迁移前格式。 */
+function migrateLaborDays(){
+  ACCOUNTS.forEach(function(c){
+    if(c.laborDays === null){
+      const byDay = {};
+      (c.records || []).forEach(function(r){
+        const d = settleDateOf(r);
+        byDay[d] = (byDay[d] || 0) + (Number(r.dayLabor) || 0);
+      });
+      c.laborDays = Object.keys(byDay).filter(function(d){ return byDay[d] > 0; });
+    }
+  });
+}
+
 function loadLocal(){
   let raw = null;
   try{ raw = localStorage.getItem(LS_KEY); }catch(e){ return null; }
@@ -1354,6 +1375,7 @@ function loadLocal(){
       chaosCost: Number(s.chaosCost)||0,
       wealth: Number(s.wealth)||0,
       initLeft: Number(s.initLeft)||0,
+      order: Number(s.order)||0,
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0。
            real 必须原样透传 —— 拷贝时漏掉它，归期会退化成「沿用 date」，
@@ -1372,16 +1394,7 @@ function loadLocal(){
   /* 历史兼容迁移（一次性）：老数据用「每条 dayLabor 累加」记人工费，
      这里把"历史上 dayLabor>0 的那些天"并入 laborDays（按 15/天 标准化），
      保留"哪些天用了代练"的信息；之后以 laborDays 为准。 */
-  ACCOUNTS.forEach(function(c){
-    if(c.laborDays === null){
-      const byDay = {};
-      (c.records || []).forEach(function(r){
-        const d = settleDateOf(r);
-        byDay[d] = (byDay[d] || 0) + (Number(r.dayLabor) || 0);
-      });
-      c.laborDays = Object.keys(byDay).filter(function(d){ return byDay[d] > 0; });
-    }
-  });
+  migrateLaborDays();
   /* 日结快照：老数据没有这个字段，补空对象 */
   SNAPSHOTS = (data.snapshots && typeof data.snapshots === 'object' && !Array.isArray(data.snapshots))
             ? data.snapshots : {};
@@ -1445,8 +1458,9 @@ function serialize(){
       return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
-                 initLeft:Number(c.initLeft)||0,
-               records:c.records || [], flags:c.flags || {} };
+                 initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
+               records:c.records || [], flags:c.flags || {},
+               laborDays:c.laborDays || [] };
     })
   };
 }
@@ -1566,6 +1580,7 @@ function adopt(data){
       chaosCost: Number(s.chaosCost)||0,
       wealth: Number(s.wealth)||0,
       initLeft: Number(s.initLeft)||0,
+      order: Number(s.order)||0,
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* real 同样必须透传（与 loadLocal 一致），否则云端数据一落地归期就错 */
         return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
@@ -1573,12 +1588,14 @@ function adopt(data){
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0 };
       }) : [],
+      laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
   SNAPSHOTS = (data.snapshots && typeof data.snapshots === 'object' && !Array.isArray(data.snapshots))
             ? data.snapshots : {};
   healRealMarks();               /* 古老云端数据可能缺 real → 就地自愈 */
+  migrateLaborDays();            /* 同理可能缺 laborDays → 从历史 dayLabor 重建 */
 }
 
 function writeCache(data){
@@ -2048,7 +2065,7 @@ function whoHTML(c, i){
    7 列：当前剩余晶石 / 累计获取晶石 / 已出售晶石 / 收入 / 人工费用 / 净利润 / 秘境消耗晶石
    其中「累计获取晶石」「净利润」「人工费用」自动计算（人工费用按天在每日信息面板勾选代练计 15/天），
    其余 4 项（当前剩余 / 已出售 / 收入 / 秘境消耗）可录入 */
-function cardHTML(c, i){
+function cardHTML(c, i, disp){
   const color = THEME[i % THEME.length];
   const t = totals(c);
   /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0 */
@@ -2073,7 +2090,7 @@ function cardHTML(c, i){
   return '<div class="row" data-i="' + i + '">'
     + '<article class="card panel" style="--el:' + color + '">'
     +   '<div class="idx">'
-    +     serial(i+1)
+    +     serial(disp != null ? disp : i + 1)
     +     '<button class="btnrec" type="button" data-save="' + i + '" '
     +       'title="记录本卡片填写的数值，并自动保存">'
     +       '<span class="tick">✓</span></button>'
@@ -2242,8 +2259,17 @@ function renderDaily(){
 
 function render(){
   const box = document.getElementById('cards');
+  /* 排序视图：填了序号(order>0)的按序号升序在前，未填的按原顺序在后；
+     传给 cardHTML 的仍是原始数组下标 i，保证 data-* 与主题色不漂移 */
+  const orderIdx = ACCOUNTS.map(function(_, i){ return i; }).sort(function(a, b){
+    const oa = Number(ACCOUNTS[a].order) || 0, ob = Number(ACCOUNTS[b].order) || 0;
+    if(oa && ob && oa !== ob) return oa - ob;
+    if(oa && !ob) return -1;
+    if(!oa && ob) return 1;
+    return a - b;
+  });
   box.innerHTML = ACCOUNTS.length
-    ? ACCOUNTS.map(cardHTML).join('')
+    ? orderIdx.map(function(i, pos){ return cardHTML(ACCOUNTS[i], i, pos + 1); }).join('')
     : '<div class="empty-tip panel">暂无角色 —— 点右上角「＋ 新增角色」添加</div>';
   renderSummary(summarize(ACCOUNTS));
   renderDaily();
@@ -2665,6 +2691,7 @@ const fJob     = document.getElementById('fJob');
 const fLevel   = document.getElementById('fLevel');
 const fWealth  = document.getElementById('fWealth');
 const fInitLeft = document.getElementById('fInitLeft');
+const fOrder   = document.getElementById('fOrder');
 let modalMode = 'add';   // 'add' | 'edit'
 let modalIdx  = -1;
 
@@ -2684,7 +2711,9 @@ function openModal(mode, idx){
   fWealth.placeholder = '如 12000（可留空）';
   /* 初始存量：同理，直接回填独立数值 */
   fInitLeft.value = c ? (Number(c.initLeft) ? String(c.initLeft) : '') : '';
-  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft].forEach(function(el){
+  /* 排序序号：回填独立数值 */
+  fOrder.value = c ? (Number(c.order) ? String(c.order) : '') : '';
+  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
@@ -2701,6 +2730,7 @@ function modalOk(){
   const lvRaw   = fLevel.value.trim();
   const wRaw    = fWealth.value.trim();
   const ilRaw   = fInitLeft.value.trim();
+  const oRaw    = fOrder.value.trim();
 
   /* 账号必填 */
   let bad = false;
@@ -2718,10 +2748,15 @@ function modalOk(){
   if(ilRaw !== '' && !/^-?\d+(\.\d+)?$/.test(ilRaw)){
     fInitLeft.classList.add('bad'); fInitLeft.closest('.field').classList.add('bad'); bad = true;
   } else { fInitLeft.classList.remove('bad'); fInitLeft.closest('.field').classList.remove('bad'); }
+  /* 排序序号必须是正整数（可留空，0 视为留空） */
+  if(oRaw !== '' && !/^\d+$/.test(oRaw)){
+    fOrder.classList.add('bad'); fOrder.closest('.field').classList.add('bad'); bad = true;
+  } else { fOrder.classList.remove('bad'); fOrder.closest('.field').classList.remove('bad'); }
   if(bad){
     (fAccount.classList.contains('bad') ? fAccount
       : fLevel.classList.contains('bad') ? fLevel
-      : fWealth.classList.contains('bad') ? fWealth : fInitLeft).focus();
+      : fWealth.classList.contains('bad') ? fWealth
+      : fInitLeft.classList.contains('bad') ? fInitLeft : fOrder).focus();
     return;
   }
 
@@ -2730,12 +2765,15 @@ function modalOk(){
   const wealthVal = (wRaw === '') ? 0 : Number(wRaw);
   /* 初始存量：独立数值，留空按 0 计（= 首条整条算获取，老行为） */
   const initLeftVal = (ilRaw === '') ? 0 : Number(ilRaw);
+  /* 排序序号：留空/0 = 不参与排序（排最后，按原顺序） */
+  const orderVal = (oRaw === '' || Number(oRaw) === 0) ? 0 : Number(oRaw);
 
   if(modalMode === 'edit'){
     const c = ACCOUNTS[modalIdx];
     c.account = account; c.name = name; c.job = job; c.level = level;
     c.wealth = wealthVal;
     c.initLeft = initLeftVal;
+    c.order = orderVal;
     /* 同步更新已展开明细的标题 */
     const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
     if(tt) tt.textContent = (name || '未命名角色') + ' · 每日明细';
@@ -2746,7 +2784,7 @@ function modalOk(){
     ACCOUNTS.push({
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
       gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
-      wealth: wealthVal, initLeft: initLeftVal,
+      wealth: wealthVal, initLeft: initLeftVal, order: orderVal,
       records:[], flags:{}
     });
     render();
@@ -2759,7 +2797,7 @@ function modalOk(){
 document.getElementById('mdCancel').addEventListener('click', closeModal);
 document.getElementById('mdOk').addEventListener('click', modalOk);
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
-[fAccount, fName, fJob, fLevel, fWealth, fInitLeft].forEach(function(el){
+[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder].forEach(function(el){
   el.addEventListener('input', function(){
     el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
   });
@@ -2884,15 +2922,18 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           chaosCost: Number(s.chaosCost)||0,
           wealth: Number(s.wealth)||0,
           initLeft: Number(s.initLeft)||0,
+          order: Number(s.order)||0,
           records: Array.isArray(s.records) ? s.records.map(function(r){
-            return { date:r.date || '', time:r.time || '00:00:00',
+            return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
                      gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                      dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                      chaosCost:Number(r.chaosCost)||0 };
           }) : [],
+          laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
           flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
         };
       });
+      migrateLaborDays();          /* 老备份缺 laborDays → 从历史 dayLabor 重建 */
       render(); saveLocal();
       toast('已导入 ' + ACCOUNTS.length + ' 个角色');
     }catch(err){ toast('导入失败：不是有效的备份文件'); }
