@@ -2167,7 +2167,7 @@ function daySectHTML(d, isToday){
       + '<span class="v' + (i.raw < 0 ? ' neg' : '') + '">' + i.v + '</span></div>';
   }).join('');
   const dateLabel = shortDate(d) + (isToday ? ' <span class="today-tag">今天</span>' : '');
-  const sumLabel = s.roles + ' 个角色 · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b>';
+  const sumLabel = s.roles + ' 个角色 · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b> · 支出 <b>' + money(s.laborCost) + '</b>';
   /* 代练勾选行：列出当天有记录的角色，勾选=该角色当天用了代练（15），不勾=自己打的免单 */
   const lr = ACCOUNTS.map(function(c, i){ return { c:c, i:i }; })
     .filter(function(o){ const g = groupRecordsByDate(o.c)[d]; return g && g.length; })
