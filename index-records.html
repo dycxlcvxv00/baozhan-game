@@ -347,6 +347,9 @@
   /* 行尾整体：修改按钮，同行相邻、垂直居中对齐 */
   .who .tail{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
 
+  /* T 级标签（样式复用经验台账 index-xp.html 的 .tier，颜色由 tierBadge() 动态着色） */
+  .tier{display:inline-block;padding:1px 9px;border-radius:10px;font-size:11.5px;font-weight:800;letter-spacing:.5px;white-space:nowrap}
+
   /* 数据 4 格：上=累计值(居中)，下=录入框 */
   .cells{flex:1;display:grid;grid-template-columns:repeat(var(--cols),1fr);min-width:0}
   .cell{
@@ -501,6 +504,8 @@
   .mask.show{opacity:1;pointer-events:auto}
   .modal{
     width:440px;max-width:100%;padding:20px 22px 18px;border-radius:16px;
+    /* 字段增多后防止小视口溢出：限高 + 内部滚动，确定/取消按钮始终可达 */
+    max-height:88vh;overflow-y:auto;
     transform:translateY(12px) scale(.98);transition:transform .22s cubic-bezier(.2,.9,.3,1.1);
   }
   .mask.show .modal{transform:translateY(0) scale(1)}
@@ -741,6 +746,12 @@
       <input id="fOrder" type="text" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="如 1、2、3（可留空）" />
       <div class="err">序号请填数字</div>
       <div class="fhint">填了序号的角色按序号从小到大排在前面；留空的角色按原顺序排在后面。留空 = 不参与排序。</div>
+    </div>
+    <div class="field">
+      <label for="fMinTier">最低T级</label>
+      <input id="fMinTier" type="text" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="如 14（可留空，填数字 13/14/15）" />
+      <div class="err">T级请填数字（如 13、14、15）</div>
+      <div class="fhint">该角色当前能刷的最低图档位，保存后以彩色 T 级标签显示在「宠物」后面；留空不显示。</div>
     </div>
 
     <div class="modal-foot">
@@ -1334,6 +1345,7 @@ function saveLocal(){
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                  laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
+                 minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                  records:c.records || [], flags:c.flags || {},
                  laborDays:c.laborDays || [] };
       })
@@ -1376,6 +1388,7 @@ function loadLocal(){
       wealth: Number(s.wealth)||0,
       initLeft: Number(s.initLeft)||0,
       order: Number(s.order)||0,
+      minTier: (s.minTier != null && s.minTier !== '') ? Number(s.minTier) : '',
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0。
            real 必须原样透传 —— 拷贝时漏掉它，归期会退化成「沿用 date」，
@@ -1459,6 +1472,7 @@ function serialize(){
                gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
+                 minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                records:c.records || [], flags:c.flags || {},
                laborDays:c.laborDays || [] };
     })
@@ -1581,6 +1595,7 @@ function adopt(data){
       wealth: Number(s.wealth)||0,
       initLeft: Number(s.initLeft)||0,
       order: Number(s.order)||0,
+      minTier: (s.minTier != null && s.minTier !== '') ? Number(s.minTier) : '',
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* real 同样必须透传（与 loadLocal 一致），否则云端数据一落地归期就错 */
         return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
@@ -2010,6 +2025,21 @@ const FEATURES = [
   { key:'market',  label:'市集' },
   { key:'pet',     label:'宠物' }
 ];
+/* T 级标签：配色与 tierBadge() 完整复用经验台账 index-xp.html，样式类 .tier 同名移植 */
+const TIER_COLORS = {
+  1:'#98a4b5', 2:'#a9b6c7', 3:'#bcc9d9',
+  4:'#74dda5', 5:'#57e39b', 6:'#2fe97f',
+  7:'#5ec5ff', 8:'#3faeff', 9:'#2b97f5',
+  10:'#b7a1ff', 11:'#a488ff', 12:'#8f6dff',
+  13:'#ffa94d', 14:'#ff8c33',
+  15:'#ffc94d', 16:'#ffd97a',
+  17:'#ff7070', 18:'#ff5257',
+};
+function tierBadge(tier){
+  const t = parseInt(String(tier).slice(1), 10);
+  const c = TIER_COLORS[t] || '#98a4b5';
+  return '<span class="tier" style="color:' + c + ';background:' + c + '1f;border:1px solid ' + c + '59">T' + t + '</span>';
+}
 /* 财富值：一个独立的数值，和等级一样由「修改」弹窗直接填写，
    不参与任何自动计算，也不随每日录入变化。 */
 function wealth(c){ return Number(c.wealth) || 0; }
@@ -2046,6 +2076,8 @@ function whoHTML(c, i){
       + 'title="点击切换「' + f.label + '」状态（当前：' + (on ? '已开启' : '未开启') + '）">'
       + f.label + '</span>';
   }).join('');
+  /* 最低T级：填了才显示，标签样式复用经验台账（宠物开关之后） */
+  const tierTag = (c.minTier != null && c.minTier !== '') ? ' ' + tierBadge('T' + c.minTier) : '';
 
   return '<div class="who">'
     + '<div class="line1">'
@@ -2055,7 +2087,7 @@ function whoHTML(c, i){
     +   '<span class="ops">' + btnDel + '</span>'
     + '</div>'
     + '<div class="line2">'
-    +   '<span class="feats">' + feats + '</span>'
+    +   '<span class="feats">' + feats + tierTag + '</span>'
     +   '<span class="tail">' + btnEdit + '</span>'
     + '</div>'
     + '</div>';
@@ -2713,7 +2745,9 @@ function openModal(mode, idx){
   fInitLeft.value = c ? (Number(c.initLeft) ? String(c.initLeft) : '') : '';
   /* 排序序号：回填独立数值 */
   fOrder.value = c ? (Number(c.order) ? String(c.order) : '') : '';
-  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder].forEach(function(el){
+  /* 最低T级：回填独立数值 */
+  fMinTier.value = c ? (c.minTier != null && c.minTier !== '' ? String(c.minTier) : '') : '';
+  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
@@ -2731,6 +2765,7 @@ function modalOk(){
   const wRaw    = fWealth.value.trim();
   const ilRaw   = fInitLeft.value.trim();
   const oRaw    = fOrder.value.trim();
+  const tRaw    = fMinTier.value.trim();
 
   /* 账号必填 */
   let bad = false;
@@ -2752,11 +2787,17 @@ function modalOk(){
   if(oRaw !== '' && !/^\d+$/.test(oRaw)){
     fOrder.classList.add('bad'); fOrder.closest('.field').classList.add('bad'); bad = true;
   } else { fOrder.classList.remove('bad'); fOrder.closest('.field').classList.remove('bad'); }
+  /* 最低T级：数字（可留空），1-2 位即可，展示端按 T 级配色 */
+  if(tRaw !== '' && !/^\d{1,2}$/.test(tRaw)){
+    fMinTier.classList.add('bad'); fMinTier.closest('.field').classList.add('bad'); bad = true;
+  } else { fMinTier.classList.remove('bad'); fMinTier.closest('.field').classList.remove('bad'); }
   if(bad){
     (fAccount.classList.contains('bad') ? fAccount
       : fLevel.classList.contains('bad') ? fLevel
       : fWealth.classList.contains('bad') ? fWealth
-      : fInitLeft.classList.contains('bad') ? fInitLeft : fOrder).focus();
+      : fInitLeft.classList.contains('bad') ? fInitLeft
+      : fOrder.classList.contains('bad') ? fOrder
+      : fMinTier).focus();
     return;
   }
 
@@ -2767,6 +2808,8 @@ function modalOk(){
   const initLeftVal = (ilRaw === '') ? 0 : Number(ilRaw);
   /* 排序序号：留空/0 = 不参与排序（排最后，按原顺序） */
   const orderVal = (oRaw === '' || Number(oRaw) === 0) ? 0 : Number(oRaw);
+  /* 最低T级：留空 = 不显示标签；填了存数字（如 13/14/15） */
+  const minTierVal = (tRaw === '') ? '' : Number(tRaw);
 
   if(modalMode === 'edit'){
     const c = ACCOUNTS[modalIdx];
@@ -2774,6 +2817,7 @@ function modalOk(){
     c.wealth = wealthVal;
     c.initLeft = initLeftVal;
     c.order = orderVal;
+    c.minTier = minTierVal;
     /* 同步更新已展开明细的标题 */
     const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
     if(tt) tt.textContent = (name || '未命名角色') + ' · 每日明细';
@@ -2784,7 +2828,7 @@ function modalOk(){
     ACCOUNTS.push({
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
       gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
-      wealth: wealthVal, initLeft: initLeftVal, order: orderVal,
+      wealth: wealthVal, initLeft: initLeftVal, order: orderVal, minTier: minTierVal,
       records:[], flags:{}
     });
     render();
@@ -2797,7 +2841,7 @@ function modalOk(){
 document.getElementById('mdCancel').addEventListener('click', closeModal);
 document.getElementById('mdOk').addEventListener('click', modalOk);
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
-[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder].forEach(function(el){
+[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier].forEach(function(el){
   el.addEventListener('input', function(){
     el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
   });
