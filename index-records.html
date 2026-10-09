@@ -349,7 +349,7 @@
 
   /* T 级标签（样式复用经验台账 index-xp.html 的 .tier，颜色由 tierBadge() 动态着色） */
   .tier{display:inline-block;padding:1px 9px;border-radius:10px;font-size:11.5px;font-weight:800;letter-spacing:.5px;white-space:nowrap}
-  /* 最高/最低 T 级垂直堆叠列：上=最高，下=最低，左对齐 */
+  /* 最低/最高 T 级垂直堆叠列：上=最低，下=最高，左对齐 */
   .tiers-col{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px}
 
   /* 数据 4 格：上=累计值(居中)，下=录入框 */
@@ -2088,10 +2088,10 @@ function whoHTML(c, i){
       + 'title="点击切换「' + f.label + '」状态（当前：' + (on ? '已开启' : '未开启') + '）">'
       + f.label + '</span>';
   }).join('');
-  /* 最低/最高T级：填了才显示，标签样式复用经验台账（宠物开关之后，最高在上、最低在下） */
+  /* 最低/最高T级：填了才显示，标签样式复用经验台账（宠物开关之后，最低在上、最高在下） */
   const tierTags = [];
-  if (c.maxTier != null && c.maxTier !== '') tierTags.push(tierBadge('T' + c.maxTier));
   if (c.minTier != null && c.minTier !== '') tierTags.push(tierBadge('T' + c.minTier));
+  if (c.maxTier != null && c.maxTier !== '') tierTags.push(tierBadge('T' + c.maxTier));
   const tierTag = tierTags.length ? '<span class="tiers-col">' + tierTags.join('') + '</span>' : '';
 
   return '<div class="who">'
