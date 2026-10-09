@@ -349,6 +349,8 @@
 
   /* T 级标签（样式复用经验台账 index-xp.html 的 .tier，颜色由 tierBadge() 动态着色） */
   .tier{display:inline-block;padding:1px 9px;border-radius:10px;font-size:11.5px;font-weight:800;letter-spacing:.5px;white-space:nowrap}
+  /* 最高/最低 T 级垂直堆叠列：上=最高，下=最低，左对齐 */
+  .tiers-col{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px}
 
   /* 数据 4 格：上=累计值(居中)，下=录入框 */
   .cells{flex:1;display:grid;grid-template-columns:repeat(var(--cols),1fr);min-width:0}
@@ -746,6 +748,12 @@
       <input id="fOrder" type="text" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="如 1、2、3（可留空）" />
       <div class="err">序号请填数字</div>
       <div class="fhint">填了序号的角色按序号从小到大排在前面；留空的角色按原顺序排在后面。留空 = 不参与排序。</div>
+    </div>
+    <div class="field">
+      <label for="fMaxTier">最高T级</label>
+      <input id="fMaxTier" type="text" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="如 15（可留空，填数字 13/14/15）" />
+      <div class="err">T级请填数字（如 13、14、15）</div>
+      <div class="fhint">该角色当前能刷的最高图档位，显示在最低T级上方；留空不显示。</div>
     </div>
     <div class="field">
       <label for="fMinTier">最低T级</label>
@@ -1346,6 +1354,7 @@ function saveLocal(){
                  laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
+                 maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
                  records:c.records || [], flags:c.flags || {},
                  laborDays:c.laborDays || [] };
       })
@@ -1389,6 +1398,7 @@ function loadLocal(){
       initLeft: Number(s.initLeft)||0,
       order: Number(s.order)||0,
       minTier: (s.minTier != null && s.minTier !== '') ? Number(s.minTier) : '',
+      maxTier: (s.maxTier != null && s.maxTier !== '') ? Number(s.maxTier) : '',
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0。
            real 必须原样透传 —— 拷贝时漏掉它，归期会退化成「沿用 date」，
@@ -1473,6 +1483,7 @@ function serialize(){
                laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
+                 maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
                records:c.records || [], flags:c.flags || {},
                laborDays:c.laborDays || [] };
     })
@@ -1596,6 +1607,7 @@ function adopt(data){
       initLeft: Number(s.initLeft)||0,
       order: Number(s.order)||0,
       minTier: (s.minTier != null && s.minTier !== '') ? Number(s.minTier) : '',
+      maxTier: (s.maxTier != null && s.maxTier !== '') ? Number(s.maxTier) : '',
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* real 同样必须透传（与 loadLocal 一致），否则云端数据一落地归期就错 */
         return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
@@ -2076,8 +2088,11 @@ function whoHTML(c, i){
       + 'title="点击切换「' + f.label + '」状态（当前：' + (on ? '已开启' : '未开启') + '）">'
       + f.label + '</span>';
   }).join('');
-  /* 最低T级：填了才显示，标签样式复用经验台账（宠物开关之后） */
-  const tierTag = (c.minTier != null && c.minTier !== '') ? ' ' + tierBadge('T' + c.minTier) : '';
+  /* 最低/最高T级：填了才显示，标签样式复用经验台账（宠物开关之后，最高在上、最低在下） */
+  const tierTags = [];
+  if (c.maxTier != null && c.maxTier !== '') tierTags.push(tierBadge('T' + c.maxTier));
+  if (c.minTier != null && c.minTier !== '') tierTags.push(tierBadge('T' + c.minTier));
+  const tierTag = tierTags.length ? '<span class="tiers-col">' + tierTags.join('') + '</span>' : '';
 
   return '<div class="who">'
     + '<div class="line1">'
@@ -2747,7 +2762,9 @@ function openModal(mode, idx){
   fOrder.value = c ? (Number(c.order) ? String(c.order) : '') : '';
   /* 最低T级：回填独立数值 */
   fMinTier.value = c ? (c.minTier != null && c.minTier !== '' ? String(c.minTier) : '') : '';
-  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier].forEach(function(el){
+  /* 最高T级：回填独立数值 */
+  fMaxTier.value = c ? (c.maxTier != null && c.maxTier !== '' ? String(c.maxTier) : '') : '';
+  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
@@ -2766,6 +2783,7 @@ function modalOk(){
   const ilRaw   = fInitLeft.value.trim();
   const oRaw    = fOrder.value.trim();
   const tRaw    = fMinTier.value.trim();
+  const mxRaw   = fMaxTier.value.trim();
 
   /* 账号必填 */
   let bad = false;
@@ -2791,12 +2809,17 @@ function modalOk(){
   if(tRaw !== '' && !/^\d{1,2}$/.test(tRaw)){
     fMinTier.classList.add('bad'); fMinTier.closest('.field').classList.add('bad'); bad = true;
   } else { fMinTier.classList.remove('bad'); fMinTier.closest('.field').classList.remove('bad'); }
+  /* 最高T级：同上 */
+  if(mxRaw !== '' && !/^\d{1,2}$/.test(mxRaw)){
+    fMaxTier.classList.add('bad'); fMaxTier.closest('.field').classList.add('bad'); bad = true;
+  } else { fMaxTier.classList.remove('bad'); fMaxTier.closest('.field').classList.remove('bad'); }
   if(bad){
     (fAccount.classList.contains('bad') ? fAccount
       : fLevel.classList.contains('bad') ? fLevel
       : fWealth.classList.contains('bad') ? fWealth
       : fInitLeft.classList.contains('bad') ? fInitLeft
       : fOrder.classList.contains('bad') ? fOrder
+      : fMaxTier.classList.contains('bad') ? fMaxTier
       : fMinTier).focus();
     return;
   }
@@ -2810,6 +2833,8 @@ function modalOk(){
   const orderVal = (oRaw === '' || Number(oRaw) === 0) ? 0 : Number(oRaw);
   /* 最低T级：留空 = 不显示标签；填了存数字（如 13/14/15） */
   const minTierVal = (tRaw === '') ? '' : Number(tRaw);
+  /* 最高T级：同上 */
+  const maxTierVal = (mxRaw === '') ? '' : Number(mxRaw);
 
   if(modalMode === 'edit'){
     const c = ACCOUNTS[modalIdx];
@@ -2818,6 +2843,7 @@ function modalOk(){
     c.initLeft = initLeftVal;
     c.order = orderVal;
     c.minTier = minTierVal;
+    c.maxTier = maxTierVal;
     /* 同步更新已展开明细的标题 */
     const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
     if(tt) tt.textContent = (name || '未命名角色') + ' · 每日明细';
@@ -2828,7 +2854,7 @@ function modalOk(){
     ACCOUNTS.push({
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
       gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
-      wealth: wealthVal, initLeft: initLeftVal, order: orderVal, minTier: minTierVal,
+      wealth: wealthVal, initLeft: initLeftVal, order: orderVal, minTier: minTierVal, maxTier: maxTierVal,
       records:[], flags:{}
     });
     render();
@@ -2841,7 +2867,7 @@ function modalOk(){
 document.getElementById('mdCancel').addEventListener('click', closeModal);
 document.getElementById('mdOk').addEventListener('click', modalOk);
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
-[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier].forEach(function(el){
+[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier].forEach(function(el){
   el.addEventListener('input', function(){
     el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
   });
