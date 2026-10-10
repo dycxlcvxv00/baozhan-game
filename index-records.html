@@ -681,9 +681,9 @@
   .switches{display:flex;justify-content:space-between;gap:5px;padding:0 10px}
   .switches .sw{flex:1;padding:0 4px}
   .sw.tagsw{flex:0 0 auto;padding:0 10px;border-radius:6px;line-height:20px}
-  .plate .sw.dlb{position:absolute;right:-24px;top:50%;transform:translateY(-50%);
-    width:20px;height:20px;line-height:18px;border-radius:50%;
-    padding:0;font-size:11px;font-weight:700;text-align:center}
+  .vcard > .sw.dlb{position:absolute;right:-8px;top:2px;z-index:2;
+    width:28px;height:28px;line-height:25px;border-radius:50%;
+    padding:0;font-size:14px;font-weight:700;text-align:center}
   .plate .sw.dlb.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
     color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
   .sw.tagsw.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
@@ -708,10 +708,11 @@
   .v.ok{color:var(--ok,#3fb950)} .v.gold{color:var(--gold,#e3b341)}
   .v.purple{color:var(--purple,#bc8cff)} .v.chaos{color:var(--chaos,#f778ba)}
   .v.plain{color:var(--tx,#e6edf3)} .v.pos{color:var(--pos,#3fb950)} .v.neg{color:var(--neg,#f85149)}
-  .inputrow{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;padding:0 10px}
+  .inputrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px}
   .ir{background:linear-gradient(180deg,#122a1d,#0f2018);
     border:1px dashed #3fb95044;border-radius:7px;padding:4px 6px;text-align:center}
   .ir .k{font-size:10px;color:#3fb95099;letter-spacing:.5px}
+  .ir.gemsrow{margin:5px 10px 0;display:block}
   .vc-foot{display:flex;align-items:center;gap:8px;padding:2px 10px 10px}
   .btn-detail,.btn-edit,.btn-commit{white-space:nowrap}
   .btn-detail,.btn-edit{border:1px solid var(--line,#2a3244);background:#0f1420cc;
@@ -2257,11 +2258,11 @@ function cardHTML(c, i, disp){
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
   return '<div class="row vrow" data-i="' + i + '">'
     + '<article class="vcard" style="--el:' + color + '">'
+    +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
+    +     'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
     +   '<div class="plate">'
     +     '<span class="nm' + (c.name ? '' : ' empty') + (recordedToday(c) ? ' today' : '') + '">'
     +       (c.name ? esc(c.name) : '未命名角色') + '</span>'
-    +     '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
-    +       'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
     +   '</div>'
     +   '<div class="tags">'
     +     (c.level !== '' && c.level != null ? '<span class="tag lv">Lv.' + esc(c.level) + '</span>' : '')
@@ -2288,8 +2289,8 @@ function cardHTML(c, i, disp){
     +     '<div class="ir"><div class="k">本次出售</div>' + numInput('gemsSold','本次出售') + '</div>'
     +     '<div class="ir"><div class="k">本次收入</div>' + numInput('soldValue','本次收入') + '</div>'
     +     '<div class="ir"><div class="k">秘境消耗</div>' + numInput('chaosCost','0') + '</div>'
-    +     '<div class="ir"><div class="k">剩余晶石</div>' + numInput('gemsLeft','现有多少填多少') + '</div>'
     +   '</div>'
+    +   '<div class="ir gemsrow"><div class="k">剩余晶石</div>' + numInput('gemsLeft','现有多少填多少') + '</div>'
     +   '<div class="vc-foot">'
     +     '<button class="btn-detail" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
     +       '<span class="t">详细</span><span class="arw">▼</span></button>'
