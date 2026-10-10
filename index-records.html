@@ -2242,7 +2242,8 @@ function tierBoxCard(c){
   return '<span class="tierbox">' + parts.join('<span class="dash">-</span>') + '</span>';
 }
 function cardHTML(c, i, disp){
-  const color = THEME[i % THEME.length];
+  /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定） */
+  const color = recordedToday(c) ? '#3fb950' : '#9aa4b2';
   const t = totals(c);
   /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0 */
   const g = gained(c);
