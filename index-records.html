@@ -681,8 +681,11 @@
   .switches{display:flex;justify-content:space-between;gap:5px;padding:0 10px}
   .switches .sw{flex:1;padding:0 4px}
   .sw.tagsw{flex:0 0 auto;padding:0 10px;border-radius:6px;line-height:20px}
-  .plate .sw.tagsw{position:absolute;right:-40px;top:50%;transform:translateY(-50%);
-    border-radius:999px;padding:0 9px;line-height:18px;font-size:10px}
+  .plate .sw.dlb{position:absolute;right:-24px;top:50%;transform:translateY(-50%);
+    width:20px;height:20px;line-height:18px;border-radius:50%;
+    padding:0;font-size:11px;font-weight:700;text-align:center}
+  .plate .sw.dlb.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
+    color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
   .sw.tagsw.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
     color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
   .acct-banner{margin:0 14px;padding:2px 10px;text-align:center;
@@ -697,6 +700,7 @@
   .st .k{font-size:10px;color:var(--tx2,#8b949e);letter-spacing:.5px}
   .st .v{font-size:14px;font-weight:700;line-height:1.4;display:block}
   .st.wide{grid-column:1/-1;background:linear-gradient(180deg,#12281c,#0f1f17);border-color:#3fb95033}
+  .st.wide.solo{margin:0 10px}
   .st input,.ir input{width:100%;background:transparent;border:none;outline:none;
     color:var(--tx,#e6edf3);font-size:14px;font-weight:700;text-align:center;
     border-bottom:1px dashed #3a4356;padding:0;margin-top:1px}
@@ -2256,8 +2260,8 @@ function cardHTML(c, i, disp){
     +   '<div class="plate">'
     +     '<span class="nm' + (c.name ? '' : ' empty') + (recordedToday(c) ? ' today' : '') + '">'
     +       (c.name ? esc(c.name) : '未命名角色') + '</span>'
-    +     '<span class="sw tagsw' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
-    +       'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代练</span>'
+    +     '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
+    +       'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
     +   '</div>'
     +   '<div class="tags">'
     +     (c.level !== '' && c.level != null ? '<span class="tag lv">Lv.' + esc(c.level) + '</span>' : '')
@@ -2267,8 +2271,8 @@ function cardHTML(c, i, disp){
     +   '<div class="acct-banner' + (c.account ? '' : ' none') + '">'
     +     (c.account ? esc(c.account) : '未填写账号信息') + '</div>'
     +   '<div class="switches">' + feats + '</div>'
+    +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
     +   '<div class="stats">'
-    +     '<div class="st wide"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
     +     '<div class="col">'
     +       '<div class="st"><div class="k">累计获取晶石</div><span class="v ok" data-v="gained">' + g + '</span></div>'
     +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold">' + intNum(t.gemsSold) + '</span></div>'
