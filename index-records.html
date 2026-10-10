@@ -686,8 +686,8 @@
   .vcard > .sw.dlb{position:absolute;right:-9px;top:-17px;z-index:30;
     width:32px;height:32px;line-height:30px;border-radius:50%;
     padding:0;font-size:15px;font-weight:800;text-align:center;cursor:pointer}
-  .plate .sw.dlb.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
-    color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
+  .vcard > .sw.dlb.on{border-color:#3fb95088;background:#3fb95022;box-shadow:0 0 8px #3fb95066;
+    color:var(--ok,#3fb950);text-shadow:0 0 6px #3fb95088}
   .sw.tagsw.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
     color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
   .acct-banner{margin:0 14px;padding:2px 10px;text-align:center;
@@ -709,12 +709,14 @@
   .st input::placeholder,.ir input::placeholder{color:#4c5668;font-weight:400;font-size:11px}
   .v.ok{color:var(--ok,#3fb950)} .v.gold{color:var(--gold,#e3b341)}
   .v.purple{color:var(--purple,#bc8cff)} .v.chaos{color:var(--chaos,#f778ba)}
-  .v.plain{color:var(--tx,#e6edf3)} .v.pos{color:var(--pos,#3fb950)} .v.neg{color:var(--neg,#f85149)}
+  .v.plain{color:var(--tx,#e6edf3)} .v.redlite{color:#ff9b9b}
+  .v.pos{color:var(--pos,#3fb950)} .v.neg{color:var(--neg,#f85149)}
   .inputrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px}
-  .ir{background:linear-gradient(180deg,#122a1d,#0f2018);
-    border:1px dashed #3fb95044;border-radius:7px;padding:4px 6px;text-align:center}
-  .ir .k{font-size:10px;color:#3fb95099;letter-spacing:.5px}
-  .ir.gemsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left}
+  .ir{background:#0f1420;
+    border:1px dashed #3a4356;border-radius:7px;padding:4px 6px;text-align:center}
+  .ir .k{font-size:10px;color:var(--tx2,#8b949e);letter-spacing:.5px}
+  .ir.gemsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left;
+    background:#0f1420;border:1px dashed #3a4356}
   .ir.gemsrow .k{white-space:nowrap}
   .ir.gemsrow input{text-align:right;flex:1;border-bottom:1px dashed #3a4356}
   .vc-foot{display:flex;align-items:center;gap:8px;padding:2px 10px 10px}
@@ -2284,12 +2286,12 @@ function cardHTML(c, i, disp){
     +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
     +   '<div class="stats">'
     +     '<div class="col">'
-    +       '<div class="st"><div class="k">累计获取晶石</div><span class="v ok" data-v="gained">' + g + '</span></div>'
+    +       '<div class="st"><div class="k">累计获取晶石</div><span class="v plain" data-v="gained">' + g + '</span></div>'
     +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold">' + intNum(t.gemsSold) + '</span></div>'
     +       '<div class="st"><div class="k">累计秘境消耗</div><span class="v chaos" data-v="chaosCost">' + intNum(t.chaosCost) + '</span></div>'
     +     '</div>'
     +     '<div class="col">'
-    +       '<div class="st"><div class="k">人工费用</div><span class="v plain" data-v="laborCost">' + money(t.laborCost) + '</span></div>'
+    +       '<div class="st"><div class="k">人工费用</div><span class="v redlite" data-v="laborCost">' + money(t.laborCost) + '</span></div>'
     +       '<div class="st"><div class="k">累计收入</div><span class="v gold" data-v="soldValue">' + money(t.soldValue) + '</span></div>'
     +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
     +     '</div>'
