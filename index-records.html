@@ -681,9 +681,9 @@
   .switches{display:flex;justify-content:space-between;gap:5px;padding:0 10px}
   .switches .sw{flex:1;padding:0 4px}
   .sw.tagsw{flex:0 0 auto;padding:0 10px;border-radius:6px;line-height:20px}
-  .vcard > .sw.dlb{position:absolute;right:-8px;top:2px;z-index:2;
-    width:28px;height:28px;line-height:25px;border-radius:50%;
-    padding:0;font-size:14px;font-weight:700;text-align:center}
+  .vcard > .sw.dlb{position:absolute;right:-9px;top:-18px;z-index:2;
+    width:32px;height:32px;line-height:29px;border-radius:50%;
+    padding:0;font-size:15px;font-weight:800;text-align:center}
   .plate .sw.dlb.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
     color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
   .sw.tagsw.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
@@ -2164,8 +2164,12 @@ const TIER_COLORS = {
   17:'#ff7070', 18:'#ff5257',
 };
 function tierBadge(tier){
+  /* 与经验台账 index-xp.html 的 tierBadge 完全同款（含 T19 特殊渐变外观） */
   const t = parseInt(String(tier).slice(1), 10);
   const c = TIER_COLORS[t] || '#98a4b5';
+  if (t >= 19){
+    return '<span class="tier" style="color:#ffd9a0;background:linear-gradient(90deg,rgba(255,59,78,.20),rgba(255,207,107,.20));border:1px solid rgba(255,150,90,.62)">T' + t + '</span>';
+  }
   return '<span class="tier" style="color:' + c + ';background:' + c + '1f;border:1px solid ' + c + '59">T' + t + '</span>';
 }
 /* 财富值：一个独立的数值，和等级一样由「修改」弹窗直接填写，
