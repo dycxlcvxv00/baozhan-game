@@ -712,13 +712,14 @@
   .v.plain{color:var(--tx,#e6edf3)} .v.redlite{color:#ff9b9b}
   .v.pos{color:var(--pos,#3fb950)} .v.neg{color:var(--neg,#f85149)}
   .inputrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px}
-  .ir{background:#0f1420;
-    border:1px dashed #3a4356;border-radius:7px;padding:4px 6px;text-align:center}
+  .ir{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
+    padding:4px 8px;text-align:center}
   .ir .k{font-size:10px;color:var(--tx2,#8b949e);letter-spacing:.5px}
-  .ir.gemsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left;
-    background:#0f1420;border:1px dashed #3a4356}
+  .ir input{color:var(--ok,#3fb950)}
+  .ir input::placeholder{color:#3d5a48}
+  .ir.gemsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left}
   .ir.gemsrow .k{white-space:nowrap}
-  .ir.gemsrow input{text-align:right;flex:1;border-bottom:1px dashed #3a4356}
+  .ir.gemsrow input{text-align:right;flex:1}
   .vc-foot{display:flex;align-items:center;gap:8px;padding:2px 10px 10px}
   .btn-detail,.btn-edit,.btn-commit{white-space:nowrap}
   .btn-detail,.btn-edit{border:1px solid var(--line,#2a3244);background:#0f1420cc;
