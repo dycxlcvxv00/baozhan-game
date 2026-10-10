@@ -634,6 +634,101 @@
     .btnrec{flex:0 0 34px;width:34px;height:34px;font-size:14px}
   }
 </style>
+
+<style id="vcStyle">
+/* ================= v12 竖版游戏UI卡牌 ================= */
+  .colhead{display:none}
+  #cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:30px 12px;padding-top:26px}
+  @media (max-width:1500px){#cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  @media (max-width:1000px){#cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (max-width:560px){#cards{grid-template-columns:1fr}}
+  .row{display:contents}
+  .empty-tip{grid-column:1/-1}
+  .vcard{position:relative;
+    background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
+    border:1px solid var(--line,#2a3244);border-radius:12px;
+    display:flex;flex-direction:column;gap:8px;padding-top:26px;
+    box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;transition:box-shadow .2s}
+  .vcard::before{content:"";position:absolute;inset:0;border-radius:12px;
+    border:1px solid color-mix(in srgb, var(--el) 45%, transparent);pointer-events:none}
+  .row.open .vcard{box-shadow:0 6px 22px #000b}
+  .plate{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+    min-width:48%;white-space:nowrap;text-align:center;
+    background:linear-gradient(180deg,#323b4e,#232b3c);
+    border:1px solid color-mix(in srgb, var(--el) 55%, #2a3244);
+    border-radius:8px;padding:1px 16px 2px;box-shadow:0 3px 8px #0009}
+  .plate::before,.plate::after{content:"";position:absolute;top:50%;width:4px;height:4px;
+    border:1px solid var(--el);transform:translateY(-50%) rotate(45deg);background:var(--panel,#161b22)}
+  .plate::before{left:2px}.plate::after{right:2px}
+  .plate .nm{font-size:13px;font-weight:800;letter-spacing:1px}
+  .plate .nm.today{color:var(--ok,#3fb950);text-shadow:0 0 8px #3fb95066}
+  .tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0 12px}
+  .tags .spacer{flex:1}
+  .tag{border-radius:6px;padding:0 8px;font-size:11px;background:#0f1420cc;
+    border:1px solid var(--line,#2a3244);color:var(--tx2,#8b949e);line-height:20px}
+  .tag.lv{color:var(--gold,#e3b341);border-color:#e3b34155;font-weight:700}
+  .tierbox{display:inline-flex;align-items:center;gap:4px;line-height:20px;
+    border:1px solid var(--line,#2a3244);border-radius:6px;background:#0f1420cc;padding:0 5px}
+  .tierbox .dash{color:var(--tx2,#8b949e);font-size:10px}
+  .tierbox .tb{font-size:11px;font-weight:700;padding:0 5px;border-radius:5px;line-height:16px}
+  .sw{border-radius:7px;font-size:11px;line-height:22px;cursor:pointer;
+    border:1px solid var(--line,#2a3244);background:#0f1420;color:#4c5668;
+    transition:.15s;user-select:none;text-align:center}
+  .sw.on{color:var(--tx,#e6edf3);border-color:color-mix(in srgb,var(--el) 60%,transparent);
+    background:color-mix(in srgb,var(--el) 14%,#0f1420);
+    box-shadow:0 0 6px color-mix(in srgb,var(--el) 35%,transparent);
+    text-shadow:0 0 5px color-mix(in srgb,var(--el) 55%,transparent)}
+  .switches{display:flex;justify-content:space-between;gap:5px;padding:0 10px}
+  .switches .sw{flex:1;padding:0 4px}
+  .sw.tagsw{flex:0 0 auto;padding:0 10px;border-radius:6px;line-height:20px}
+  .sw.tagsw.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
+    color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
+  .acct-banner{margin:0 14px;padding:2px 10px;text-align:center;
+    font-size:11px;color:var(--tx2,#8b949e);letter-spacing:1px;
+    background:repeating-linear-gradient(135deg,#ffffff0a 0 4px,#ffffff00 4px 8px);
+    border:1px solid var(--line,#2a3244);border-radius:6px}
+  .acct-banner.none{border-style:dashed;color:#5a6478}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 10px}
+  .stats .col{display:flex;flex-direction:column;gap:5px}
+  .st{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
+    padding:4px 8px;text-align:center}
+  .st .k{font-size:10px;color:var(--tx2,#8b949e);letter-spacing:.5px}
+  .st .v{font-size:14px;font-weight:700;line-height:1.4;display:block}
+  .st.wide{grid-column:1/-1;background:linear-gradient(180deg,#12281c,#0f1f17);border-color:#3fb95033}
+  .st input,.ir input{width:100%;background:transparent;border:none;outline:none;
+    color:var(--tx,#e6edf3);font-size:14px;font-weight:700;text-align:center;
+    border-bottom:1px dashed #3a4356;padding:0;margin-top:1px}
+  .st input::placeholder,.ir input::placeholder{color:#4c5668;font-weight:400;font-size:11px}
+  .v.ok{color:var(--ok,#3fb950)} .v.gold{color:var(--gold,#e3b341)}
+  .v.purple{color:var(--purple,#bc8cff)} .v.chaos{color:var(--chaos,#f778ba)}
+  .v.plain{color:var(--tx,#e6edf3)} .v.pos{color:var(--pos,#3fb950)} .v.neg{color:var(--neg,#f85149)}
+  .inputrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px}
+  .ir{background:linear-gradient(180deg,#122a1d,#0f2018);
+    border:1px dashed #3fb95044;border-radius:7px;padding:4px 6px;text-align:center}
+  .ir .k{font-size:10px;color:#3fb95099;letter-spacing:.5px}
+  .vc-foot{display:flex;align-items:center;gap:8px;padding:2px 10px 10px}
+  .btn-detail,.btn-edit,.btn-commit{white-space:nowrap}
+  .btn-detail,.btn-edit{border:1px solid var(--line,#2a3244);background:#0f1420cc;
+    color:var(--tx2,#8b949e);border-radius:999px;padding:3px 14px;font-size:11px;
+    cursor:pointer;display:flex;align-items:center;gap:5px;transition:.2s}
+  .btn-detail:hover,.btn-edit:hover{color:var(--tx,#e6edf3);border-color:#5a6478}
+  .btn-detail .arw{font-size:9px;transition:.2s}
+  .row.open .btn-detail .arw{transform:rotate(180deg)}
+  .btn-commit{margin-left:auto;border:1px solid #3fb95055;
+    background:linear-gradient(180deg,#1d3a28,#152a1e);color:var(--ok,#3fb950);
+    border-radius:999px;padding:3px 26px;font-size:12px;font-weight:700;
+    cursor:pointer;box-shadow:0 2px 5px #0008;transition:.2s}
+  .btn-commit:hover{border-color:var(--ok,#3fb950)}
+  .btn-commit.dirty{animation:vcBlink 1s infinite}
+  @keyframes vcBlink{50%{box-shadow:0 0 10px #3fb95088;border-color:var(--ok,#3fb950)}}
+  /* 详细 = 横向铺满整页的宽幅明细面板 */
+  .fulldetail{display:none;grid-column:1/-1;
+    background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
+    border:1px solid color-mix(in srgb, var(--el) 35%, var(--line,#2a3244));
+    border-radius:12px;padding:12px 16px;box-shadow:0 4px 18px #0009;margin-top:6px}
+  .row.open .fulldetail{display:block}
+  .fulldetail .detail-inner{background:transparent;border:none;padding:0;box-shadow:none}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -763,6 +858,8 @@
     </div>
 
     <div class="modal-foot">
+      <button class="mbtn danger" type="button" id="mdDel" hidden
+              title="删除该角色卡片，其所有明细一并删除">删除角色</button>
       <button class="mbtn" type="button" id="mdCancel">取消</button>
       <button class="mbtn primary" type="button" id="mdOk">确定</button>
     </div>
@@ -1883,6 +1980,9 @@ function refreshNumbers(i){
     const c = ACCOUNTS[i];
     const t = totals(c);
     /* 7 列：当前剩余 / 已获取 / 已出售 / 收入 / 人工费用 / 净利润 / 秘境消耗 */
+    /* v12：剩余晶石是输入框 —— 提交后输入框已清空，把当前值放进占位提示 */
+    const gli = row.querySelector('.input[data-f="gemsLeft"]');
+    if(gli && gli.value === '') gli.placeholder = '当前 ' + intNum(t.gemsLeft) + '（可不填）';
     setV(row,'gemsLeft',  intNum(t.gemsLeft), 'hit');
     /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0；显示为灰色，弱化视觉层级 */
     const g = gained(c);
@@ -2035,7 +2135,16 @@ const FEATURES = [
   { key:'bag',     label:'背包' },
   { key:'chaos',   label:'混沌' },
   { key:'market',  label:'市集' },
-  { key:'pet',     label:'宠物' }
+  { key:'pet',     label:'宠物' },
+  { key:'toggle5', label:'切换' }
+];
+/* 卡面开关行的展示顺序（用户指定）：混沌、背包、市集、宠物、切换 */
+const SWITCH_ORDER = [
+  { key:'chaos',   label:'混沌' },
+  { key:'bag',     label:'背包' },
+  { key:'market',  label:'市集' },
+  { key:'pet',     label:'宠物' },
+  { key:'toggle5', label:'切换' }
 ];
 /* T 级标签：配色与 tierBadge() 完整复用经验台账 index-xp.html，样式类 .tier 同名移植 */
 const TIER_COLORS = {
@@ -2112,6 +2221,15 @@ function whoHTML(c, i){
    7 列：当前剩余晶石 / 累计获取晶石 / 已出售晶石 / 收入 / 人工费用 / 净利润 / 秘境消耗晶石
    其中「累计获取晶石」「净利润」「人工费用」自动计算（人工费用按天在每日信息面板勾选代练计 15/天），
    其余 4 项（当前剩余 / 已出售 / 收入 / 秘境消耗）可录入 */
+/* v12 竖版游戏UI卡牌：铭牌名字 / 标签行(左:等级·职业·T级框, 右:代练开关) /
+   账号底纹 / 开关行(混沌·背包·市集·宠物·切换) / 累计两列 / 本次录入行 / 底部按钮 */
+function tierBoxCard(c){
+  const parts = [];
+  if (c.minTier != null && c.minTier !== '') parts.push(tierBadge('T' + c.minTier));
+  if (c.maxTier != null && c.maxTier !== '') parts.push(tierBadge('T' + c.maxTier));
+  if (!parts.length) return '';
+  return '<span class="tierbox">' + parts.join('<span class="dash">-</span>') + '</span>';
+}
 function cardHTML(c, i, disp){
   const color = THEME[i % THEME.length];
   const t = totals(c);
@@ -2120,46 +2238,61 @@ function cardHTML(c, i, disp){
   /* 净利润 = 收入 − 人工费用 */
   const p = t.soldValue - t.laborCost;
   const pCls = p > 0 ? ' pos' : (p < 0 ? ' neg' : '');
-  const cell = (vkey, vhtml, cls, ph, k, tip) =>
-    '<div class="cell"' + (tip ? ' title="' + tip + '"' : '') + '>'
-    + '<span class="k">' + (k || '') + '</span>'
-    + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
-    + '<input class="input" type="number" inputmode="decimal" step="any" '
-    +   'data-i="' + i + '" data-f="' + vkey + '" placeholder="' + ph + '" />'
-    + '</div>';
-  /* 只读数值格（自动算出，无需录入；无录入框占位，数值居中显示） */
-  const roCell = (vkey, vhtml, cls, tip, k) =>
-    '<div class="cell ro" title="' + tip + '">'
-    + '<span class="k">' + (k || '') + '</span>'
-    + '<span class="v ' + cls + '" data-v="' + vkey + '">' + vhtml + '</span>'
-    + '</div>';
-
-  return '<div class="row" data-i="' + i + '">'
-    + '<article class="card panel" style="--el:' + color + '">'
-    +   '<div class="idx">'
-    +     serial(disp != null ? disp : i + 1)
-    +     '<button class="btnrec" type="button" data-save="' + i + '" '
-    +       'title="记录本卡片填写的数值，并自动保存">'
-    +       '<span class="tick">✓</span></button>'
+  const feats = SWITCH_ORDER.map(function(f){
+    const on = !!((c.flags || {})[f.key]);
+    return '<span class="sw' + (on ? ' on' : '') + '" data-feat="' + i + '" data-key="' + f.key + '" '
+      + 'title="点击切换「' + f.label + '」状态（当前：' + (on ? '已开启' : '未开启') + '）">'
+      + f.label + '</span>';
+  }).join('');
+  /* 代练开关：点亮 = 今天计人工费 15（与每日信息面板的代练勾选同一份数据） */
+  const dlon = laborOfDay(c, today()) > 0;
+  const numInput = (f, ph) =>
+    '<input class="input" type="number" inputmode="decimal" step="any" '
+    + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
+  return '<div class="row vrow" data-i="' + i + '">'
+    + '<article class="vcard" style="--el:' + color + '">'
+    +   '<div class="plate">'
+    +     '<span class="nm' + (c.name ? '' : ' empty') + (recordedToday(c) ? ' today' : '') + '">'
+    +       (c.name ? esc(c.name) : '未命名角色') + '</span>'
     +   '</div>'
-    +   whoHTML(c, i)
-    +   '<div class="cells">'
-    +     cell('gemsLeft',  intNum(t.gemsLeft), 'ok',     '现有多少填多少', '当前剩余晶石',
-    +            '当前剩余晶石是「时点值」：每次录入以最新一次为准，不累加。现在还剩多少就填多少。')
-    +     roCell('gained', g, 'gain',
-    +            '累计获取晶石 = 每次「剩余增量 + 本次卖出 + 本次秘境消耗」之和：先获取，卖掉/消耗之后才剩这么多；逆差记 0', '累计获取晶石')
-    +     cell('gemsSold',  intNum(t.gemsSold), 'purple', '本次出售',      '已出售晶石')
-    +     cell('soldValue', money(t.soldValue), 'gold',   '本次收入',      '收入')
-    +     roCell('laborCost', money(t.laborCost), 'plain',
-    +            '累计人工支出：按「角色×天」在每日信息面板勾选「代练」计 15/天；不勾=自己打的免单', '人工费用')
-    +     roCell('profit', money(p), 'inc' + pCls,
-    +            '净利润 = 收入 − 人工费用', '净利润')
-    +     cell('chaosCost', intNum(t.chaosCost), 'chaos', '秘境消耗晶石',  '秘境消耗晶石')
+    +   '<div class="tags">'
+    +     (c.level !== '' && c.level != null ? '<span class="tag lv">Lv.' + esc(c.level) + '</span>' : '')
+    +     (c.job ? '<span class="tag">' + esc(c.job) + '</span>' : '')
+    +     tierBoxCard(c)
+    +     '<span class="spacer"></span>'
+    +     '<span class="sw tagsw' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
+    +       'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代练</span>'
     +   '</div>'
-    +   '<button class="expand" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
-    +     '<span class="arw">▼</span></button>'
+    +   '<div class="acct-banner' + (c.account ? '' : ' none') + '">'
+    +     (c.account ? esc(c.account) : '未填写账号信息') + '</div>'
+    +   '<div class="switches">' + feats + '</div>'
+    +   '<div class="stats">'
+    +     '<div class="st wide"><div class="k">当前剩余晶石</div>' + numInput('gemsLeft','现有多少填多少') + '</div>'
+    +     '<div class="col">'
+    +       '<div class="st"><div class="k">累计获取晶石</div><span class="v ok" data-v="gained">' + g + '</span></div>'
+    +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold">' + intNum(t.gemsSold) + '</span></div>'
+    +       '<div class="st"><div class="k">累计秘境消耗</div><span class="v chaos" data-v="chaosCost">' + intNum(t.chaosCost) + '</span></div>'
+    +     '</div>'
+    +     '<div class="col">'
+    +       '<div class="st"><div class="k">人工费用</div><span class="v plain" data-v="laborCost">' + money(t.laborCost) + '</span></div>'
+    +       '<div class="st"><div class="k">累计收入</div><span class="v gold" data-v="soldValue">' + money(t.soldValue) + '</span></div>'
+    +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
+    +     '</div>'
+    +   '</div>'
+    +   '<div class="inputrow">'
+    +     '<div class="ir"><div class="k">本次出售</div>' + numInput('gemsSold','本次出售') + '</div>'
+    +     '<div class="ir"><div class="k">本次收入</div>' + numInput('soldValue','本次收入') + '</div>'
+    +     '<div class="ir"><div class="k">秘境消耗</div>' + numInput('chaosCost','0') + '</div>'
+    +   '</div>'
+    +   '<div class="vc-foot">'
+    +     '<button class="btn-detail" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
+    +       '<span class="t">详细</span><span class="arw">▼</span></button>'
+    +     '<button class="btn-edit" type="button" data-edit="' + i + '" title="修改信息 / 删除该角色">修改</button>'
+    +     '<button class="btn-commit btnrec" type="button" data-save="' + i + '" '
+    +       'title="录入本卡填写的数值，并自动保存">录入</button>'
+    +   '</div>'
     + '</article>'
-    + '<div class="detail" id="detail-' + i + '">' + detailHTML(i) + '</div>'
+    + '<div class="fulldetail" id="detail-' + i + '">' + detailHTML(i) + '</div>'
     + '</div>';
 }
 
@@ -2768,6 +2901,11 @@ function openModal(mode, idx){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
+  document.getElementById('mdDel').hidden = (mode !== 'edit');
+  if(mode === 'edit'){
+    document.getElementById('mdDel').textContent =
+      '删除「' + (c.name || c.account || '未命名角色') + '」';
+  }
   mask.classList.add('show');
   setTimeout(function(){ fAccount.focus(); }, 80);
 }
@@ -2866,6 +3004,16 @@ function modalOk(){
 
 document.getElementById('mdCancel').addEventListener('click', closeModal);
 document.getElementById('mdOk').addEventListener('click', modalOk);
+document.getElementById('mdDel').addEventListener('click', function(){
+  const c = ACCOUNTS[modalIdx];
+  if(!c) return;
+  if(!confirm('确定删除角色「' + (c.name || c.account || '未命名角色') + '」？其所有明细将一并删除，不可撤销。')) return;
+  ACCOUNTS.splice(modalIdx, 1);
+  closeModal();
+  render();
+  saveLocal();
+  toast('已删除该角色');
+});
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
 [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier].forEach(function(el){
   el.addEventListener('input', function(){
@@ -2899,7 +3047,25 @@ document.addEventListener('click', function(e){
   const ed = e.target.closest('[data-edit]');
   if(ed){ openModal('edit', Number(ed.dataset.edit)); return; }
 
-  /* 功能开关切换：背包 / 混沌 / 市集 / 宠物 */
+  /* 代练开关（卡面快捷入口）：与每日信息面板的代练勾选同一份数据 */
+  const dl = e.target.closest('[data-dltoday]');
+  if(dl){
+    const i = Number(dl.dataset.dltoday);
+    const c = ACCOUNTS[i];
+    if(!c) return;
+    const d = today();
+    const days = laborDaysOf(c).slice();
+    const on = days.indexOf(d) < 0;
+    if(on) days.push(d); else days.splice(days.indexOf(d), 1);
+    c.laborDays = days;
+    dl.classList.toggle('on', on);
+    refreshNumbers(i);
+    saveLocal();
+    toast((c.name || c.account || '该角色') + (on ? '：记代练（15）' : '：自己打的（免单）'));
+    return;
+  }
+
+  /* 功能开关切换：背包 / 混沌 / 市集 / 宠物 / 切换 */
   const ft = e.target.closest('[data-feat]');
   if(ft){
     const i = Number(ft.dataset.feat), key = ft.dataset.key;
