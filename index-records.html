@@ -674,10 +674,9 @@
   .sw{border-radius:7px;font-size:11px;line-height:22px;cursor:pointer;
     border:1px solid var(--line,#2a3244);background:#0f1420;color:#4c5668;
     transition:.15s;user-select:none;text-align:center}
-  .sw.on{color:var(--tx,#e6edf3);border-color:color-mix(in srgb,var(--el) 60%,transparent);
-    background:color-mix(in srgb,var(--el) 14%,#0f1420);
-    box-shadow:0 0 6px color-mix(in srgb,var(--el) 35%,transparent);
-    text-shadow:0 0 5px color-mix(in srgb,var(--el) 55%,transparent)}
+  .switches .sw.on{color:var(--ok,#3fb950);border-color:#3fb95066;
+    background:#3fb95014;box-shadow:0 0 6px #3fb95040;
+    text-shadow:0 0 5px #3fb95066}
   .switches{display:flex;justify-content:space-between;gap:5px;padding:0 10px}
   .switches .sw{flex:1;padding:0 4px}
   .sw.tagsw{flex:0 0 auto;padding:0 10px;border-radius:6px;line-height:20px}
@@ -693,6 +692,9 @@
     background:repeating-linear-gradient(135deg,#ffffff0a 0 4px,#ffffff00 4px 8px);
     border:1px solid var(--line,#2a3244);border-radius:6px}
   .acct-banner.none{border-style:dashed;color:#5a6478}
+  .acct-banner.fill{color:#7ee2a0;border-color:#3fb95066;
+    background:repeating-linear-gradient(135deg,#3fb95026 0 4px,#3fb95014 4px 8px);
+    text-shadow:0 0 6px #3fb95055}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 10px}
   .stats .col{display:flex;flex-direction:column;gap:5px}
   .st{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
@@ -700,7 +702,9 @@
   .st .k{font-size:10px;color:var(--tx2,#8b949e);letter-spacing:.5px}
   .st .v{font-size:14px;font-weight:700;line-height:1.4;display:block}
   .st.wide{grid-column:1/-1;background:linear-gradient(180deg,#12281c,#0f1f17);border-color:#3fb95033}
-  .st.wide.solo{margin:0 10px}
+  .st.wide.solo{margin:0 10px;display:flex;justify-content:space-between;
+    align-items:center;padding:4px 12px}
+  .st.wide.solo .v{font-size:15px}
   .st input,.ir input{width:100%;background:transparent;border:none;outline:none;
     color:var(--tx,#e6edf3);font-size:14px;font-weight:700;text-align:center;
     border-bottom:1px dashed #3a4356;padding:0;margin-top:1px}
@@ -2274,7 +2278,7 @@ function cardHTML(c, i, disp){
     +     (c.job ? '<span class="tag">' + esc(c.job) + '</span>' : '')
     +     tierBoxCard(c)
     +   '</div>'
-    +   '<div class="acct-banner' + (c.account ? '' : ' none') + '">'
+    +   '<div class="acct-banner' + (c.account ? '' : ' none') + (recordedToday(c) ? ' fill' : '') + '">'
     +     (c.account ? esc(c.account) : '未填写账号信息') + '</div>'
     +   '<div class="switches">' + feats + '</div>'
     +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
