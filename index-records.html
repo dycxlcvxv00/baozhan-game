@@ -645,7 +645,7 @@
   .row{display:contents}
   .empty-tip{grid-column:1/-1}
   .vcard{position:relative;
-    background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22))}
+    background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
     border:1px solid var(--line,#2a3244);border-radius:12px;
     display:flex;flex-direction:column;gap:8px;padding-top:26px;
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;transition:box-shadow .2s}
@@ -660,10 +660,7 @@
   .plate::before,.plate::after{content:"";position:absolute;top:50%;width:4px;height:4px;
     border:1px solid var(--el);transform:translateY(-50%) rotate(45deg);background:var(--panel,#161b22)}
   .plate::before{left:2px}.plate::after{right:2px}
-  .plate.fill{border-color:#3fb95088;
-    background:repeating-linear-gradient(135deg,#3fb95033 0 5px,#3fb95018 5px 10px),linear-gradient(180deg,#1d3a28,#152a1e)}
-  .plate.fill::before,.plate.fill::after{border-color:#3fb950}
-  .plate .nm{font-size:13px;font-weight:800;letter-spacing:1px;line-height:20px;display:block}
+  .plate .nm{font-size:13px;font-weight:800;letter-spacing:1px}
   .plate .nm.today{color:var(--ok,#3fb950);text-shadow:0 0 8px #3fb95066}
   .tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0 12px}
   .tags .spacer{flex:1}
@@ -677,20 +674,18 @@
   .sw{border-radius:7px;font-size:11px;line-height:22px;cursor:pointer;
     border:1px solid var(--line,#2a3244);background:#0f1420;color:#4c5668;
     transition:.15s;user-select:none;text-align:center}
-  .switches .sw.on{color:var(--ok,#3fb950);border-color:#3fb95066;
-    background:#3fb95014;box-shadow:0 0 6px #3fb95040;
-    text-shadow:0 0 5px #3fb95066}
-  .switches .sw.on[data-key="chaos"]{color:#c77bff;border-color:#c77bff66;
-    background:#c77bff1f;box-shadow:0 0 6px #c77bff45;
-    text-shadow:0 0 5px #c77bff66}
+  .sw.on{color:var(--tx,#e6edf3);border-color:color-mix(in srgb,var(--el) 60%,transparent);
+    background:color-mix(in srgb,var(--el) 14%,#0f1420);
+    box-shadow:0 0 6px color-mix(in srgb,var(--el) 35%,transparent);
+    text-shadow:0 0 5px color-mix(in srgb,var(--el) 55%,transparent)}
   .switches{display:flex;justify-content:space-between;gap:5px;padding:0 10px}
   .switches .sw{flex:1;padding:0 4px}
   .sw.tagsw{flex:0 0 auto;padding:0 10px;border-radius:6px;line-height:20px}
-  .vcard > .sw.dlb{position:absolute;right:-9px;top:-17px;z-index:30;
-    width:32px;height:32px;line-height:30px;border-radius:50%;
-    padding:0;font-size:15px;font-weight:800;text-align:center;cursor:pointer}
-  .vcard > .sw.dlb.on{border-color:#3fb95088;background:#1f5a33;box-shadow:0 0 8px #3fb95066;
-    color:var(--ok,#3fb950);text-shadow:0 0 6px #3fb95088}
+  .vcard > .sw.dlb{position:absolute;right:-9px;top:-18px;z-index:2;
+    width:32px;height:32px;line-height:29px;border-radius:50%;
+    padding:0;font-size:15px;font-weight:800;text-align:center}
+  .plate .sw.dlb.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
+    color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
   .sw.tagsw.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
     color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
   .acct-banner{margin:0 14px;padding:2px 10px;text-align:center;
@@ -712,17 +707,12 @@
   .st input::placeholder,.ir input::placeholder{color:#4c5668;font-weight:400;font-size:11px}
   .v.ok{color:var(--ok,#3fb950)} .v.gold{color:var(--gold,#e3b341)}
   .v.purple{color:var(--purple,#bc8cff)} .v.chaos{color:var(--chaos,#f778ba)}
-  .v.plain{color:var(--tx,#e6edf3)} .v.redlite{color:#ff9b9b}
-  .v.pos{color:var(--pos,#3fb950)} .v.neg{color:var(--neg,#f85149)}
+  .v.plain{color:var(--tx,#e6edf3)} .v.pos{color:var(--pos,#3fb950)} .v.neg{color:var(--neg,#f85149)}
   .inputrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px}
-  .ir{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
-    padding:4px 8px;text-align:center}
-  .ir .k{font-size:10px;color:var(--ok,#3fb950);letter-spacing:.5px}
-  .ir input{color:var(--tx,#e6edf3)}
-  .ir input::placeholder{color:#4c5668}
-  .ir.gemsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left}
-  .ir.gemsrow .k{white-space:nowrap}
-  .ir.gemsrow input{text-align:right;flex:1}
+  .ir{background:linear-gradient(180deg,#122a1d,#0f2018);
+    border:1px dashed #3fb95044;border-radius:7px;padding:4px 6px;text-align:center}
+  .ir .k{font-size:10px;color:#3fb95099;letter-spacing:.5px}
+  .ir.gemsrow{margin:5px 10px 0;display:block}
   .vc-foot{display:flex;align-items:center;gap:8px;padding:2px 10px 10px}
   .btn-detail,.btn-edit,.btn-commit{white-space:nowrap}
   .btn-detail,.btn-edit{border:1px solid var(--line,#2a3244);background:#0f1420cc;
@@ -2155,12 +2145,12 @@ const FEATURES = [
   { key:'pet',     label:'宠物' },
   { key:'toggle5', label:'切换' }
 ];
-/* 卡面开关行的展示顺序（用户指定）：背包、市集、宠物、混沌、切换 */
+/* 卡面开关行的展示顺序（用户指定）：混沌、背包、市集、宠物、切换 */
 const SWITCH_ORDER = [
+  { key:'chaos',   label:'混沌' },
   { key:'bag',     label:'背包' },
   { key:'market',  label:'市集' },
   { key:'pet',     label:'宠物' },
-  { key:'chaos',   label:'混沌' },
   { key:'toggle5', label:'切换' }
 ];
 /* T 级标签：配色与 tierBadge() 完整复用经验台账 index-xp.html，样式类 .tier 同名移植 */
@@ -2252,8 +2242,7 @@ function tierBoxCard(c){
   return '<span class="tierbox">' + parts.join('<span class="dash">-</span>') + '</span>';
 }
 function cardHTML(c, i, disp){
-  /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定） */
-  const color = recordedToday(c) ? '#3fb950' : '#9aa4b2';
+  const color = THEME[i % THEME.length];
   const t = totals(c);
   /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0 */
   const g = gained(c);
@@ -2275,7 +2264,7 @@ function cardHTML(c, i, disp){
     + '<article class="vcard" style="--el:' + color + '">'
     +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
     +     'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
-    +   '<div class="plate' + (recordedToday(c) ? ' fill' : '') + '">'
+    +   '<div class="plate">'
     +     '<span class="nm' + (c.name ? '' : ' empty') + (recordedToday(c) ? ' today' : '') + '">'
     +       (c.name ? esc(c.name) : '未命名角色') + '</span>'
     +   '</div>'
@@ -2290,12 +2279,12 @@ function cardHTML(c, i, disp){
     +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
     +   '<div class="stats">'
     +     '<div class="col">'
-    +       '<div class="st"><div class="k">累计获取晶石</div><span class="v plain" data-v="gained">' + g + '</span></div>'
+    +       '<div class="st"><div class="k">累计获取晶石</div><span class="v ok" data-v="gained">' + g + '</span></div>'
     +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold">' + intNum(t.gemsSold) + '</span></div>'
     +       '<div class="st"><div class="k">累计秘境消耗</div><span class="v chaos" data-v="chaosCost">' + intNum(t.chaosCost) + '</span></div>'
     +     '</div>'
     +     '<div class="col">'
-    +       '<div class="st"><div class="k">人工费用</div><span class="v redlite" data-v="laborCost">' + money(t.laborCost) + '</span></div>'
+    +       '<div class="st"><div class="k">人工费用</div><span class="v plain" data-v="laborCost">' + money(t.laborCost) + '</span></div>'
     +       '<div class="st"><div class="k">累计收入</div><span class="v gold" data-v="soldValue">' + money(t.soldValue) + '</span></div>'
     +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
     +     '</div>'
