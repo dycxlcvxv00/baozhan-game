@@ -680,13 +680,16 @@
   .switches .sw.on{color:var(--ok,#3fb950);border-color:#3fb95066;
     background:#3fb95014;box-shadow:0 0 6px #3fb95040;
     text-shadow:0 0 5px #3fb95066}
+  .switches .sw.on[data-key="chaos"]{color:#c77bff;border-color:#c77bff66;
+    background:#c77bff1f;box-shadow:0 0 6px #c77bff45;
+    text-shadow:0 0 5px #c77bff66}
   .switches{display:flex;justify-content:space-between;gap:5px;padding:0 10px}
   .switches .sw{flex:1;padding:0 4px}
   .sw.tagsw{flex:0 0 auto;padding:0 10px;border-radius:6px;line-height:20px}
   .vcard > .sw.dlb{position:absolute;right:-9px;top:-17px;z-index:30;
     width:32px;height:32px;line-height:30px;border-radius:50%;
     padding:0;font-size:15px;font-weight:800;text-align:center;cursor:pointer}
-  .vcard > .sw.dlb.on{border-color:#3fb95088;background:#3fb95022;box-shadow:0 0 8px #3fb95066;
+  .vcard > .sw.dlb.on{border-color:#3fb95088;background:#1f5a33;box-shadow:0 0 8px #3fb95066;
     color:var(--ok,#3fb950);text-shadow:0 0 6px #3fb95088}
   .sw.tagsw.on{border-color:#3fb95066;background:#3fb95014;box-shadow:0 0 6px #3fb95040;
     color:var(--ok,#3fb950);text-shadow:0 0 5px #3fb95066}
@@ -2152,12 +2155,12 @@ const FEATURES = [
   { key:'pet',     label:'宠物' },
   { key:'toggle5', label:'切换' }
 ];
-/* 卡面开关行的展示顺序（用户指定）：混沌、背包、市集、宠物、切换 */
+/* 卡面开关行的展示顺序（用户指定）：背包、市集、宠物、混沌、切换 */
 const SWITCH_ORDER = [
-  { key:'chaos',   label:'混沌' },
   { key:'bag',     label:'背包' },
   { key:'market',  label:'市集' },
   { key:'pet',     label:'宠物' },
+  { key:'chaos',   label:'混沌' },
   { key:'toggle5', label:'切换' }
 ];
 /* T 级标签：配色与 tierBadge() 完整复用经验台账 index-xp.html，样式类 .tier 同名移植 */
