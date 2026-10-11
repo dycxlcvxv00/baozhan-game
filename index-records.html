@@ -646,6 +646,9 @@
   .empty-tip{grid-column:1/-1}
   .vcard{position:relative;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
+    background-clip:padding-box}
+  .vcard.done{background:linear-gradient(180deg,#16281d,#141e18)}
+  .vcard.main{background:linear-gradient(180deg,#241a33,#181322)}
     border:1px solid var(--line,#2a3244);border-radius:12px;
     display:flex;flex-direction:column;gap:8px;padding-top:26px;
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;transition:box-shadow .2s}
@@ -2252,8 +2255,10 @@ function tierBoxCard(c){
   return '<span class="tierbox">' + parts.join('<span class="dash">-</span>') + '</span>';
 }
 function cardHTML(c, i, disp){
-  /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定） */
-  const color = recordedToday(c) ? '#3fb950' : '#9aa4b2';
+  /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定）
+     位置1（i===0）= 大号，恒定紫色主题 */
+  const isMain = (i === 0);
+  const color = isMain ? '#bc8cff' : (recordedToday(c) ? '#3fb950' : '#9aa4b2');
   const t = totals(c);
   /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0 */
   const g = gained(c);
@@ -2272,7 +2277,7 @@ function cardHTML(c, i, disp){
     '<input class="input" type="number" inputmode="decimal" step="any" '
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
   return '<div class="row vrow" data-i="' + i + '">'
-    + '<article class="vcard" style="--el:' + color + '">'
+    + '<article class="vcard' + (isMain ? ' main' : (recordedToday(c) ? ' done' : '')) + '" style="--el:' + color + '">'
     +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
     +     'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
     +   '<div class="plate' + (recordedToday(c) ? ' fill' : '') + '">'
