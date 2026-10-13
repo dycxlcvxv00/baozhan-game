@@ -701,9 +701,9 @@
      注意：不能用 border 加宽 —— 那会把卡片整体撑高，线落在边框上跑到卡外；
      inset box-shadow 绘制在 padding box 以内，天然沿 border-radius 收口，
      左右两侧在圆角处微微上翘，既贴住内底框又绝不超出卡片。
-     --blw：线高 7px ≈ 1.85mm（原 8px 降1px），--blc：线色（未录入为透明）。
+     --blw：线高 5px ≈ 1.3mm（8px→7px→5px 逐步收窄），--blc：线色（未录入为透明）。
      两个状态类只改 --blc，.row.open 也要带上同一条线，故统一用变量传下去。 */
-  .vcard{--blw:7px;--blc:transparent;
+  .vcard{--blw:5px;--blc:transparent;
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d,
       inset 0 calc(-1 * var(--blw)) 0 var(--blc);
     transition:box-shadow .35s}
