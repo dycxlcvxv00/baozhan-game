@@ -651,7 +651,7 @@
      右端只留一个轻量「N 个角色」作为补充。 */
   .gbar{grid-column:1/-1;
     display:flex;align-items:center;gap:9px;
-    height:26px;padding:0 12px 0 9px;margin:5px 0 -18px;
+    height:26px;padding:0 12px 0 9px;margin:-14px 0 -10px;
     border-radius:6px;
     background:linear-gradient(90deg,
       color-mix(in srgb, var(--gc) 26%, transparent) 0%,
@@ -678,7 +678,10 @@
   /* 右端角色数 */
   .gbar .gc2{margin-left:auto;flex:0 0 auto;font-size:11px;color:#7d8798;
     font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* 首条上方没有别的组，不留空隙 */
   #cards>.gbar:first-child{margin-top:0}
+  /* 末条下方也不留空隙，避免整块底部多出一段空白 */
+  #cards>.gbar:last-child{margin-bottom:0}
   .vcard{position:relative;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
     border:1px solid var(--line,#2a3244);border-radius:12px;
