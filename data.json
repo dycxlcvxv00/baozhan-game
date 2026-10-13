@@ -1,0 +1,2591 @@
+{
+ "v": 2,
+ "exportedAt": "2026-10-13T06:48:11.116Z",
+ "accounts": [
+  {
+   "id": "a1790090074441",
+   "account": "dycxlcvxv00",
+   "name": "小乖",
+   "level": 80,
+   "job": "冰法",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 2,
+   "minTier": 9,
+   "maxTier": 11,
+   "records": [
+    {
+     "date": "2026-09-23",
+     "time": "16:33:48",
+     "real": 1,
+     "gemsLeft": 30183,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "03:34:01",
+     "real": 1,
+     "gemsLeft": 34887,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "21:50:57",
+     "real": 1,
+     "gemsLeft": 38740,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "19:11:10",
+     "real": 1,
+     "gemsLeft": 13740,
+     "daySold": 25000,
+     "dayValue": 200,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-29",
+     "time": "00:29:52",
+     "real": 1,
+     "gemsLeft": 16673,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-30",
+     "time": "05:53:42",
+     "real": 1,
+     "gemsLeft": 11266,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "02:39:00",
+     "real": 1,
+     "gemsLeft": 15852,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "13:15:33",
+     "real": 1,
+     "gemsLeft": 852,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-02",
+     "time": "04:35:50",
+     "real": 1,
+     "gemsLeft": 1784,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-03",
+     "time": "01:22:03",
+     "real": 1,
+     "gemsLeft": 3559,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "08:01:22",
+     "real": 1,
+     "gemsLeft": 4775,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-05",
+     "time": "08:00:27",
+     "real": 1,
+     "gemsLeft": 6307,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "03:38:54",
+     "real": 1,
+     "gemsLeft": 10354,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "23:08:15",
+     "real": 1,
+     "gemsLeft": 14696,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "04:32:35",
+     "real": 1,
+     "gemsLeft": 24437,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "13:04:02",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "23:47:33",
+     "real": 1,
+     "gemsLeft": 6187,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-10",
+     "time": "03:16:44",
+     "real": 1,
+     "gemsLeft": 12356,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-10",
+     "time": "23:54:42",
+     "real": 1,
+     "gemsLeft": 18870,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "20:35:48",
+     "real": 1,
+     "gemsLeft": 25378,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "00:11:03",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "10:20:48",
+     "real": 1,
+     "gemsLeft": 6515,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-09-26",
+    "2026-09-28",
+    "2026-09-30",
+    "2026-10-06",
+    "2026-10-08",
+    "2026-10-07",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12",
+    "2026-10-13"
+   ],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "market": true,
+    "pet": true,
+    "toggle5": true
+   }
+  },
+  {
+   "id": "a1790090111164",
+   "account": "dycxlcvxv01",
+   "name": "陌尘",
+   "level": 85,
+   "job": "弓马",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 1,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-09-23",
+     "time": "16:36:25",
+     "real": 1,
+     "gemsLeft": 44963,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "00:21:33",
+     "real": 1,
+     "gemsLeft": 44963,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-09-25",
+     "time": "14:14:37",
+     "real": 1,
+     "gemsLeft": 26747,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 75000
+    },
+    {
+     "date": "2026-09-25",
+     "time": "19:47:51",
+     "real": 1,
+     "gemsLeft": 17202,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 15000
+    },
+    {
+     "date": "2026-09-26",
+     "time": "03:57:30",
+     "real": 1,
+     "gemsLeft": 29612,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "08:20:42",
+     "real": 1,
+     "gemsLeft": 31836,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "02:12:54",
+     "real": 1,
+     "gemsLeft": 24886,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 30000
+    },
+    {
+     "date": "2026-09-29",
+     "time": "03:46:50",
+     "real": 1,
+     "gemsLeft": 27161,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "19:49:44",
+     "real": 1,
+     "gemsLeft": 27161,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 30000
+    },
+    {
+     "date": "2026-09-30",
+     "time": "04:29:40",
+     "real": 1,
+     "gemsLeft": 1363,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-01",
+     "time": "05:13:08",
+     "real": 1,
+     "gemsLeft": 4811,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-02",
+     "time": "03:54:49",
+     "real": 1,
+     "gemsLeft": 24197,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-03",
+     "time": "02:11:27",
+     "real": 1,
+     "gemsLeft": 26892,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 15000
+    },
+    {
+     "date": "2026-10-04",
+     "time": "08:18:22",
+     "real": 1,
+     "gemsLeft": 34373,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-05",
+     "time": "07:35:20",
+     "real": 1,
+     "gemsLeft": 19509,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-06",
+     "time": "03:37:29",
+     "real": 1,
+     "gemsLeft": 46433,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-07",
+     "time": "05:31:11",
+     "real": 1,
+     "gemsLeft": 34256,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-08",
+     "time": "09:32:35",
+     "real": 1,
+     "gemsLeft": 10218,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-08",
+     "time": "17:04:57",
+     "real": 1,
+     "gemsLeft": 10218,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-10",
+     "time": "03:13:24",
+     "real": 1,
+     "gemsLeft": 7468,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:01:27",
+     "real": 1,
+     "gemsLeft": 5164,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:20:53",
+     "real": 1,
+     "gemsLeft": 5164,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-12",
+     "time": "00:45:17",
+     "real": 1,
+     "gemsLeft": 35087,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 45000
+    },
+    {
+     "date": "2026-10-12",
+     "time": "20:46:49",
+     "real": 1,
+     "gemsLeft": 107,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 30000
+    }
+   ],
+   "laborDays": [],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "market": true,
+    "pet": true
+   }
+  },
+  {
+   "id": "a1790090157739",
+   "account": "dycxlcvxv02",
+   "name": "二驴",
+   "level": 78,
+   "job": "吼子",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 3,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-09-25",
+     "time": "00:21:09",
+     "real": 1,
+     "gemsLeft": 11537,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "02:36:38",
+     "real": 1,
+     "gemsLeft": 15346,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "17:39:59",
+     "real": 1,
+     "gemsLeft": 6148,
+     "daySold": 13000,
+     "dayValue": 100,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "23:13:39",
+     "real": 1,
+     "gemsLeft": 11276,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-29",
+     "time": "00:19:46",
+     "real": 1,
+     "gemsLeft": 16707,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "21:11:37",
+     "real": 1,
+     "gemsLeft": 22013,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-30",
+     "time": "04:29:18",
+     "real": 1,
+     "gemsLeft": 27403,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "02:34:48",
+     "real": 1,
+     "gemsLeft": 33915,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "02:35:20",
+     "real": 1,
+     "gemsLeft": 16415,
+     "daySold": 17500,
+     "dayValue": 140,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "18:19:39",
+     "real": 1,
+     "gemsLeft": 415,
+     "daySold": 16300,
+     "dayValue": 100,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-02",
+     "time": "15:01:37",
+     "real": 1,
+     "gemsLeft": 9336,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "08:19:37",
+     "real": 1,
+     "gemsLeft": 14642,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-05",
+     "time": "07:14:59",
+     "real": 1,
+     "gemsLeft": 20169,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "00:13:09",
+     "real": 1,
+     "gemsLeft": 27942,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "23:50:31",
+     "real": 1,
+     "gemsLeft": 32740,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "23:13:12",
+     "real": 1,
+     "gemsLeft": 7773,
+     "daySold": 30000,
+     "dayValue": 200,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "23:48:00",
+     "real": 1,
+     "gemsLeft": 13304,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-09",
+     "time": "21:23:57",
+     "real": 1,
+     "gemsLeft": 18698,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-09",
+     "time": "23:28:53",
+     "real": 1,
+     "gemsLeft": 394,
+     "daySold": 20000,
+     "dayValue": 140,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:04:13",
+     "real": 1,
+     "gemsLeft": 5402,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "20:36:00",
+     "real": 1,
+     "gemsLeft": 10503,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "10:33:46",
+     "real": 1,
+     "gemsLeft": 15684,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12",
+    "2026-10-13"
+   ],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "market": true,
+    "pet": true
+   }
+  },
+  {
+   "id": "a1790150680160",
+   "account": "dycxlcvxv03",
+   "name": "刷子",
+   "level": 65,
+   "job": "毒标",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 4,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-09-23",
+     "time": "16:05:01",
+     "real": 1,
+     "gemsLeft": 896,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "19:00:01",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-10-12"
+   ],
+   "flags": {
+    "pet": true,
+    "toggle5": true
+   }
+  },
+  {
+   "id": "a1790150790922",
+   "account": "dycxlcvxv05",
+   "name": "清浊",
+   "level": 80,
+   "job": "转转",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 5,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-09-23",
+     "time": "16:07:12",
+     "real": 1,
+     "gemsLeft": 7515,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "14:28:27",
+     "real": 1,
+     "gemsLeft": 7998,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-27",
+     "time": "00:57:03",
+     "real": 1,
+     "gemsLeft": 13328,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-29",
+     "time": "00:23:22",
+     "real": 1,
+     "gemsLeft": 17622,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-30",
+     "time": "04:23:03",
+     "real": 1,
+     "gemsLeft": 12400,
+     "daySold": 10000,
+     "dayValue": 90,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "02:09:05",
+     "real": 1,
+     "gemsLeft": 17668,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "02:15:48",
+     "real": 1,
+     "gemsLeft": 170,
+     "daySold": 17500,
+     "dayValue": 140,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-02",
+     "time": "01:54:45",
+     "real": 1,
+     "gemsLeft": 5774,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-03",
+     "time": "00:43:44",
+     "real": 1,
+     "gemsLeft": 10557,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "06:25:21",
+     "real": 1,
+     "gemsLeft": 5500,
+     "daySold": 1000,
+     "dayValue": 75,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-05",
+     "time": "07:17:29",
+     "real": 1,
+     "gemsLeft": 10913,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "03:36:37",
+     "real": 1,
+     "gemsLeft": 10057,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "23:47:59",
+     "real": 1,
+     "gemsLeft": 15268,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "04:32:59",
+     "real": 1,
+     "gemsLeft": 20673,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "13:06:46",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "19:23:54",
+     "real": 1,
+     "gemsLeft": 5401,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-09",
+     "time": "19:55:29",
+     "real": 1,
+     "gemsLeft": 10641,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:05:05",
+     "real": 1,
+     "gemsLeft": 16252,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "20:36:07",
+     "real": 1,
+     "gemsLeft": 21855,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "10:42:11",
+     "real": 1,
+     "gemsLeft": 27161,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-09-26",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03",
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-08",
+    "2026-10-07",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12",
+    "2026-10-13"
+   ],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "market": true,
+    "pet": true
+   }
+  },
+  {
+   "id": "a1790151057512",
+   "account": "zz1314520",
+   "name": "力拔山兮",
+   "level": 72,
+   "job": "弓马",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 7,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-09-23",
+     "time": "16:11:11",
+     "real": 1,
+     "gemsLeft": 13588,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "00:19:23",
+     "real": 1,
+     "gemsLeft": 18431,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "03:40:08",
+     "real": 1,
+     "gemsLeft": 4615,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-27",
+     "time": "01:07:58",
+     "real": 1,
+     "gemsLeft": 7965,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-29",
+     "time": "00:29:18",
+     "real": 1,
+     "gemsLeft": 14416,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "19:11:59",
+     "real": 1,
+     "gemsLeft": 1416,
+     "daySold": 13000,
+     "dayValue": 100,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-29",
+     "time": "01:29:46",
+     "real": 1,
+     "gemsLeft": 7050,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-30",
+     "time": "04:19:31",
+     "real": 1,
+     "gemsLeft": 11789,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "01:37:30",
+     "real": 1,
+     "gemsLeft": 15983,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "01:59:07",
+     "real": 1,
+     "gemsLeft": 6,
+     "daySold": 15000,
+     "dayValue": 120,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "18:25:51",
+     "real": 1,
+     "gemsLeft": 6653,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-03",
+     "time": "01:24:13",
+     "real": 1,
+     "gemsLeft": 11721,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "06:30:07",
+     "real": 1,
+     "gemsLeft": 6648,
+     "daySold": 10000,
+     "dayValue": 75,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "16:48:24",
+     "real": 1,
+     "gemsLeft": 12937,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "20:00:08",
+     "real": 1,
+     "gemsLeft": 439,
+     "daySold": 12500,
+     "dayValue": 100,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "03:36:29",
+     "real": 1,
+     "gemsLeft": 5133,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "00:29:35",
+     "real": 1,
+     "gemsLeft": 8997,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "04:32:49",
+     "real": 1,
+     "gemsLeft": 13907,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "23:49:07",
+     "real": 1,
+     "gemsLeft": 19344,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-10",
+     "time": "01:35:14",
+     "real": 1,
+     "gemsLeft": 5752,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "12:10:33",
+     "real": 1,
+     "gemsLeft": 22804,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "21:32:15",
+     "real": 1,
+     "gemsLeft": 28273,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "21:45:29",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "10:30:21",
+     "real": 1,
+     "gemsLeft": 5356,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03",
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-09",
+    "2026-10-11",
+    "2026-10-12"
+   ],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "market": true,
+    "pet": true
+   }
+  },
+  {
+   "id": "a1790151193639",
+   "account": "zx1314520",
+   "name": "虾丢丢",
+   "level": 77,
+   "job": "吼子",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 8,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-09-23",
+     "time": "16:13:23",
+     "real": 1,
+     "gemsLeft": 4371,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-23",
+     "time": "16:20:01",
+     "real": 1,
+     "gemsLeft": 3021,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "00:06:04",
+     "real": 1,
+     "gemsLeft": 6805,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-24",
+     "time": "13:04:31",
+     "real": 1,
+     "gemsLeft": 11557,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "17:41:30",
+     "real": 1,
+     "gemsLeft": 3482,
+     "daySold": 23000,
+     "dayValue": 200,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "03:55:21",
+     "real": 1,
+     "gemsLeft": 5303,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "18:33:36",
+     "real": 1,
+     "gemsLeft": 10509,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-29",
+     "time": "03:48:20",
+     "real": 1,
+     "gemsLeft": 14231,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "20:22:12",
+     "real": 1,
+     "gemsLeft": 13817,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-30",
+     "time": "04:09:57",
+     "real": 1,
+     "gemsLeft": 9717,
+     "daySold": 10000,
+     "dayValue": 80,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "01:28:24",
+     "real": 1,
+     "gemsLeft": 14652,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "01:29:28",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "15:36:52",
+     "real": 1,
+     "gemsLeft": 5849,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-03",
+     "time": "00:01:30",
+     "real": 1,
+     "gemsLeft": 5514,
+     "daySold": 6500,
+     "dayValue": 50,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "08:21:17",
+     "real": 1,
+     "gemsLeft": 10630,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-05",
+     "time": "07:33:56",
+     "real": 1,
+     "gemsLeft": 16463,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "01:57:03",
+     "real": 1,
+     "gemsLeft": 22151,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-06",
+     "time": "17:28:36",
+     "real": 1,
+     "gemsLeft": 28432,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "23:11:53",
+     "real": 1,
+     "gemsLeft": 9248,
+     "daySold": 30000,
+     "dayValue": 200,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "23:47:47",
+     "real": 1,
+     "gemsLeft": 15447,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-09",
+     "time": "11:55:49",
+     "real": 1,
+     "gemsLeft": 21629,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-10",
+     "time": "22:28:41",
+     "real": 1,
+     "gemsLeft": 27799,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-10",
+     "time": "22:28:54",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "20:36:19",
+     "real": 1,
+     "gemsLeft": 7177,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "20:54:34",
+     "real": 1,
+     "gemsLeft": 5847,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "20:40:55",
+     "real": 1,
+     "gemsLeft": 8541,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-09-24",
+    "2026-09-26",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12"
+   ],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "pet": true,
+    "market": true
+   }
+  },
+  {
+   "id": "a1790151743037",
+   "account": "qq168598",
+   "name": "打材料一号",
+   "level": 77,
+   "job": "吼子",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 9,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-09-23",
+     "time": "16:22:31",
+     "real": 1,
+     "gemsLeft": 12687,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "00:03:41",
+     "real": 1,
+     "gemsLeft": 16305,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-25",
+     "time": "08:01:45",
+     "real": 1,
+     "gemsLeft": 22973,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "08:20:59",
+     "real": 1,
+     "gemsLeft": 4396,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "20:21:20",
+     "real": 1,
+     "gemsLeft": 8690,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "23:16:39",
+     "real": 1,
+     "gemsLeft": 17850,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-30",
+     "time": "03:58:50",
+     "real": 1,
+     "gemsLeft": 410,
+     "daySold": 10000,
+     "dayValue": 80,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "02:46:57",
+     "real": 1,
+     "gemsLeft": 5082,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "15:46:03",
+     "real": 1,
+     "gemsLeft": 9734,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "18:18:10",
+     "real": 1,
+     "gemsLeft": 34,
+     "daySold": 9700,
+     "dayValue": 100,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-03",
+     "time": "01:29:13",
+     "real": 1,
+     "gemsLeft": 4112,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "08:24:05",
+     "real": 1,
+     "gemsLeft": 8970,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "16:53:35",
+     "real": 1,
+     "gemsLeft": 13774,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-05",
+     "time": "23:09:24",
+     "real": 1,
+     "gemsLeft": 22186,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "00:37:11",
+     "real": 1,
+     "gemsLeft": 27487,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "18:59:31",
+     "real": 1,
+     "gemsLeft": 32613,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "23:11:35",
+     "real": 1,
+     "gemsLeft": 2613,
+     "daySold": 30000,
+     "dayValue": 200,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "23:47:54",
+     "real": 1,
+     "gemsLeft": 7827,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-09",
+     "time": "23:21:07",
+     "real": 1,
+     "gemsLeft": 3164,
+     "daySold": 10000,
+     "dayValue": 70,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:13:37",
+     "real": 1,
+     "gemsLeft": 8264,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "20:35:42",
+     "real": 1,
+     "gemsLeft": 13263,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "20:40:28",
+     "real": 1,
+     "gemsLeft": 18529,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-09-25",
+    "2026-09-26",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12"
+   ],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "market": true,
+    "pet": true,
+    "toggle5": true
+   }
+  },
+  {
+   "id": "a1790151880266",
+   "account": "nwpc4433",
+   "name": "幽竹",
+   "level": 70,
+   "job": "冰法",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 10,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-09-23",
+     "time": "16:32:07",
+     "real": 1,
+     "gemsLeft": 3664,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-23",
+     "time": "23:05:41",
+     "real": 1,
+     "gemsLeft": 7207,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-26",
+     "time": "03:56:38",
+     "real": 1,
+     "gemsLeft": 10557,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-27",
+     "time": "00:23:58",
+     "real": 1,
+     "gemsLeft": 14969,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-29",
+     "time": "03:49:17",
+     "real": 1,
+     "gemsLeft": 19116,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "19:12:14",
+     "real": 1,
+     "gemsLeft": 6116,
+     "daySold": 13000,
+     "dayValue": 100,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-28",
+     "time": "21:35:28",
+     "real": 1,
+     "gemsLeft": 10616,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-09-30",
+     "time": "05:03:37",
+     "real": 1,
+     "gemsLeft": 4678,
+     "daySold": 10000,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-01",
+     "time": "02:47:16",
+     "real": 1,
+     "gemsLeft": 8407,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 15,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-02",
+     "time": "04:05:57",
+     "real": 1,
+     "gemsLeft": 11796,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-03",
+     "time": "01:30:59",
+     "real": 1,
+     "gemsLeft": 2251,
+     "daySold": 12500,
+     "dayValue": 100,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "08:20:25",
+     "real": 1,
+     "gemsLeft": 2251,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "01:19:41",
+     "real": 1,
+     "gemsLeft": 4786,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "13:37:45",
+     "real": 1,
+     "gemsLeft": 380,
+     "daySold": 7000,
+     "dayValue": 50,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-10",
+     "time": "03:19:40",
+     "real": 1,
+     "gemsLeft": 2466,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:15:35",
+     "real": 1,
+     "gemsLeft": 3441,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "11:07:15",
+     "real": 1,
+     "gemsLeft": 8915,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-09-25",
+    "2026-09-26",
+    "2026-09-28",
+    "2026-09-30",
+    "2026-10-02",
+    "2026-10-07",
+    "2026-10-12"
+   ],
+   "flags": {
+    "pet": true,
+    "chaos": true,
+    "toggle5": true
+   }
+  },
+  {
+   "id": "a1790847780318",
+   "account": "huada9930",
+   "name": "【Godlove】",
+   "level": 71,
+   "job": "吼子",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 11,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-10-04",
+     "time": "08:26:24",
+     "real": 1,
+     "gemsLeft": 6644,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-05",
+     "time": "07:34:38",
+     "real": 1,
+     "gemsLeft": 10738,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-05",
+     "time": "20:32:20",
+     "real": 1,
+     "gemsLeft": 2071,
+     "daySold": 13000,
+     "dayValue": 100,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-07",
+     "time": "00:42:15",
+     "real": 1,
+     "gemsLeft": 6607,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "04:33:09",
+     "real": 1,
+     "gemsLeft": 11034,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "23:48:08",
+     "real": 1,
+     "gemsLeft": 15447,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-09",
+     "time": "23:25:36",
+     "real": 1,
+     "gemsLeft": 128,
+     "daySold": 20000,
+     "dayValue": 140,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:17:11",
+     "real": 1,
+     "gemsLeft": 4598,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "00:28:09",
+     "real": 1,
+     "gemsLeft": 8989,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12"
+   ],
+   "flags": {
+    "bag": true,
+    "market": true,
+    "pet": true,
+    "chaos": true
+   }
+  },
+  {
+   "id": "a1790936481447",
+   "account": "qaz101854",
+   "name": "三五二七",
+   "level": 69,
+   "job": "火法",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 20,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-10-03",
+     "time": "01:36:20",
+     "real": 1,
+     "gemsLeft": 2772,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-04",
+     "time": "08:11:46",
+     "real": 1,
+     "gemsLeft": 5992,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "13:29:40",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [],
+   "flags": {
+    "chaos": true,
+    "market": true,
+    "pet": true,
+    "bag": true
+   }
+  },
+  {
+   "id": "a1791304971706",
+   "account": "dycxlcvxv06",
+   "name": "菲菲",
+   "level": 81,
+   "job": "毒标",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 6,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-10-07",
+     "time": "01:14:56",
+     "real": 1,
+     "gemsLeft": 11052,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "04:28:37",
+     "real": 1,
+     "gemsLeft": 0,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-08",
+     "time": "23:50:02",
+     "real": 1,
+     "gemsLeft": 4575,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-10",
+     "time": "03:20:12",
+     "real": 1,
+     "gemsLeft": 8871,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:09:33",
+     "real": 1,
+     "gemsLeft": 12039,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "12:34:21",
+     "real": 1,
+     "gemsLeft": 25235,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-10-07",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12"
+   ],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "market": true,
+    "pet": true,
+    "toggle5": true
+   }
+  },
+  {
+   "id": "a1791316626866",
+   "account": "lizhii",
+   "name": "木藕",
+   "level": "",
+   "job": "",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 13,
+   "minTier": "",
+   "maxTier": "",
+   "records": [],
+   "laborDays": [],
+   "flags": {
+    "pet": true
+   }
+  },
+  {
+   "id": "a1791450789201",
+   "account": "tianxin",
+   "name": "黑色星期天",
+   "level": 70,
+   "job": "火法",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 12,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-10-10",
+     "time": "03:21:44",
+     "real": 1,
+     "gemsLeft": 6213,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-10",
+     "time": "03:36:23",
+     "real": 1,
+     "gemsLeft": 4125,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-11",
+     "time": "04:20:30",
+     "real": 1,
+     "gemsLeft": 8704,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "00:31:46",
+     "real": 1,
+     "gemsLeft": 13603,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    },
+    {
+     "date": "2026-10-12",
+     "time": "20:40:45",
+     "real": 1,
+     "gemsLeft": 18676,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12"
+   ],
+   "flags": {
+    "bag": true,
+    "chaos": true,
+    "market": false,
+    "pet": true,
+    "toggle5": true
+   }
+  },
+  {
+   "id": "a1791783382976",
+   "account": "wsyinhu914",
+   "name": "雷霆之怒",
+   "level": 74,
+   "job": "冰法",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 0,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-10-12",
+     "time": "11:09:46",
+     "real": 1,
+     "gemsLeft": 2213,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-10-12"
+   ],
+   "flags": {
+    "market": true,
+    "pet": true,
+    "chaos": false,
+    "bag": true
+   }
+  },
+  {
+   "id": "a1791783411477",
+   "account": "3214917",
+   "name": "Mj",
+   "level": 72,
+   "job": "冰法",
+   "gemsLeft": 0,
+   "gemsSold": 0,
+   "soldValue": 0,
+   "laborCost": 0,
+   "chaosCost": 0,
+   "wealth": 0,
+   "initLeft": 0,
+   "order": 0,
+   "minTier": "",
+   "maxTier": "",
+   "records": [
+    {
+     "date": "2026-10-12",
+     "time": "11:11:37",
+     "real": 1,
+     "gemsLeft": 4828,
+     "daySold": 0,
+     "dayValue": 0,
+     "dayLabor": 0,
+     "chaosCost": 0
+    }
+   ],
+   "laborDays": [
+    "2026-10-12"
+   ],
+   "flags": {
+    "bag": true,
+    "pet": true,
+    "chaos": true,
+    "market": true
+   }
+  }
+ ],
+ "note": "2026-10-13 09:00-11:30 的 6 条录入为补录 10-12，日期已统一改为 2026-10-12"
+}
