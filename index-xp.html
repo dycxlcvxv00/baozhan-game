@@ -213,6 +213,42 @@
   #rules .hl{color:var(--accent);font-weight:700}
   footer{margin-top:18px;text-align:center;color:var(--mute);font-size:12px}
   footer .lk{color:var(--accent);text-decoration:none;border-bottom:1px dashed rgba(47,230,208,0.4)}
+
+  /* ---------- 云端同步 & 手动录入 ---------- */
+  .chip.cloud{display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+  .chip.cloud::before{content:'●';font-size:9px;line-height:1}
+  .chip.cloud.off {color:#8b93a5}
+  .chip.cloud.off::before{color:#5a6172}
+  .chip.cloud.syncing{color:#4aa3ff}
+  .chip.cloud.syncing::before{color:#4aa3ff;animation:pulse 1s infinite}
+  .chip.cloud.ok {color:#2fe6d0}
+  .chip.cloud.ok::before{color:#2fe6d0}
+  .chip.cloud.err{color:#ff6b6b}
+  .chip.cloud.err::before{color:#ff6b6b}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .mini-btn{
+    background:#232b3d;color:#cfd6e4;border:1px solid #333d52;border-radius:6px;
+    font-size:12px;padding:4px 10px;cursor:pointer;font-family:inherit
+  }
+  .mini-btn:hover{background:#2c3547;color:#fff}
+
+  #addPanel{margin-top:14px}
+  #addForm{padding:4px 2px 2px}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+  .fgrid label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#98a4b5}
+  .fgrid label.wide{grid-column:1/-1}
+  .fgrid label.chk{flex-direction:row;align-items:center;gap:7px;align-self:end;padding-bottom:8px;cursor:pointer}
+  .fgrid input[type=text],.fgrid input[type=number]{
+    background:#161c2b;border:1px solid #2b3446;border-radius:6px;color:#e6ebf5;
+    padding:7px 9px;font-size:13px;font-family:inherit;width:100%
+  }
+  .fgrid input:focus{outline:none;border-color:#3d7fff}
+  .req{color:#ff8c33}
+  .submit-btn{
+    margin-top:14px;background:#2f6bff;color:#fff;border:0;border-radius:7px;
+    padding:9px 20px;font-size:13px;cursor:pointer;font-family:inherit
+  }
+  .submit-btn:hover{background:#1f5be0}
 </style>
 </head>
 <body>
@@ -224,6 +260,34 @@
     <span class="chip on" id="chip-role">—</span>
     <span class="chip" id="chip-maps">—</span>
     <span class="chip gold" id="chip-updated">—</span>
+    <span class="sep"></span>
+    <span class="chip cloud off" id="xpCloud" title="点击可手动同步">云端<span id="xpCloudTxt">本地模式</span></span>
+    <button class="mini-btn" id="btnCloudSetup" type="button">云端设置</button>
+  </div>
+
+  <!-- ========== 手动录入（JS 提交后自动同步云端） ========== -->
+  <div id="addPanel" class="panel">
+    <div class="sec-title">
+      <h2>追加一条打图记录</h2>
+      <span class="tag">提交后自动写入云端 xp.json · 上次经验值自动取上一条</span>
+    </div>
+    <form id="addForm" autocomplete="off">
+      <div class="fgrid">
+        <label>地图名称<span class="req">*</span><input id="fMap" type="text" placeholder="如 空洞城寨"></label>
+        <label>阶级<input id="fTier" type="text" placeholder="T15"></label>
+        <label>怪物等级<input id="fMobLv" type="number" step="1" placeholder="88"></label>
+        <label>怪物数量 %<input id="fQty" type="number" step="1" placeholder="0"></label>
+        <label>晶石掉落<input id="fStones" type="number" step="1" placeholder="689"></label>
+        <label>当前经验值<span class="req">*</span><input id="fCur" type="number" step="1" placeholder="2114440142"></label>
+        <label>等级<input id="fLevel" type="number" step="1" value="89"></label>
+        <label>时间<input id="fDt" type="text" placeholder="2026-10-13 14:46:31"></label>
+        <label class="chk"><input id="fPot50" type="checkbox"> 经验药水 50%</label>
+        <label class="chk"><input id="fPot20" type="checkbox"> 经验药水 20%</label>
+        <label class="wide">词缀（用 <code>|</code> 分隔）<input id="fAffix" type="text" placeholder="角色攻击和施法增加40%|怪物受到伤害减少30%"></label>
+        <label class="wide">备注<input id="fNote" type="text" placeholder="狂暴"></label>
+      </div>
+      <button class="submit-btn" type="submit">追加记录并同步云端</button>
+    </form>
   </div>
 
   <div id="summary"></div>
@@ -298,7 +362,9 @@ const UPDATED_AT  = '2026-10-13 14:46';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
-const XP_RECORDS = [
+/* 初始种子数据（仅首次使用时上传云端）。
+   上线后运行时数据以云端 xp.json 为准，本数组不再被修改。 */
+const XP_SEED = [
   { dt:'2026-09-26 18:15:00', role:'陌尘', level:86,
     map:'祭祀礼堂', tier:'T14', mobLv:86, mobQty:null,
     pot50:false, pot20:false, stones:null,
@@ -2275,6 +2341,11 @@ const XP_RECORDS = [
     prev:2103973943, cur:2114440142, note:'',
     affixes:['角色攻击和施法增加40%','怪物受到伤害减少30%','怪物冰霜抗性增加60%','角色生命增加30%','怪物闪电抗性增加35%','怪物毒抗性增加35%','怪物毒素抗性增加35%'] },
 ];
+
+/* 运行时数据源：初始为种子数据，cloudInit()拉到云端后会被整体替换。
+   renderAll() 每次都重新读取这个数组，所以换数据源只需换它 + 重跑渲染。 */
+let XP_RECORDS = XP_SEED.slice();
+
 /* ============ 以下为渲染逻辑，通常不用改 ============ */
 
 /* ---- T 级颜色体系 T1–T19，按强度分档 ----
@@ -2341,11 +2412,25 @@ function decorate(r){
     cumPct:    r.cur   / lt,
   });
 }
-const ROWS = XP_RECORDS.map(decorate);
-const LAST = ROWS[ROWS.length - 1];
-const TOTAL_GAIN = ROWS.reduce((s, r) => s + r.gained, 0);
+/* ============ 渲染入口：可重复调用（换数据源 / 录入后重绘） ============
+   整段渲染逻辑包成函数，原来是一次性执行的顶层语句。
+   块内原本的 const 改为 let，是为了让块外（录入表单、云端状态）也能读到
+   ROWS / TOTAL_STONE 等派生值；因函数内声明，不存在跨次调用的残留。 */
+function renderAll(){
+let ROWS = XP_RECORDS.map(decorate);
+let LAST = ROWS[ROWS.length - 1];
+let TOTAL_GAIN = ROWS.reduce((s, r) => s + r.gained, 0);
 const AVG_GAIN   = Math.round(TOTAL_GAIN / ROWS.length);
-const TOTAL_STONE = ROWS.reduce((s, r) => s + (r.stones || 0), 0);
+let TOTAL_STONE = ROWS.reduce((s, r) => s + (r.stones || 0), 0);
+
+  /* 把派生值挂到 window：serialize() 需要 TOTAL_STONE（云端摘要用），
+     而它在 renderAll 作用域外拿不到块内的 const。
+     紧跟计算点导出、不放在函数末尾 —— 后续 DOM 渲染若抛错，
+     云端摘要与校验读到的仍是本次的真实值，不会拿到上一轮的旧数据。 */
+  window.__xpStats = {
+    rows: ROWS, last: LAST, totalGain: TOTAL_GAIN,
+    avgGain: AVG_GAIN, totalStone: TOTAL_STONE
+  };
 
 /* 顶部 chips */
 document.getElementById('chip-role').textContent =
@@ -2356,7 +2441,7 @@ document.getElementById('chip-updated').textContent =
   '更新于 ' + UPDATED_AT;
 
 /* 汇总卡片 */
-const cards = [
+let cards = [
   { k:'当前等级',   v:'Lv.' + LAST.level, cls:'' },
   { k:'当前经验值', v:fmt(LAST.cur),      cls:'acc' },
   { k:'等级总经验', v:fmt(LEVEL_TOTAL),   cls:'' },
@@ -2392,7 +2477,7 @@ function xpToday(){
   if(d.getHours() < 8) d.setDate(d.getDate() - 1);
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 }
-const TODAY_SETTLE = xpToday();
+let TODAY_SETTLE = xpToday();
 
 /* 日期简写：2026-09-27 → 2026-9-27 */
 function shortDate(iso){
@@ -2401,7 +2486,7 @@ function shortDate(iso){
 }
 
 /* ---- 按结算日分组：每天一个独立折叠面板，最新的一天在最上 ---- */
-const DAY_MAP = {};
+let DAY_MAP = {};
 ROWS.forEach(function(r){
   const d = xpSettleDate(r.dt);
   (DAY_MAP[d] = DAY_MAP[d] || []).push(r);
@@ -2410,9 +2495,9 @@ ROWS.forEach(function(r){
 Object.keys(DAY_MAP).forEach(function(d){
   DAY_MAP[d].sort(function(a, b){ return a.dt < b.dt ? -1 : (a.dt > b.dt ? 1 : 0); });
 });
-const DAY_KEYS = Object.keys(DAY_MAP).sort().reverse();
+let DAY_KEYS = Object.keys(DAY_MAP).sort().reverse();
 
-const TH_ROW =
+let TH_ROW =
   '<tr>' +
   '<th>#</th><th>日期时间</th><th>地图名称</th><th>阶级</th><th>怪物等级</th>' +
   '<th>怪物数量%</th><th>药水50%</th><th>药水20%</th><th>晶石掉落</th>' +
@@ -2474,7 +2559,7 @@ function dayCards(list){
   };
 }
 
-const FOLD_KEY = 'xp-ledger-day-fold-';
+let FOLD_KEY = 'xp-ledger-day-fold-';
 document.getElementById('days').innerHTML = DAY_KEYS.map(function(d, di){
   const list = DAY_MAP[d];
   const stat = dayCards(list);
@@ -2518,8 +2603,9 @@ document.getElementById('days').innerHTML = DAY_KEYS.map(function(d, di){
   });
 })();
 
+
 /* 全部明细：最新在最上（序号仍按全局 1..N 标注） */
-const ROWS_DESC = ROWS.slice().reverse();
+let ROWS_DESC = ROWS.slice().reverse();
 document.querySelector('#tbl tbody').innerHTML = ROWS_DESC.map((r, i) =>
   rowHTML(r, ROWS.length - i)
 ).join('');
@@ -2572,6 +2658,7 @@ function affixItemHTML(s){
 
 /* ---- 词缀悬停浮层：鼠标放到「词缀」单元格或地图名上，显示该图全部词缀 ---- */
 (function initAffixTip(){
+  if(window.__xpAffixTipReady) return; window.__xpAffixTipReady = true;
   const tip = document.createElement('div');
   tip.id = 'affixTip';
   document.body.appendChild(tip);
@@ -2616,6 +2703,340 @@ function affixItemHTML(s){
   document.addEventListener('focusout', hide);
   window.addEventListener('scroll', hide, true);
 })();
+}
+
+
+/* ============================================================
+ * 云端同步（与角色晶石台账同一套机制）
+ * ------------------------------------------------------------
+ * 仓库：dycxlcvxv00/baozhan-data（私有），文件 xp.json
+ * 令牌：fine-grained token，权限 Contents: Read and write
+ *       只存在本机 localStorage（key: xp-ledger-token），不写进仓库文件
+ *
+ * 冲突策略：以 savedAt 较新的一方为准（最后写入者胜）
+ * 离线：推送失败不清本地数据，退避重试 3s → 8s → 20s → 60s
+ * ============================================================ */
+const CFG = {
+  api   : '',
+  owner : 'dycxlcvxv00',
+  repo  : 'baozhan-data',
+  path  : 'xp.json',
+  token : (function(){ try{ return localStorage.getItem('xp-ledger-token') || ''; }catch(e){ return ''; } })(),
+  branch: 'main'
+};
+(function(){
+  try{
+    const q = new URLSearchParams(location.search).get('cloud');
+    if(q) CFG.api = q.trim().replace(/\/+$/, '');
+  }catch(e){}
+})();
+const DATA_V  = 1;
+const LS_DATA = 'xp-ledger-cloud';
+const DEVICE  = (function(){
+  let d = '';
+  try{ d = localStorage.getItem('xp-ledger-device') || ''; }catch(e){}
+  if(!d){
+    d = '设备-' + Math.random().toString(36).slice(2, 7);
+    try{ localStorage.setItem('xp-ledger-device', d); }catch(e){}
+  }
+  return d;
+})();
+
+function serialize(){
+  return {
+    v: DATA_V,
+    savedAt: new Date().toISOString(),
+    updatedBy: DEVICE,
+    role: (XP_RECORDS[XP_RECORDS.length-1]||{}).role || '',
+    level: (XP_RECORDS[XP_RECORDS.length-1]||{}).level || 0,
+    count: XP_RECORDS.length,
+    totalStones: (window.__xpStats && window.__xpStats.totalStone) || 0,
+    records: XP_RECORDS
+  };
+}
+
+/* --- base64（中文安全） --- */
+function b64encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64decode(b64){ return decodeURIComponent(escape(atob(String(b64).replace(/\s/g, '')))); }
+
+function apiBase(){ return CFG.api ? CFG.api.replace(/\/+$/, '') : ''; }
+function useWorker(){ return !!apiBase(); }
+function dataFilename(){ return CFG.path; }
+function readURL(){
+  const b = apiBase();
+  return (b ? b + '/' + dataFilename() : 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + dataFilename())
+         + '?t=' + Date.now();
+}
+function writeURL(){
+  const b = apiBase();
+  return b ? b + '/' + dataFilename()
+           : 'https://api.github.com/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + dataFilename();
+}
+function cloudHeaders(){
+  if(useWorker()) return { 'Content-Type':'application/json' };
+  return { 'Authorization':'Bearer ' + CFG.token,
+           'Accept':'application/vnd.github+json',
+           'Content-Type':'application/json' };
+}
+function normalizeRead(j){
+  if(!j) return { data:null, sha:'' };
+  if(typeof j === 'object' && ('data' in j || 'sha' in j) && !('content' in j))
+    return { data:j.data || null, sha:j.sha || '' };
+  let data = null;
+  if(j && j.content){ try{ data = JSON.parse(b64decode(j.content)); }catch(e){ data = null; } }
+  return { data:data, sha:(j && j.sha) || '' };
+}
+async function cloudPull(){
+  const r = await fetch(readURL(), { headers:cloudHeaders(), cache:'no-store' });
+  if(r.status === 404){ const e = new Error('REMOTE_MISSING'); e.missing = true; throw e; }
+  if(!r.ok){
+    const e = await r.json().catch(function(){ return {}; });
+    throw new Error('拉取失败 ' + r.status + (e && e.message ? '：' + e.message : ''));
+  }
+  return normalizeRead(await r.json());
+}
+async function cloudPush(payload){
+  let body;
+  if(useWorker()){
+    body = JSON.stringify({ data:payload, by:DEVICE });
+  }else{
+    /* 取最新 sha。文件还不存在时 cloudPull() 抛 REMOTE_MISSING ——
+       这里必须吞掉当作「新建」：sha 缺省 = Contents API 建新文件。
+       （晶石台账原有代码在这里没兜住，首次同步会失败；此处修正。）
+       仓库整个不存在时同样吞掉，交给 doPush 的建仓分支处理。 */
+    let sha = '';
+    try{ sha = (await cloudPull()).sha || ''; }
+    catch(e){
+      if(String(e.message).indexOf('REMOTE_MISSING') < 0) throw e;
+      sha = '';
+    }
+    body = JSON.stringify({
+      message: 'xp: ' + (payload.savedAt || '').replace('T',' ').slice(0,19)
+               + ' · ' + (payload.records || []).length + ' 条 · ' + DEVICE,
+      /* JSON.stringify 没有 ensure_ascii 参数，中文会被转义成 \uXXXX。
+         GitHub Contents API 接受 UTF-8 原文，所以手动把转义还原回去 ——
+         否则 commit message 里的中文全是乱码，极难排查。 */
+      content: b64encode(unescape(JSON.stringify(payload, null, 2)) + '\n'),
+      branch: CFG.branch,
+      ...(sha ? { sha } : {})
+    });
+  }
+  const r = await fetch(writeURL(), { method:'PUT', headers:cloudHeaders(), body:body });
+  if(!r.ok){
+    const e = await r.json().catch(function(){ return {}; });
+    throw new Error('推送失败 ' + r.status + (e && e.message ? '：' + e.message : ''));
+  }
+  return r.json();
+}
+function writeCache(data){
+  try{ localStorage.setItem(LS_DATA, JSON.stringify(data)); }catch(e){}
+}
+function loadCache(){
+  try{ const v = localStorage.getItem(LS_DATA); return v ? JSON.parse(v) : null; }catch(e){ return null; }
+}
+
+/* --- 状态胶囊 --- */
+function cloudUI(state, text){
+  const chip = document.getElementById('xpCloud');
+  const txt  = document.getElementById('xpCloudTxt');
+  if(!chip) return;
+  chip.classList.remove('syncing','ok','err','off');
+  if(state) chip.classList.add(state);
+  if(txt && text) txt.textContent = text;
+}
+
+/* --- 防抖推送 + 退避重试 ---
+   pushSeq 处理竞态：请求在飞时用户又改了，回来不能无条件清 pushPending，
+   否则最后一次改动永远推不上去（与晶石台账同一个坑）。 */
+let pushTimer = null, pushPending = false, pushRetry = 0, retryTimer = null, pushSeq = 0;
+const RETRY_DELAYS = [3000, 8000, 20000, 60000];
+
+function schedulePush(delay){
+  if(!useWorker() && !CFG.token) return;
+  pushPending = true;
+  pushSeq++;
+  clearTimeout(retryTimer);
+  cloudUI('syncing', '同步中…');
+  pushTimer = setTimeout(doPush, delay == null ? 1200 : delay);
+}
+async function doPush(){
+  if(!pushPending) return;
+  const mySeq = pushSeq;
+  clearTimeout(pushTimer);
+  const snap = serialize();
+  writeCache(snap);
+  try{
+    await cloudPush(snap);
+    pushRetry = 0;
+    /* 推送期间有新改动 → 不能清标记，立刻再推一次 */
+    if(mySeq === pushSeq){ pushPending = false; cloudUI('ok', '云端已同步 ' + cloudTime()); }
+    else schedulePush(200);
+  }catch(e){
+    if(String(e.message).indexOf('REMOTE_MISSING') >= 0){
+      /* 文件不存在：建仓 + 写首份 */
+      try{
+        await fetch('https://api.github.com/user/repos', {
+          method:'POST',
+          headers:{ 'Authorization':'Bearer ' + CFG.token, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' },
+          body: JSON.stringify({ name:CFG.repo, private:true, auto_init:true,
+                                 description:'爆站游戏 · 经验台账数据（自动存档）' })
+        });
+        await cloudPush(snap);
+        pushRetry = 0;
+        if(mySeq === pushSeq){ pushPending = false; cloudUI('ok', '云端已同步 ' + cloudTime()); }
+        return;
+      }catch(e2){ /* 落到下面的重试 */ }
+    }
+    pushRetry++;
+    if(pushRetry <= RETRY_DELAYS.length){
+      cloudUI('err', '同步失败，重试中');
+      retryTimer = setTimeout(doPush, RETRY_DELAYS[pushRetry-1]);
+    }else{
+      cloudUI('err', '同步失败 · 点此重试');
+    }
+  }
+}
+function cloudTime(){
+  return new Date().toLocaleTimeString('zh-CN', {hour12:false}).slice(0,5);
+}
+
+/* --- 启动：拉云端，失败则退回本地缓存 --- */
+async function cloudInit(){
+  const chip = document.getElementById('xpCloud');
+  if(chip) chip.addEventListener('click', function(){
+    if(pushPending || pushRetry){ pushRetry = 0; doPush(); }
+    else cloudInit();
+  });
+  if(!useWorker() && !CFG.token){
+    const c = loadCache();
+    if(c && Array.isArray(c.records) && c.records.length){ XP_RECORDS = c.records; renderAll(); }
+    cloudUI('off', '本地模式');
+    return;
+  }
+  cloudUI('syncing', '连接中…');
+  try{
+    const { data } = await cloudPull();
+    if(data && Array.isArray(data.records) && data.records.length){
+      XP_RECORDS = data.records;
+      renderAll();
+      writeCache(data);
+      cloudUI('ok', '云端已连接');
+    }else{
+      /* 云端还没有 → 把页面自带的种子数据推上去 */
+      schedulePush(0);
+      cloudUI('syncing', '初始化云端…');
+    }
+  }catch(e){
+    const c = loadCache();
+    if(c && Array.isArray(c.records) && c.records.length){
+      XP_RECORDS = c.records; renderAll();
+      cloudUI('err', '离线 · 用本地缓存');
+    }else{
+      cloudUI('err', '云端不可用');
+    }
+  }
+}
+
+/* --- 云端设置 --- */
+function openCloudSetup(){
+  const cur = (function(){ try{ return localStorage.getItem('xp-ledger-token') || ''; }catch(e){ return ''; } })();
+  const v = prompt(
+    '粘贴 GitHub 令牌（fine-grained token）：\n\n' +
+    '· 权限只需 Contents: Read and write\n' +
+    '· 仓库只勾选 baozhan-data（私有）\n' +
+    '· 令牌只保存在这台电脑的浏览器里，不会写进仓库\n\n' +
+    '留空则清除令牌（退回纯本地模式）',
+    cur ? '********' : '');
+  if(v === null) return;
+  const val = String(v).trim();
+  if(val && val !== '********'){
+    try{ localStorage.setItem('xp-ledger-token', val); }catch(e){}
+    CFG.token = val;
+    cloudInit();
+  }else if(!val){
+    try{ localStorage.removeItem('xp-ledger-token'); }catch(e){}
+    CFG.token = '';
+    cloudUI('off', '本地模式');
+  }
+}
+
+/* ============================================================
+ * 手动录入表单
+ * ------------------------------------------------------------
+ * 与云端共用一套数据：提交后追加到 XP_RECORDS → renderAll() → schedulePush()
+ * prev 自动取上一条的 cur，手册里「prev 必须严格等于上一条 cur」的约束由代码保证。
+ * ============================================================ */
+function addRecord(rec){
+  const last = XP_RECORDS[XP_RECORDS.length-1];
+  const item = Object.assign({
+    dt: nowStamp(), role:'陌尘', level:(last && last.level) || 89,
+    map:'', tier:'', mobLv:null, mobQty:null,
+    pot50:false, pot20:false, stones:null,
+    prev:(last && last.cur) || 0, cur:0, note:'', affixes:[]
+  }, rec);
+  if(item.cur <= item.prev){
+    alert('当前经验值必须大于上次经验值（本次 ' + fmt(item.cur) + ' ≤ 上次 ' + fmt(item.prev) + '）');
+    return false;
+  }
+  XP_RECORDS.push(item);
+  renderAll();
+  schedulePush();
+  return true;
+}
+function nowStamp(){
+  const d = new Date(), p = x => String(x).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate())
+       + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+function bindForm(){
+  const form = document.getElementById('addForm');
+  if(!form) return;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const g = id => document.getElementById(id);
+    const map = g('fMap').value.trim();
+    if(!map){ alert('请填写地图名称'); return; }
+    const num = id => { const v = g(id).value.trim(); return v === '' ? null : Number(v); };
+    const affixes = g('fAffix').value.split('|').map(s => s.trim()).filter(Boolean);
+    const ok = addRecord({
+      dt: g('fDt').value || nowStamp(),
+      level: Number(g('fLevel').value) || 89,
+      map: map, tier: g('fTier').value.trim(),
+      mobLv: num('fMobLv'), mobQty: num('fQty'),
+      pot50: g('fPot50').checked, pot20: g('fPot20').checked,
+      stones: num('fStones'), cur: num('fCur'), note: g('fNote').value.trim(),
+      affixes: affixes
+    });
+    if(ok){
+      form.reset();
+      g('fDt').value = nowStamp();
+      g('fLevel').value = String((XP_RECORDS[XP_RECORDS.length-1]||{}).level || 89);
+      toast('已追加 ' + map + '，同步到云端');
+    }
+  });
+}
+function toast(msg){
+  let t = document.getElementById('xpToast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'xpToast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:40px;transform:translateX(-50%);'
+      + 'background:#1b2233;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;'
+      + 'z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.4);opacity:0;transition:opacity .25s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  requestAnimationFrame(function(){ t.style.opacity = '1'; });
+  clearTimeout(t._tm);
+  t._tm = setTimeout(function(){ t.style.opacity = '0'; }, 2000);
+}
+
+/* 首次渲染 + 绑定 */
+renderAll();
+bindForm();
+const _btnCloud = document.getElementById('btnCloudSetup');
+if(_btnCloud) _btnCloud.addEventListener('click', openCloudSetup);
+cloudInit();
 
 /* T 级颜色图例 */
 document.getElementById('tier-legend').innerHTML = TIER_GROUPS.map(g =>
