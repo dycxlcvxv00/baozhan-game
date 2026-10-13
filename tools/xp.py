@@ -40,7 +40,7 @@ XLSX      = os.path.join(WORKSPACE, '经验值记录表.xlsx')
 URL       = 'https://dycxlcvxv00.github.io/baozhan-game/index-xp.html'
 
 # 各等级升级总经验（升级时新增一行；与 index-xp.html 的 LEVEL_TOTALS 保持一致）
-LT_MAP = {86: 1999268000, 87: 2125066400, 88: 2260637300, 89: 2396208200}
+LT_MAP = {86: 1999268000, 87: 2125066400, 88: 2260637300, 89: 2396208200, 90: 2697170100}
 
 # GitHub Pages 的 CDN 节点 IP，--resolve 绕过 DNS 缓存拿到最新内容
 IPS = ['185.199.108.153', '185.199.109.153', '185.199.110.153']
