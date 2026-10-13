@@ -226,29 +226,7 @@
   .chip.cloud.err{color:#ff6b6b}
   .chip.cloud.err::before{color:#ff6b6b}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-  .mini-btn{
-    background:#232b3d;color:#cfd6e4;border:1px solid #333d52;border-radius:6px;
-    font-size:12px;padding:4px 10px;cursor:pointer;font-family:inherit
-  }
-  .mini-btn:hover{background:#2c3547;color:#fff}
-
-  #addPanel{margin-top:14px}
-  #addForm{padding:4px 2px 2px}
-  .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
-  .fgrid label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#98a4b5}
-  .fgrid label.wide{grid-column:1/-1}
-  .fgrid label.chk{flex-direction:row;align-items:center;gap:7px;align-self:end;padding-bottom:8px;cursor:pointer}
-  .fgrid input[type=text],.fgrid input[type=number]{
-    background:#161c2b;border:1px solid #2b3446;border-radius:6px;color:#e6ebf5;
-    padding:7px 9px;font-size:13px;font-family:inherit;width:100%
-  }
-  .fgrid input:focus{outline:none;border-color:#3d7fff}
-  .req{color:#ff8c33}
-  .submit-btn{
-    margin-top:14px;background:#2f6bff;color:#fff;border:0;border-radius:7px;
-    padding:9px 20px;font-size:13px;cursor:pointer;font-family:inherit
-  }
-  .submit-btn:hover{background:#1f5be0}
+  .chip.cloud{cursor:pointer}
 </style>
 </head>
 <body>
@@ -261,34 +239,8 @@
     <span class="chip" id="chip-maps">—</span>
     <span class="chip gold" id="chip-updated">—</span>
     <span class="sep"></span>
-    <span class="chip cloud off" id="xpCloud" title="点击可手动同步">云端<span id="xpCloudTxt">本地模式</span></span>
-    <button class="mini-btn" id="btnCloudSetup" type="button">云端设置</button>
-  </div>
-
-  <!-- ========== 手动录入（JS 提交后自动同步云端） ========== -->
-  <div id="addPanel" class="panel">
-    <div class="sec-title">
-      <h2>追加一条打图记录</h2>
-      <span class="tag">提交后自动写入云端 xp.json · 上次经验值自动取上一条</span>
+    <span class="chip cloud off" id="xpCloud" title="云端状态：点击可重试同步或设置令牌">云端<span id="xpCloudTxt">本地模式</span></span>
     </div>
-    <form id="addForm" autocomplete="off">
-      <div class="fgrid">
-        <label>地图名称<span class="req">*</span><input id="fMap" type="text" placeholder="如 空洞城寨"></label>
-        <label>阶级<input id="fTier" type="text" placeholder="T15"></label>
-        <label>怪物等级<input id="fMobLv" type="number" step="1" placeholder="88"></label>
-        <label>怪物数量 %<input id="fQty" type="number" step="1" placeholder="0"></label>
-        <label>晶石掉落<input id="fStones" type="number" step="1" placeholder="689"></label>
-        <label>当前经验值<span class="req">*</span><input id="fCur" type="number" step="1" placeholder="2114440142"></label>
-        <label>等级<input id="fLevel" type="number" step="1" value="89"></label>
-        <label>时间<input id="fDt" type="text" placeholder="2026-10-13 14:46:31"></label>
-        <label class="chk"><input id="fPot50" type="checkbox"> 经验药水 50%</label>
-        <label class="chk"><input id="fPot20" type="checkbox"> 经验药水 20%</label>
-        <label class="wide">词缀（用 <code>|</code> 分隔）<input id="fAffix" type="text" placeholder="角色攻击和施法增加40%|怪物受到伤害减少30%"></label>
-        <label class="wide">备注<input id="fNote" type="text" placeholder="狂暴"></label>
-      </div>
-      <button class="submit-btn" type="submit">追加记录并同步云端</button>
-    </form>
-  </div>
 
   <div id="summary"></div>
 
@@ -331,7 +283,7 @@
   <div id="rules" class="panel">
     <h2>统计规则</h2>
     <ol>
-      <li>每打完一张地图把截图发给 AI，自动读取<b>地图阶级与名字、怪物等级、当前经验值</b>，与上一条记录对比后追加记录并同步到本页面。</li>
+      <li>每打完一张地图把<b>截图和晶石数量</b>发给 AI，自动读取<b>地图阶级与名字、怪物等级、当前经验值</b>，与上一条记录对比后追加记录并写入云端，本页面自动同步显示。本页面为<b>只读展示</b>，不提供手工录入。</li>
       <li><b>日期时间</b>为打完图统计时刻，精确到分秒。</li>
       <li><b>本图获得经验</b> = 当前经验值 − 上次经验值。</li>
       <li><b>获得占当前等级%</b> = 本图获得经验 ÷ 当前等级总经验。</li>
@@ -2897,10 +2849,11 @@ function cloudTime(){
 
 /* --- 启动：拉云端，失败则退回本地缓存 --- */
 async function cloudInit(){
+  /* 胶囊点击：有待推/待重试 → 重推；否则打开令牌设置（换设备时用） */
   const chip = document.getElementById('xpCloud');
   if(chip) chip.addEventListener('click', function(){
-    if(pushPending || pushRetry){ pushRetry = 0; doPush(); }
-    else cloudInit();
+    if(pushPending || pushRetry){ pushRetry = 0; doPush(); return; }
+    openCloudSetup();
   });
   if(!useWorker() && !CFG.token){
     const c = loadCache();
@@ -2955,82 +2908,8 @@ function openCloudSetup(){
   }
 }
 
-/* ============================================================
- * 手动录入表单
- * ------------------------------------------------------------
- * 与云端共用一套数据：提交后追加到 XP_RECORDS → renderAll() → schedulePush()
- * prev 自动取上一条的 cur，手册里「prev 必须严格等于上一条 cur」的约束由代码保证。
- * ============================================================ */
-function addRecord(rec){
-  const last = XP_RECORDS[XP_RECORDS.length-1];
-  const item = Object.assign({
-    dt: nowStamp(), role:'陌尘', level:(last && last.level) || 89,
-    map:'', tier:'', mobLv:null, mobQty:null,
-    pot50:false, pot20:false, stones:null,
-    prev:(last && last.cur) || 0, cur:0, note:'', affixes:[]
-  }, rec);
-  if(item.cur <= item.prev){
-    alert('当前经验值必须大于上次经验值（本次 ' + fmt(item.cur) + ' ≤ 上次 ' + fmt(item.prev) + '）');
-    return false;
-  }
-  XP_RECORDS.push(item);
-  renderAll();
-  schedulePush();
-  return true;
-}
-function nowStamp(){
-  const d = new Date(), p = x => String(x).padStart(2,'0');
-  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate())
-       + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
-}
-function bindForm(){
-  const form = document.getElementById('addForm');
-  if(!form) return;
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
-    const g = id => document.getElementById(id);
-    const map = g('fMap').value.trim();
-    if(!map){ alert('请填写地图名称'); return; }
-    const num = id => { const v = g(id).value.trim(); return v === '' ? null : Number(v); };
-    const affixes = g('fAffix').value.split('|').map(s => s.trim()).filter(Boolean);
-    const ok = addRecord({
-      dt: g('fDt').value || nowStamp(),
-      level: Number(g('fLevel').value) || 89,
-      map: map, tier: g('fTier').value.trim(),
-      mobLv: num('fMobLv'), mobQty: num('fQty'),
-      pot50: g('fPot50').checked, pot20: g('fPot20').checked,
-      stones: num('fStones'), cur: num('fCur'), note: g('fNote').value.trim(),
-      affixes: affixes
-    });
-    if(ok){
-      form.reset();
-      g('fDt').value = nowStamp();
-      g('fLevel').value = String((XP_RECORDS[XP_RECORDS.length-1]||{}).level || 89);
-      toast('已追加 ' + map + '，同步到云端');
-    }
-  });
-}
-function toast(msg){
-  let t = document.getElementById('xpToast');
-  if(!t){
-    t = document.createElement('div');
-    t.id = 'xpToast';
-    t.style.cssText = 'position:fixed;left:50%;bottom:40px;transform:translateX(-50%);'
-      + 'background:#1b2233;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;'
-      + 'z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.4);opacity:0;transition:opacity .25s';
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  requestAnimationFrame(function(){ t.style.opacity = '1'; });
-  clearTimeout(t._tm);
-  t._tm = setTimeout(function(){ t.style.opacity = '0'; }, 2000);
-}
-
-/* 首次渲染 + 绑定 */
+/* 首次渲染 + 拉云端 */
 renderAll();
-bindForm();
-const _btnCloud = document.getElementById('btnCloudSetup');
-if(_btnCloud) _btnCloud.addEventListener('click', openCloudSetup);
 cloudInit();
 
 /* T 级颜色图例 */
