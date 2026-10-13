@@ -682,6 +682,7 @@
   .vcard{position:relative;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
     border:1px solid var(--line,#2a3244);border-radius:12px;
+    border-bottom-width:var(--blw,8px);border-bottom-color:var(--line,#2a3244);
     display:flex;flex-direction:column;gap:8px;padding-top:26px;
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;transition:box-shadow .2s}
   .vcard::before{content:"";position:absolute;inset:0;border-radius:12px;
@@ -697,18 +698,20 @@
     transition:background .35s}
   /* 分组名遮罩层压在上面，避免辉光盖住文字 */
   .vcard > *{position:relative;z-index:1}
-  /* 底部神绿线：沿边框「内侧」绘制，在圆角处随边框向上拐，不超出卡牌。
-     做法 = 整圈 SVG 描边（内缩 1.5px），再用 stroke-dasharray 只留底部一段，
-     dashoffset 把缺口推到左下角。改 stroke-width 即改粗细。 */
-  .vcard .bline{position:absolute;inset:0;width:100%;height:100%;
-    border-radius:12px;pointer-events:none;z-index:2;
-    opacity:0;transition:opacity .35s}
-  .vcard.graded .bline{opacity:1}
-  /* preserveAspectRatio=none 会把描边拉伸变形，故用 non-scaling-stroke 保持等宽，
-     颜色取神绿 #39ff9e + 双层 drop-shadow 提亮，3.5px 实宽在深色底上足够醒目。 */
-  .bline path{fill:none;stroke:#39ff9e;stroke-width:3.5;stroke-linecap:butt;
-    vector-effect:non-scaling-stroke;
-    filter:drop-shadow(0 0 5px #39ff9eb0) drop-shadow(0 0 2px #39ff9e70)}
+  /* 底部状态线：用「底边框」实现，不再用 SVG / 绝对定位。
+     浏览器原生border 会严格沿 border-radius 收口，左右两侧自然在圆角处向上拐，
+     绝不会超出卡牌轮廓 —— 这正是前几版定位反复出错的地方。
+     高度变量 --blw：8px ≈ 2.1mm（1px ≈ 0.2646mm），落在用户要的 2~3mm 区间；
+     需要微调时只改这一个数值即可。 */
+  .vcard{--blw:8px}
+  .vcard.graded{border-bottom-color:#39ff9e;
+    box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d,
+      inset 0 -9px 14px -3px #39ff9e70;
+    transition:border-bottom-color .35s, box-shadow .35s}
+  .vcard.licheng{border-bottom-color:#9b7bff;
+    box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d,
+      inset 0 -9px 14px -3px #9b7bff66;
+    transition:border-bottom-color .35s, box-shadow .35s}
   /* 默认无色；两个状态类各自声明自己的渐变。
      浓度按用户要求在初版基础上加深 30%：绿 45%/18%，紫 45%/18%。 */
   .vcard{--gr-grad:none}
@@ -717,7 +720,7 @@
       color-mix(in srgb,#9b7bff 45%, transparent) 0%,
       color-mix(in srgb,#9b7bff 18%, transparent) 38%,
       transparent 74%)}
-  /* 已录入 → 绿色渐变（同时点亮底部深绿线，见 .graded .bline） */
+  /* 已录入 → 绿色渐变（同时点亮底部神绿线，用底边框实现） */
   .vcard.graded{--gr-grad:linear-gradient(0deg,
       color-mix(in srgb,#3fb950 45%, transparent) 0%,
       color-mix(in srgb,#3fb950 18%, transparent) 38%,
@@ -2455,18 +2458,6 @@ function isMainChar(c){
   return !!n && n === MAIN_CHAR;
 }
 
-/* 底部神绿线：沿卡片边框内侧画一段「底部弧线」——
-   在圆角处自然随边框向上拐，且始终不超出卡片轮廓。
-   路径为 inset 1.5px 的圆角矩形底边（含左右两角），用 stroke 描边即可。 */
-function blineSVG(){
-  return '<svg class="bline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'
-       /* 路径 = 左侧短竖段 + 左下圆角 + 底边 + 右下圆角 + 右侧短竖段。
-          竖段止于 y=64（远高于底边、远低于顶部圆角起点 y=12），
-          所以两侧只在底部拐角处微微上翘，不会一路拉到顶。 */
-       +   '<path d="M1.5,64 L1.5,88 A10.5,10.5 0 0 0 12,98.5 L88,98.5 A10.5,10.5 0 0 0 98.5,88 L98.5,64" />'
-       + '</svg>';
-}
-
 function cardHTML(c, i, disp, gc){
   /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定） */
   const color = recordedToday(c) ? '#3fb950' : '#9aa4b2';
@@ -2489,13 +2480,10 @@ function cardHTML(c, i, disp, gc){
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
   return '<div class="row vrow" data-i="' + i + '"' + ((c.broker || '').trim() ? ' data-broker="' + esc((c.broker || '').trim()) + '"' : '') + '>'
     /* 主号「陌尘」紫色恒定（.licheng 不受录入状态影响）；
-       其余角色录入后加 .graded 走绿渐变 + 神绿线。 */
+       其余角色录入后加 .graded 走绿渐变 + 底部神绿线。 */
     + '<article class="vcard' + (isMainChar(c) ? ' licheng' : '')
     +   (recordedToday(c) ? ' graded' : '')
     + '" style="--el:' + color + ';--gc:' + (gc || '#7d8ea6') + '">'
-    +   blineSVG()
-    /* 说明：bline 用真实节点而非伪元素 —— 因为卡片内已有 ::before/::after 两个伪元素占位，
-       且 .vcard > * 选择器需要它是真实子元素才能吃到 z-index:1 的遮罩层级。 */
     +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
     +     'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
     +   '<div class="plate' + (recordedToday(c) ? ' fill' : '') + '">'
