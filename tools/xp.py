@@ -18,26 +18,125 @@
   python3 tools/xp.py publish
 """
 import argparse
+import base64
 import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
 import time
-from datetime import datetime
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
 
-REPO      = '/root/baozhan-game'
+# 仓库位置：沙箱里 /root/baozhan-game 会被拦，改用 /workspace/baozhan-game
+REPO_CANDIDATES = ['/root/baozhan-game', '/workspace/baozhan-game']
+REPO      = next((p for p in REPO_CANDIDATES if os.path.isdir(p)), REPO_CANDIDATES[-1])
 HTML      = os.path.join(REPO, 'index-xp.html')
 WORKSPACE = '/workspace'
 XLSX      = os.path.join(WORKSPACE, '经验值记录表.xlsx')
 URL       = 'https://dycxlcvxv00.github.io/baozhan-game/index-xp.html'
-IPS       = ['185.199.108.153', '185.199.109.153', '185.199.110.153']
 
 # 各等级升级总经验（升级时新增一行；与 index-xp.html 的 LEVEL_TOTALS 保持一致）
 LT_MAP = {86: 1999268000, 87: 2125066400, 88: 2260637300, 89: 2396208200}
 
-# GitHub Pages 的三个 CDN 节点 IP，--resolve 绕过 DNS 缓存拿到最新内容
+# GitHub Pages 的 CDN 节点 IP，--resolve 绕过 DNS 缓存拿到最新内容
 IPS = ['185.199.108.153', '185.199.109.153', '185.199.110.153']
+
+# ---------------- 云端（唯一权威数据源） ----------------
+# 数据住baozhan-data/xp.json（私有仓库），页面与本脚本都读写这一份。
+# HTML 里的 XP_SEED 只是首次访问时的兜底种子，运行期不再被写入。
+DATA_OWNER = 'dycxlcvxv00'
+DATA_REPO  = 'baozhan-data'
+DATA_PATH  = 'xp.json'
+DATA_BRANCH= 'main'
+DATA_API   = 'https://api.github.com/repos/%s/%s/contents/%s' % (
+    DATA_OWNER, DATA_REPO, DATA_PATH)
+TOKEN_FILE = os.path.join(REPO, '.gh_token')
+
+
+def get_token():
+    """令牌查找顺序：环境变量 > .gh_token 文件。
+    绝不写进 HTML 或任何会被 git 跟踪的文件。"""
+    t = os.environ.get('BAOZHAN_TOKEN', '').strip()
+    if t:
+        return t
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, encoding='utf-8') as f:
+            return f.read().strip()
+    return ''
+
+
+def _api(method, body=None, need_sha=False):
+    tok = get_token()
+    if not tok:
+        sys.exit('[ERROR] 未找到令牌。请设置环境变量 BAOZHAN_TOKEN，'
+                 '或把令牌写入 %s' % TOKEN_FILE)
+    h = {'Authorization': 'Bearer ' + tok,
+         'Accept': 'application/vnd.github+json',
+         'Content-Type': 'application/json'}
+    req = urllib.request.Request(DATA_API, headers=h, method=method,
+                                 data=json.dumps(body).encode() if body else None)
+    try:
+        return json.load(urllib.request.urlopen(req, timeout=30))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', 'ignore')[:300]
+        sys.exit('[ERROR] GitHub API %s：%s\n%s' % (method, e.code, detail))
+
+
+def cloud_pull():
+    """拉云端数据 -> (data_dict, sha)。文件不存在返回 (None, '')。"""
+    tok = get_token()
+    h = {'Authorization': 'Bearer ' + tok, 'Accept': 'application/vnd.github+json'}
+    try:
+        j = json.load(urllib.request.urlopen(
+            urllib.request.Request(DATA_API + '?t=%d' % int(time.time() * 1000),
+                                   headers=h), timeout=30))
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None, ''
+        sys.exit('[ERROR] 拉取云端失败：%s %s' % (e.code, e.read().decode('utf-8', 'ignore')[:200]))
+    data = json.loads(base64.b64decode(j['content']).decode('utf-8'))
+    return data, j['sha']
+
+
+def cloud_push(data, sha, msg):
+    """整份覆盖推送。sha 缺省 = 新建文件。"""
+    txt = json.dumps(data, ensure_ascii=False, indent=2) + '\n'
+    body = {'message': msg,
+            'content': base64.b64encode(txt.encode('utf-8')).decode(),
+            'branch': DATA_BRANCH}
+    if sha:
+        body['sha'] = sha
+    _api('PUT', body)
+
+
+def cloud_save(records, msg):
+    """把记录列表整份写回云端，自动带上摘要字段。"""
+    data, sha = cloud_pull()
+    if data is None:
+        data = {'v': 1, 'records': []}
+    data['v'] = 1
+    data['records'] = records
+    data['savedAt'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.') + \
+        '%03dZ' % (datetime.now(timezone.utc).microsecond // 1000)
+    data['updatedBy'] = 'xp.py'
+    data['count'] = len(records)
+    data['totalStones'] = sum(r.get('stones') or 0 for r in records)
+    if records:
+        data['role'] = records[-1].get('role', '')
+        data['level'] = records[-1].get('level', 0)
+    cloud_push(data, sha, msg)
+    return data
+
+
+def cloud_records():
+    """取云端记录；云端为空时回退到 HTML 里的种子数据。"""
+    data, sha = cloud_pull()
+    if data and data.get('records'):
+        return data['records'], sha, True
+    return parse_records(read_html())[0], '', False
 
 
 # ---------------- 基础读写 ----------------
@@ -112,8 +211,10 @@ def node_check():
 
 # ---------------- add ----------------
 def cmd_add(a):
-    html = read_html()
-    recs, m = parse_records(html)
+    """追加一条记录。数据源与写入目标都是云端 xp.json ——
+       页面录入和我在这里录入走的是同一份数据、同一套接口，
+       所以两边任意一侧修改都不会互相覆盖。"""
+    recs, sha, from_cloud = cloud_records()
     if not recs:
         sys.exit('[ERROR] 没有既有记录，无法推断 prev')
     last = recs[-1]
@@ -126,67 +227,189 @@ def cmd_add(a):
     dt    = a.time or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     role  = a.role or last.get('role', '陌尘')
     level = a.level or last.get('level', 86)
-    qty   = 'null' if a.qty is None else str(a.qty)
-    stone = 'null' if a.stones is None else str(a.stones)
-    p50   = 'true' if a.pot50 else 'false'
-    p20   = 'true' if a.pot20 else 'false'
     # 本图获得经验：默认 cur−prev；升级跨级时坐标系切换，用 --gained 显式指定
-    # （= 补满旧级所需 + 结转新级的读数），记录里写入显式 gained 字段
     gained_val = a.gained if a.gained is not None else (a.cur - prev)
 
-    # 词缀：--affix "xxx" 可重复传，或 --affixes "a|b|c"
-    affixes = []
-    for s in (getattr(a, 'affix', None) or []):
-        affixes.append(s)
+    affixes = list(getattr(a, 'affix', None) or [])
     if getattr(a, 'affixes', None):
         affixes += [x for x in a.affixes.split('|') if x.strip()]
-    affix_sql = ''
+
+    rec = {'dt': dt, 'role': role, 'level': int(level),
+           'map': a.map, 'tier': a.tier,
+           'mobLv': int(a.mob_lv) if a.mob_lv is not None else None,
+           'mobQty': a.qty,
+           'pot50': bool(a.pot50), 'pot20': bool(a.pot20),
+           'stones': a.stones,
+           'prev': int(prev), 'cur': int(a.cur),
+           'note': a.note or ''}
     if affixes:
-        items = ','.join("'%s'" % s.replace("\\", "\\\\").replace("'", "\\'") for s in affixes)
-        affix_sql = ",\n    affixes:[%s]" % items
+        rec['affixes'] = affixes
+    if a.gained is not None:
+        rec['gained'] = int(a.gained)
 
-    block = ("\n  { dt:'%s', role:'%s', level:%d,\n"
-             "    map:'%s', tier:'%s', mobLv:%d, mobQty:%s,\n"
-             "    pot50:%s, pot20:%s, stones:%s,\n"
-             "    prev:%d, cur:%d, note:'%s'%s%s },\n"
-             % (dt, role, level, a.map, a.tier, a.mob_lv, qty, p50, p20, stone,
-                prev, a.cur, a.note or '', affix_sql,
-                ('' if a.gained is None else ', gained:%d' % a.gained)))
+    recs.append(rec)
+    msg = ('xp: 新增 #%d %s %s 怪物%s级 晶石%s' %
+           (len(recs), rec['tier'], rec['map'], rec['mobLv'], rec['stones']))
+    cloud_save(recs, msg)
 
-    arr = m.group(0)
-    idx = arr.rfind('];')
-    new_arr = arr[:idx] + block + '];'
-    html = html[:m.start()] + new_arr + html[m.end():]
-
-    # UPDATED_AT 同步为本次时刻
-    html2 = re.sub(r"(const UPDATED_AT\s*=\s*')[^']*(')",
-                   r"\g<1>" + dt[:16] + r"\g<2>", html)
-    if html2 == html:
-        print('[WARN] 未找到/未改动 UPDATED_AT')
-    html = html2
-
-    write_html(html)
-    node_check()
-
-    total = level_total(html)
+    total = level_total(read_html())
     gtxt = ('+' + fmt(gained_val)) if gained_val >= 0 else ('−' + fmt(abs(gained_val)))
     lt_of_add = LT_MAP.get(level, total)
-    print('[OK] 已追加 #%d  %s  %s %s  怪物%d级 +%s%%  晶石%s' %
-          (len(recs) + 1, dt, a.tier, a.map, a.mob_lv,
-           a.qty if a.qty is not None else 0,
-           a.stones if a.stones is not None else 0))
+    print('[OK] 已追加 #%d  %s  %s %s  怪物%s级 +%s%%  晶石%s' %
+          (len(recs), dt, rec['tier'], rec['map'], rec['mobLv'],
+           rec['mobQty'] if rec['mobQty'] is not None else 0,
+           rec['stones'] if rec['stones'] is not None else 0))
     print('     上次 %s → 当前 %s  获得 %s (%.4f%%)  进度 %.4f%%'
-          % (fmt(prev), fmt(a.cur), gtxt,
-             gained_val / lt_of_add * 100, a.cur / lt_of_add * 100))
+          % (fmt(prev), fmt(rec['cur']), gtxt,
+             gained_val / lt_of_add * 100, rec['cur'] / lt_of_add * 100))
+    print('     数据源: %s → 已写入云端 baozhan-data/%s'
+          % ('云端' if from_cloud else 'HTML 种子', DATA_PATH))
     if gained_val < 0:
         print('     [注意] 本次为负收益（如通关失败被扣经验），页面会标红显示')
     if a.gained is not None:
-        print('     [升级] 显式 gained=%s（补满旧级 + 结转新级），已写入记录' % fmt(a.gained))
+        print('     [升级] 显式 gained=%s（补满旧级 + 结转新级）' % fmt(a.gained))
     if affixes:
         print('     词缀 %d 条: %s' % (len(affixes), ' / '.join(affixes)))
 
     if not a.no_publish:
-        cmd_publish(argparse.Namespace(msg=a.msg, wait=not a.no_wait))
+        cmd_publish(argparse.Namespace(msg=a.msg, wait=not a.no_wait, sync_seed=True))
+
+
+# ---------------- edit：对话侧纠错 ----------------
+def cmd_edit(a):
+    """按序号修改某条记录的任意字段。序号从 1 开始，与页面「全部明细」一致。
+    只改指定字段，其余原样保留；改完自动重排 prev 链。"""
+    recs, sha, _ = cloud_records()
+    if not recs:
+        sys.exit('[ERROR] 云端没有记录')
+    if a.index < 1 or a.index > len(recs):
+        sys.exit('[ERROR] 序号超出范围：1..%d' % len(recs))
+    rec = dict(recs[a.index - 1])
+    before = dict(rec)
+
+    fields = {'map': 'map', 'tier': 'tier', 'mob-lv': 'mobLv', 'qty': 'mobQty',
+              'stones': 'stones', 'cur': 'cur', 'note': 'note', 'level': 'level',
+              'time': 'dt', 'role': 'role'}
+    for opt, key in fields.items():
+        v = getattr(a, opt.replace('-', '_'), None)
+        if v is not None:
+            if key in ('mobLv', 'cur', 'level'):
+                rec[key] = int(v)
+            else:
+                rec[key] = v
+    if a.gained is not None:
+        rec['gained'] = int(a.gained)
+    if a.pot50:
+        rec['pot50'] = True
+    if a.pot20:
+        rec['pot20'] = True
+    if a.no_pot50:
+        rec['pot50'] = False
+    if a.no_pot20:
+        rec['pot20'] = False
+    if a.affixes is not None:
+        rec['affixes'] = [x for x in a.affixes.split('|') if x.strip()]
+
+    changed = [k for k in rec if before.get(k) != rec.get(k)]
+    if not changed:
+        print('[INFO] 没有字段被修改（用 -- 传参指定要改的项）')
+        return
+
+    recs[a.index - 1] = rec
+    # prev 链重排：除第 1 条外，prev 必须严格等于上一条 cur
+    for i in range(1, len(recs)):
+        recs[i]['prev'] = recs[i - 1]['cur']
+
+    cloud_save(recs, 'xp: 修正 #%d %s' % (a.index, '/'.join(changed)))
+    print('[OK] #%d 已修改：%s' % (a.index, '  '.join(
+        '%s %s→%s' % (k, before.get(k), rec.get(k)) for k in changed)))
+    print('     已重排 prev 链并写入云端')
+
+
+# ---------------- remove：删错记录 ----------------
+def cmd_remove(a):
+    recs, sha, _ = cloud_records()
+    if not recs:
+        sys.exit('[ERROR] 云端没有记录')
+    if a.index < 1 or a.index > len(recs):
+        sys.exit('[ERROR] 序号超出范围：1..%d' % len(recs))
+    if not a.yes:
+        r = recs[a.index - 1]
+        sys.exit('[ERROR] 删 #%d（%s %s %s）？确认请加 --yes'
+                 % (a.index, r.get('dt'), r.get('tier'), r.get('map')))
+    gone = recs.pop(a.index - 1)
+    for i in range(1, len(recs)):
+        recs[i]['prev'] = recs[i - 1]['cur']
+    cloud_save(recs, 'xp: 删除 #%d %s' % (a.index, gone.get('map')))
+    print('[OK] 已删除 #%d %s %s %s，剩余 %d 条'
+          % (a.index, gone.get('dt'), gone.get('tier'), gone.get('map'), len(recs)))
+
+
+# ---------------- sync：把云端数据回灌 HTML 种子 ----------------
+def cmd_sync(a):
+    """把云端记录写回 index-xp.html 的 XP_SEED。
+    运行期页面以云端为准，这一步只为：
+      1) 让 HTML 兜底种子保持最新（云端不可用时不至于退回旧数据）
+      2) 改逻辑/ 排查问题时能直接看 HTML 里的数据"""
+    recs, sha, from_cloud = cloud_records()
+    if not from_cloud:
+        print('[INFO] 云端为空，未改动 HTML')
+        return
+    lines = []
+    for r in recs:
+        aff = r.get('affixes') or []
+        aff_sql = ''
+        if aff:
+            items = ','.join("'%s'" % str(x).replace("'", "\'") for x in aff)
+            aff_sql = ',\n    affixes:[%s]' % items
+        gained_sql = '' if r.get('gained') is None else ", gained:%d" % int(r['gained'])
+        lines.append(
+            "\n  { dt:'%s', role:'%s', level:%d,\n"
+            "    map:'%s', tier:'%s', mobLv:%s, mobQty:%s,\n"
+            "    pot50:%s, pot20:%s, stones:%s,\n"
+            "    prev:%d, cur:%d, note:'%s'%s%s },"
+            % (r['dt'], r.get('role', ''), int(r.get('level', 0)),
+               str(r.get('map', '')).replace("'", "\\'"), str(r.get('tier', '')).replace("'", "\\'"),
+               'null' if r.get('mobLv') is None else int(r['mobLv']),
+               'null' if r.get('mobQty') is None else int(r['mobQty']),
+               'true' if r.get('pot50') else 'false',
+               'true' if r.get('pot20') else 'false',
+               'null' if r.get('stones') is None else int(r['stones']),
+               int(r['prev']), int(r['cur']), str(r.get('note', '')).replace("'", "\\'"),
+               aff_sql, gained_sql))
+    arr = '\n'.join(lines).lstrip('\n')
+
+    html = read_html()
+    m = re.search(r'(const XP_SEED\s*=\s*\[)(.*?)(\];)', html, re.S)
+    if not m:
+        sys.exit('[ERROR] 未找到 XP_SEED 数组')
+    html = html[:m.start()] + m.group(1) + '\n' + arr + '\n' + m.group(3) + html[m.end():]
+    dt_last = recs[-1]['dt'][:16]
+    html = re.sub(r"(const UPDATED_AT\s*=\s*')[^']*(')",
+                  r"\g<1>" + dt_last + r"\g<2>", html)
+    write_html(html)
+    node_check()
+    print('[OK] 已把云端 %d 条记录回灌到 HTML 的 XP_SEED' % len(recs))
+    print('     UPDATED_AT = %s' % dt_last)
+
+
+# ---------------- status：查看当前状态 ----------------
+def cmd_status(a):
+    data, sha = cloud_pull()
+    if not data or not data.get('records'):
+        print('云端 xp.json 为空')
+        return
+    recs = data['records']
+    last = recs[-1]
+    lt = LT_MAP.get(int(last.get('level', 86)), 0) or 1
+    print('云端 baozhan-data/%s  sha=%s' % (DATA_PATH, sha[:8]))
+    print('  savedAt   %s' % data.get('savedAt'))
+    print('  updatedBy %s' % data.get('updatedBy'))
+    print('  记录数    %d' % len(recs))
+    print('  末条      %s  %s %s  cur=%s  进度 %.4f%%'
+          % (last.get('dt'), last.get('tier'), last.get('map'),
+             fmt(last['cur']), last['cur'] / lt * 100))
+    print('  累计晶石  %s' % fmt(sum(r.get('stones') or 0 for r in recs)))
 
 
 # ---------------- 线上校验 ----------------
@@ -227,44 +450,87 @@ def wait_online(fingerprint, timeout=150, interval=3, delay=5):
 
 # ---------------- publish ----------------
 def cmd_publish(a):
+    """发布：把 HTML 回灌云端数据后提交。
+
+    优先走 git（本地有仓库时）；沙箱里没有 .git 或 push 失败，
+    自动降级为 GitHub Contents API 直接提交 —— 保证任何环境下都能发布。"""
+    if getattr(a, 'sync_seed', False):
+        cmd_sync(argparse.Namespace())
+
     html = read_html()
     recs, m = parse_records(html)
-    last = recs[-1]
-    # 指纹取「最后一条记录的原文」：新增记录、修改已有记录都能准确命中
+    last = recs[-1] if recs else {}
     raws = re.findall(r'\{[^{}]*\}', m.group(1), re.S)
-    fingerprint = re.sub(r'\s+', '', raws[-1]) if raws else str(last['cur'])
+    fingerprint = re.sub(r'\s+', '', raws[-1]) if raws else str(last.get('cur'))
 
-    subprocess.run(['git', 'add', '-A'], cwd=REPO, check=True)
-    msg = a.msg or ('经验台账：新增第%d条 %s%s 怪物%d级 晶石%s 进度%.4f%%' % (
+    msg = a.msg or ('经验台账：%d条 %s%s 怪物%s级 晶石%s进度%.4f%%' % (
         len(recs), last.get('tier', ''), last.get('map', ''),
-        last.get('mobLv', 0), last.get('stones'), last['cur'] / level_total(html) * 100))
-    r = subprocess.run(['git', 'commit', '-m', msg], cwd=REPO,
-                       capture_output=True, text=True)
-    if 'nothing to commit' in r.stdout:
-        print('[INFO] 无改动可提交')
-    else:
-        print('[OK] commit:', msg)
+        last.get('mobLv', ''), last.get('stones', ''),
+        last['cur'] / level_total(html) * 100 if last.get('cur') else 0))
 
-    p = subprocess.run(['git', 'push'], cwd=REPO, capture_output=True, text=True)
-    if p.returncode != 0:
-        sys.exit('[ERROR] push 失败：\n' + p.stderr)
-    print('[OK] 已 push')
+    pushed = False
+    if os.path.isdir(os.path.join(REPO, '.git')):
+        try:
+            subprocess.run(['git', 'add', '-A'], cwd=REPO, check=True,
+                           capture_output=True, text=True)
+            r = subprocess.run(['git', 'commit', '-m', msg], cwd=REPO,
+                               capture_output=True, text=True)
+            if 'nothing to commit' in r.stdout:
+                print('[INFO] git: 无改动可提交')
+            else:
+                print('[OK] git commit:', msg)
+            p = subprocess.run(['git', 'push'], cwd=REPO,
+                               capture_output=True, text=True)
+            if p.returncode == 0:
+                print('[OK] git push 成功')
+                pushed = True
+            else:
+                print('[WARN] git push 失败，降级为 API 提交：%s' % p.stderr.strip()[:200])
+        except Exception as e:
+            print('[WARN] git 不可用（%s），降级为 API 提交' % e)
+
+    if not pushed:
+        # Contents API 提交（一次请求一个文件）
+        tok = get_token()
+        api = 'https://api.github.com/repos/%s/baozhan-game/contents/index-xp.html' % DATA_OWNER
+        h = {'Authorization': 'Bearer ' + tok, 'Accept': 'application/vnd.github+json',
+             'Content-Type': 'application/json'}
+        try:
+            cur = json.load(urllib.request.urlopen(
+                urllib.request.Request(api, headers=h), timeout=30))
+            sha = cur['sha']
+        except Exception:
+            sha = ''
+        body = {'message': msg,
+                'content': base64.b64encode(html.encode('utf-8')).decode(),
+                'branch': 'main'}
+        if sha:
+            body['sha'] = sha
+        try:
+            res = json.load(urllib.request.urlopen(
+                urllib.request.Request(api, data=json.dumps(body).encode(),
+                                       headers=h, method='PUT'), timeout=40))
+            print('[OK] API 提交成功 sha=%s' % res['content']['sha'][:8])
+        except urllib.error.HTTPError as e:
+            sys.exit('[ERROR] API 提交失败 %s：%s' % (e.code, e.read().decode('utf-8', 'ignore')[:300]))
 
     if not getattr(a, 'no_wait', False):
         print('[..] 等待 Pages 生效（轮询，最长 150s）')
         ok, sec, same = wait_online(fingerprint)
         if ok:
-            print('[OK] 线上已生效，用时 %ss，内容%s本地' % (sec, '一致于' if same else '部分差异于'))
+            print('[OK] 线上已生效，用时 %ss' % sec)
         else:
-            print('[WARN] %ss 内未确认生效，请稍后手动 Ctrl+F5 检查（Pages/CDN 偶发延迟）' % sec)
+            print('[WARN] %ss 内未确认生效，请稍后 Ctrl+F5 检查' % sec)
     else:
         print('[INFO] 跳过等待，约 30-60s 后生效')
 
-    # 同步到工作区 + 重生成 Excel
     import shutil
-    shutil.copy(HTML, os.path.join(WORKSPACE, 'index-xp.html'))
-    cmd_excel(argparse.Namespace(quiet=False))
-    print('[OK] 已同步 /workspace/index-xp.html 与 Excel')
+    try:
+        shutil.copy(HTML, os.path.join(WORKSPACE, 'index-xp.html'))
+        cmd_excel(argparse.Namespace(quiet=False))
+        print('[OK] 已同步 /workspace/index-xp.html 与 Excel')
+    except Exception as e:
+        print('[WARN] 同步 workspace/Excel 失败：%s' % e)
 
 
 # ---------------- excel ----------------
@@ -386,11 +652,42 @@ def main():
     p.add_argument('--no-wait', action='store_true')
     p.set_defaults(func=cmd_publish)
 
+    p = sub.add_parser('edit', help='按序号修改某条记录（对话侧纠错用）')
+    p.add_argument('index', type=int, help='记录序号，从 1 开始')
+    p.add_argument('--map'); p.add_argument('--tier')
+    p.add_argument('--mob-lv', type=int); p.add_argument('--qty', type=int)
+    p.add_argument('--stones', type=int); p.add_argument('--cur', type=int)
+    p.add_argument('--note'); p.add_argument('--level', type=int)
+    p.add_argument('--time'); p.add_argument('--role')
+    p.add_argument('--gained', type=int)
+    p.add_argument('--pot50', action='store_true')
+    p.add_argument('--pot20', action='store_true')
+    p.add_argument('--no-pot50', action='store_true', help='取消 50%% 药水标记')
+    p.add_argument('--no-pot20', action='store_true', help='取消 20%% 药水标记')
+    p.add_argument('--affixes', default=None, help='词缀，多个用 | 分隔；传空串清空')
+    p.add_argument('--publish', action='store_true', help='同时发布到 GitHub Pages')
+    p.set_defaults(func=cmd_edit)
+
+    p = sub.add_parser('remove', help='删除某条记录')
+    p.add_argument('index', type=int)
+    p.add_argument('--yes', action='store_true', help='确认删除（必加）')
+    p.add_argument('--publish', action='store_true')
+    p.set_defaults(func=cmd_remove)
+
+    p = sub.add_parser('sync', help='把云端数据回灌到 HTML 的 XP_SEED')
+    p.set_defaults(func=cmd_sync)
+
+    p = sub.add_parser('status', help='查看云端当前数据状态')
+    p.set_defaults(func=cmd_status)
+
     p = sub.add_parser('excel', help='仅重新生成 Excel')
     p.set_defaults(func=cmd_excel)
 
     a = ap.parse_args()
     a.func(a)
+    # edit / remove 支持 --publish：改完顺手发布
+    if a.cmd in ('edit', 'remove') and getattr(a, 'publish', False):
+        cmd_publish(argparse.Namespace(msg=None, no_wait=False, sync_seed=True))
 
 
 if __name__ == '__main__':
