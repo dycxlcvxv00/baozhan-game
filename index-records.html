@@ -697,18 +697,18 @@
     transition:background .35s}
   /* 分组名遮罩层压在上面，避免辉光盖住文字 */
   .vcard > *{position:relative;z-index:1}
-  /* 底部深绿实线：只在已录入的卡上出现，贴在底边并略微向两侧延伸至圆角处。
-     width:calc(100% + 14px) + left:-7px 让线比框体宽一点，正好搭在圆角转折上；
-     bottom:-1px 压在边框内侧，不改变框体尺寸。 */
-  .vcard::marker{content:"";display:none}
-  .vcard .bline{content:"";position:absolute;left:-7px;bottom:-1px;
-    width:calc(100% + 14px);height:3px;border-radius:2px;
-    background:linear-gradient(90deg,
-      transparent 0%, #1a6b39 6%, #1f8043 50%, #1a6b39 94%, transparent 100%);
-    box-shadow:0 0 8px #1f804366, 0 -1px 4px #3fb95033;
-    opacity:0;transition:opacity .35s;pointer-events:none;z-index:2}
-  /* 已录入 → 线亮起（紫色卡不亮） */
+  /* 底部神绿线：沿边框「内侧」绘制，在圆角处随边框向上拐，不超出卡牌。
+     做法 = 整圈 SVG 描边（内缩 1.5px），再用 stroke-dasharray 只留底部一段，
+     dashoffset 把缺口推到左下角。改 stroke-width 即改粗细。 */
+  .vcard .bline{position:absolute;inset:0;width:100%;height:100%;
+    border-radius:12px;pointer-events:none;z-index:2;
+    opacity:0;transition:opacity .35s}
   .vcard.graded .bline{opacity:1}
+  /* preserveAspectRatio=none 会把描边拉伸变形，故用 non-scaling-stroke 保持等宽，
+     颜色取神绿 #39ff9e + 双层 drop-shadow 提亮，3.5px 实宽在深色底上足够醒目。 */
+  .bline path{fill:none;stroke:#39ff9e;stroke-width:3.5;stroke-linecap:butt;
+    vector-effect:non-scaling-stroke;
+    filter:drop-shadow(0 0 5px #39ff9eb0) drop-shadow(0 0 2px #39ff9e70)}
   /* 默认无色；两个状态类各自声明自己的渐变。
      浓度按用户要求在初版基础上加深 30%：绿 45%/18%，紫 45%/18%。 */
   .vcard{--gr-grad:none}
@@ -2436,7 +2436,16 @@ function isMainChar(c){
   return !!n && n === MAIN_CHAR;
 }
 
-function cardHTML(c, i, disp, gc){
+/* 底部神绿线：沿卡片边框内侧画一段「底部弧线」——
+   在圆角处自然随边框向上拐，且始终不超出卡片轮廓。
+   路径为 inset 1.5px 的圆角矩形底边（含左右两角），用 stroke 描边即可。 */
+function blineSVG(){
+  return '<svg class="bline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'
+       +   '<path d="M1.5,12 L1.5,88 A10.5,10.5 0 0 0 12,98.5 L88,98.5 A10.5,10.5 0 0 0 98.5,88 L98.5,12" />'
+       + '</svg>';
+}
+
+function cardHTML(c, i, disp, gc, isMain){
   /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定） */
   const color = recordedToday(c) ? '#3fb950' : '#9aa4b2';
   const t = totals(c);
@@ -2457,10 +2466,11 @@ function cardHTML(c, i, disp, gc){
     '<input class="input" type="number" inputmode="decimal" step="any" '
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
   return '<div class="row vrow" data-i="' + i + '"' + ((c.broker || '').trim() ? ' data-broker="' + esc((c.broker || '').trim()) + '"' : '') + '>'
-    + '<article class="vcard' + (isMainChar(c) ? ' licheng' : '')
-    +   (recordedToday(c) ? ' graded' : '')
+    /* 主号：紫色恒定，永不加 .graded（不转绿、不亮底线）—— 这是用户明确要求 */
+    + '<article class="vcard' + (isMain ? ' licheng' : '')
+    +   (!isMain && recordedToday(c) ? ' graded' : '')
     + '" style="--el:' + color + ';--gc:' + (gc || '#7d8ea6') + '">'
-    +   '<span class="bline"></span>'
+    +   (!isMain ? blineSVG() : '')
     /* 说明：bline 用真实节点而非伪元素 —— 因为卡片内已有 ::before/::after 两个伪元素占位，
        且 .vcard > * 选择器需要它是真实子元素才能吃到 z-index:1 的遮罩层级。 */
     +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
@@ -2663,8 +2673,12 @@ function render(){
   /* 按代练人分组：组内保持上面那份排序，组间按「组内最小序号」升序，
      未填写代练人的组一律排最后（2026-10-13 用户指定）。
      序号在分组后重新连续编号，跨组各算各的 —— 序号只用于组内辨识身份。 */
+  /* 主号「陌尘」不计入代练分组（2026-10-13 用户指定）：
+     永远独占第一行第一列，紫色恒定、不随录入状态变化。 */
+  const mainItems = [];
   const groups = [], gmap = {};
   orderIdx.forEach(function(i){
+    if(isMainChar(ACCOUNTS[i])){ mainItems.push(i); return; }
     const b = (ACCOUNTS[i].broker || '').trim();
     const k = b || '';
     if(!gmap[k]){ gmap[k] = []; groups.push({ key:k, items:gmap[k], first: ACCOUNTS[i] }); }
@@ -2681,11 +2695,15 @@ function render(){
     return 0;
   });
   /* 组间配色轮转，同一代练人每次打开都是同一套颜色 */
-  const html = groups.map(function(g, gi){
-    const color = THEME[gi % THEME.length];
-    return gbarHTML(g.key, g.items.length, color, g.items.map(function(i){ return ACCOUNTS[i]; }))
-         + g.items.map(function(i, pos){ return cardHTML(ACCOUNTS[i], i, pos + 1, color); }).join('');
-  }).join('');
+  /* 主号卡片单独先渲染，不套代练色；之后才是各代练人分栏 */
+  const html = mainItems.map(function(i){
+         return cardHTML(ACCOUNTS[i], i, i + 1, null, true);
+       }).join('')
+       + groups.map(function(g, gi){
+         const color = THEME[gi % THEME.length];
+         return gbarHTML(g.key, g.items.length, color, g.items.map(function(i){ return ACCOUNTS[i]; }))
+              + g.items.map(function(i, pos){ return cardHTML(ACCOUNTS[i], i, pos + 1, color); }).join('');
+       }).join('');
   box.innerHTML = ACCOUNTS.length
     ? html
     : '<div class="empty-tip panel">暂无角色 —— 点右上角「＋ 新增角色」添加</div>';
@@ -2800,14 +2818,8 @@ function afterCommit(i){
   /* 底部辉光 + 深绿线同步切换：录入后加 .graded（绿渐变 + 线亮起）。
      陌尘未录入时保留 .licheng（紫色）；一旦录入同样按 .graded 走绿色。 */
   const vc = document.querySelector('.row[data-i="' + i + '"] .vcard');
-  if(vc){
-    if(recordedToday(ACCOUNTS[i])){
-      vc.classList.add('graded');
-      vc.classList.remove('licheng');
-    }else{
-      vc.classList.remove('graded');
-      if(isMainChar(ACCOUNTS[i])) vc.classList.add('licheng');
-    }
+  if(vc && !isMainChar(ACCOUNTS[i])){   /* 主号紫色恒定，永不切换 */
+    vc.classList.toggle('graded', recordedToday(ACCOUNTS[i]));
   }
   const d = document.getElementById('detail-' + i);
   if(d){
@@ -2835,8 +2847,10 @@ function refreshGbars(){
     if(!oa && ob) return 1;
     return a - b;
   });
+  /* 与 render() 保持一致：主号不进代练分组，也不产生色条 */
   const groups = [], gmap = {};
   orderIdx.forEach(function(i){
+    if(isMainChar(ACCOUNTS[i])) return;
     const k = (ACCOUNTS[i].broker || '').trim();
     if(!gmap[k]){ gmap[k] = []; groups.push({ key:k, items:gmap[k], first: ACCOUNTS[i] }); }
     gmap[k].push(i);
