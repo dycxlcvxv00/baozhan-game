@@ -774,6 +774,7 @@
       <span class="chip saved" id="tbSaved">已自动保存</span>
       <button class="chip" id="btnExport" type="button">导出备份</button>
       <button class="chip" id="btnImport" type="button">导入备份</button>
+      <button class="chip" id="btnRepo" type="button" title="从仓库快照 data.json 恢复（覆盖本机数据）">仓库恢复</button>
       <button class="chip iconbtn" id="btnFull" type="button" title="全屏显示" aria-label="全屏显示">
         <span class="fs-on">⛶</span><span class="fs-off">⤡</span>
       </button>
@@ -1892,6 +1893,34 @@ function syncCloudDetail(data){
     chip.title = '点击立即与云端同步一次';
   }
 }
+
+/* ---- 仓库快照（GitHub Pages 静态 data.json）：免导入导出的恢复通道 ----
+ * 页面同源 fetch('data.json')，不需要 token / Worker。
+ * 用法：点「仓库恢复」把仓库里的最新快照灌回本机；本机没数据时开页自动恢复。 */
+const REPO_SNAPSHOT_URL = (typeof window !== 'undefined' && window.__DATA_PATH__) || 'data.json';
+async function fetchRepoSnapshot(){
+  const r = await fetch(REPO_SNAPSHOT_URL + '?t=' + Date.now(), {cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const d = await r.json();
+  if(!d || !Array.isArray(d.accounts)) throw new Error('快照格式不对');
+  return d;
+}
+async function restoreFromRepo(silent){
+  try{
+    const d = await fetchRepoSnapshot();
+    adopt(d);
+    saveLocal();
+    render();
+    toast('已从仓库快照恢复 ' + ACCOUNTS.length + ' 个角色');
+    return true;
+  }catch(e){
+    if(!silent) toast('仓库快照读取失败：' + (e && e.message ? e.message : e));
+    return false;
+  }
+}
+document.getElementById('btnRepo').addEventListener('click', function(){
+  if(confirm('将用仓库快照 data.json 覆盖本机数据，确定继续？\n（不确定时可先点「导出备份」留一份）')) restoreFromRepo(false);
+});
 
 /* 打开页面：拉云端 → 比时间戳决定用哪份；然后挂上自动推送 */
 async function cloudInit(){
@@ -3248,6 +3277,9 @@ if(_bootAuto.added.length){
   toast('已自动结算 ' + _bootAuto.added.length + ' 天');
 }
 restoreChanged(lastSavedAt);   /* 恢复「最后更改」为上次改动时间 */
+
+/* 本机完全没有数据（换设备 / 清缓存）→ 自动从仓库快照恢复，省掉导入导出 */
+if(!lastSavedAt) restoreFromRepo(true);
 
 cloudInit();                   /* 异步连云端：比时间戳决定用本机还是云端 */
 window.addEventListener('resize', function(){ syncAllDetailCols(); });
