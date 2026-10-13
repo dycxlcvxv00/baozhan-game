@@ -28,6 +28,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 # 仓库位置：沙箱里 /root/baozhan-game 会被拦，改用 /workspace/baozhan-game
@@ -151,10 +152,11 @@ def write_html(s):
 
 
 def parse_records(html):
-    """解析 XP_RECORDS 数组"""
-    m = re.search(r'const XP_RECORDS\s*=\s*\[(.*?)\n\s*\];', html, re.S)
+    """解析 XP_SEED 数组（兼容旧变量名 XP_RECORDS）"""
+    m = re.search(r'const XP_SEED\s*=\s*\[(.*?)\n\s*\];', html, re.S) \
+        or re.search(r'const XP_RECORDS\s*=\s*\[(.*?)\n\s*\];', html, re.S)
     if not m:
-        sys.exit('[ERROR] 未找到 XP_RECORDS 数组')
+        sys.exit('[ERROR] 未找到 XP_SEED / XP_RECORDS 数组')
     recs = []
     for blk in re.findall(r'\{(.*?)\}', m.group(1), re.S):
         d = {}
@@ -272,7 +274,9 @@ def cmd_add(a):
         print('     词缀 %d 条: %s' % (len(affixes), ' / '.join(affixes)))
 
     if not a.no_publish:
-        cmd_publish(argparse.Namespace(msg=a.msg, wait=not a.no_wait, sync_seed=True))
+        cmd_publish(argparse.Namespace(msg=a.msg,
+                                       no_wait=getattr(a, 'no_wait', False) or getattr(a, 'fast', False),
+                                       sync_seed=True))
 
 
 # ---------------- edit：对话侧纠错 ----------------
@@ -413,34 +417,52 @@ def cmd_status(a):
 
 
 # ---------------- 线上校验 ----------------
+def fetch_one(ip):
+    """抓单个 CDN 节点内容，失败返回 None"""
+    try:
+        r = subprocess.run(
+            ['curl', '-s', '--max-time', '8', '--resolve',
+             'dycxlcvxv00.github.io:443:' + ip, URL],
+            capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            return ip, r.stdout
+    except Exception:
+        pass
+    return None
+
+
 def fetch_nodes():
-    """同时探三个 CDN 节点，返回 [(ip, 内容), ...]——各节点生效有先后，不能只看一个"""
-    out = []
-    for ip in IPS:
-        try:
-            r = subprocess.run(
-                ['curl', '-s', '--max-time', '10', '--resolve',
-                 'dycxlcvxv00.github.io:443:' + ip, URL],
-                capture_output=True, text=True)
-            if r.returncode == 0 and r.stdout.strip():
-                out.append((ip, r.stdout))
-        except Exception:
-            pass
-    return out
+    """并发探全部 CDN 节点，返回 [(ip, 内容), ...]
+
+    各节点生效有先后，不能只看一个；这里必须并发 —— 串行 4 个节点
+    每次要 4xRTT，一轮下来能把 40s 的Pages 构建时间整个耗光。"""
+    with ThreadPoolExecutor(max_workers=len(IPS)) as ex:
+        res = list(ex.map(fetch_one, IPS))
+    return [r for r in res if r]
 
 
-def wait_online(fingerprint, timeout=150, interval=3, delay=5):
+def wait_online(fingerprint, timeout=150, interval=2, delay=4):
     """轮询直到任一节点内容与本地 sha256 完全一致；返回 (是否成功, 耗时秒, sha 是否一致)
        - 判定以 sha256 为准，避免「某节点已更新、另一节点还是旧的」造成误判
+       - 首次命中后补一小段宽限期，让尽量多的节点跟上，再返回全绿
        - 超时兜底：只要有节点出现新指纹，就报告为部分生效
-       delay: 首次请求前的静默期（push 后立刻请求必然拿到旧版，省一次无效往返）"""
+       delay: 首次请求前的静默期（push 后立刻请求必然拿到旧版，省一次无效往返）
+       interval=2 而非 3：节点并发抓取后，单轮成本已降到 1 个 RTT，
+       加密一次探测频率就能更早命中，省下的是实打实的等待时间。"""
     local = sha256_of(HTML)
     time.sleep(delay)
     t0 = time.time()
+    best = False
     while time.time() - t0 < timeout:
-        for ip, txt in fetch_nodes():
-            if sha256_text(txt) == local:
-                return True, round(time.time() - t0 + delay, 1), True
+        nodes = fetch_nodes()
+        hit = [ip for ip, txt in nodes if sha256_text(txt) == local]
+        if hit:
+            # 已命中，但可能只有部分节点跟上；再给 4s 宽限让其余节点收敛
+            if len(hit) >= len(nodes) or time.time() - t0 > timeout - 6:
+                return True, round(time.time() - t0 + delay, 1), len(hit) == len(IPS)
+            best = True
+        elif best:
+            best = False
         time.sleep(interval)
     for ip, txt in fetch_nodes():
         if fingerprint and fingerprint in txt:
@@ -643,6 +665,8 @@ def main():
     p.add_argument('--gained', type=int, default=None,
                    help='显式指定本图获得经验（升级跨级时用：补满旧级 + 结转新级之和）')
     p.add_argument('--no-publish', action='store_true', help='只写本地，不提交发布')
+    p.add_argument('--fast', action='store_true',
+                   help='提交后不等待 Pages 生效（省30-60s，后续可publish --no-wait 补等）')
     p.add_argument('--no-wait', action='store_true', help='推送后不等待线上生效')
     p.add_argument('--msg', default=None, help='自定义 commit 信息')
     p.set_defaults(func=cmd_add)
