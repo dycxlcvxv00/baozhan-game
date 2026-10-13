@@ -940,7 +940,10 @@
       <input id="fBroker" type="text" maxlength="16" autocomplete="off" list="brokerList"
              placeholder="如 老张（可留空）" />
       <datalist id="brokerList"></datalist>
-      <div class="fhint">卡牌按代练人分组分行显示，组间有一条窄色块分隔；留空 = 归入「未填写代练人」组，排在最后。</div>
+      <div class="fhint">卡牌按代练人分组分行显示。想自己控制分栏顺序，就写「名称-序号」，例如
+        <b>卤蛋-2</b>、<b>周到的周-3</b> —— 序号小的分栏排在前面。<br>
+        同组角色请写完全一样的后缀（都是「卤蛋-2」），这样才会归到同一行；分组标题只显示名称，不显示「-序号」。<br>
+        只写名称（不写序号）也可以，只是会排在所有带序号的分栏之后；留空则归入「未填写代练人」组，排在最后。</div>
     </div>
     <div class="field">
       <label for="fMaxTier">最高T级</label>
@@ -2427,6 +2430,22 @@ function tierBoxCard(c){
   if (!parts.length) return '';
   return '<span class="tierbox">' + parts.join('<span class="dash">-</span>') + '</span>';
 }
+/* ---- 代练人「名称-行序」解析 ----
+   录入格式： 名称-序号   例： 卤蛋-2 / 周到的周-3 / 小李
+   规则：
+     · 分组键 = 去掉尾部「-数字」后的名称（所以同一代练人必须写相同后缀，
+       建议第一个角色填完后，其余同组角色照抄，形如「卤蛋-2」）
+     · 行序  = 尾部数字；缺省视为 0（排在所有有行序的组之后）
+     · 名称里本身带「-」也没问题：只剥掉最后一段「-数字」 */
+function parseBroker(raw){
+  const t = String(raw == null ? '' : raw).trim();
+  const m = /^(.*?)-(\d+)$/.exec(t);      /* 非贪婪：匹配最后一个「-数字」 */
+  if(!m) return { name:t, rank:0 };
+  return { name: m[1].trim() || t, rank: Number(m[2]) || 0 };
+}
+function brokerName(raw){ return parseBroker(raw).name; }
+function brokerRank(raw){ return parseBroker(raw).rank; }
+
 /* 主号判定：只有「陌尘」是主号 —— 未录入时卡牌带紫色渐变（2026-10-13 用户指定）。
    其余角色未录入一律无色；录入后统一切绿。
    角色名匹配，容错去空格/大小写。 */
@@ -2441,11 +2460,14 @@ function isMainChar(c){
    路径为 inset 1.5px 的圆角矩形底边（含左右两角），用 stroke 描边即可。 */
 function blineSVG(){
   return '<svg class="bline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'
-       +   '<path d="M1.5,12 L1.5,88 A10.5,10.5 0 0 0 12,98.5 L88,98.5 A10.5,10.5 0 0 0 98.5,88 L98.5,12" />'
+       /* 路径 = 左侧短竖段 + 左下圆角 + 底边 + 右下圆角 + 右侧短竖段。
+          竖段止于 y=64（远高于底边、远低于顶部圆角起点 y=12），
+          所以两侧只在底部拐角处微微上翘，不会一路拉到顶。 */
+       +   '<path d="M1.5,64 L1.5,88 A10.5,10.5 0 0 0 12,98.5 L88,98.5 A10.5,10.5 0 0 0 98.5,88 L98.5,64" />'
        + '</svg>';
 }
 
-function cardHTML(c, i, disp, gc, isMain){
+function cardHTML(c, i, disp, gc){
   /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定） */
   const color = recordedToday(c) ? '#3fb950' : '#9aa4b2';
   const t = totals(c);
@@ -2466,11 +2488,12 @@ function cardHTML(c, i, disp, gc, isMain){
     '<input class="input" type="number" inputmode="decimal" step="any" '
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
   return '<div class="row vrow" data-i="' + i + '"' + ((c.broker || '').trim() ? ' data-broker="' + esc((c.broker || '').trim()) + '"' : '') + '>'
-    /* 主号：紫色恒定，永不加 .graded（不转绿、不亮底线）—— 这是用户明确要求 */
-    + '<article class="vcard' + (isMain ? ' licheng' : '')
-    +   (!isMain && recordedToday(c) ? ' graded' : '')
+    /* 主号「陌尘」紫色恒定（.licheng 不受录入状态影响）；
+       其余角色录入后加 .graded 走绿渐变 + 神绿线。 */
+    + '<article class="vcard' + (isMainChar(c) ? ' licheng' : '')
+    +   (recordedToday(c) ? ' graded' : '')
     + '" style="--el:' + color + ';--gc:' + (gc || '#7d8ea6') + '">'
-    +   (!isMain ? blineSVG() : '')
+    +   blineSVG()
     /* 说明：bline 用真实节点而非伪元素 —— 因为卡片内已有 ::before/::after 两个伪元素占位，
        且 .vcard > * 选择器需要它是真实子元素才能吃到 z-index:1 的遮罩层级。 */
     +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
@@ -2673,37 +2696,39 @@ function render(){
   /* 按代练人分组：组内保持上面那份排序，组间按「组内最小序号」升序，
      未填写代练人的组一律排最后（2026-10-13 用户指定）。
      序号在分组后重新连续编号，跨组各算各的 —— 序号只用于组内辨识身份。 */
-  /* 主号「陌尘」不计入代练分组（2026-10-13 用户指定）：
-     永远独占第一行第一列，紫色恒定、不随录入状态变化。 */
-  const mainItems = [];
+  /* 分组：按代练人分桶。
+     代练人可用「名称-序号」形式指定行序（如 卤蛋-2、周到的周-3），
+     序号小的行靠前；没写序号的按名称排序，排在有序号之后。 */
   const groups = [], gmap = {};
   orderIdx.forEach(function(i){
-    if(isMainChar(ACCOUNTS[i])){ mainItems.push(i); return; }
     const b = (ACCOUNTS[i].broker || '').trim();
-    const k = b || '';
-    if(!gmap[k]){ gmap[k] = []; groups.push({ key:k, items:gmap[k], first: ACCOUNTS[i] }); }
+    const k = b ? brokerName(b) : '';
+    if(!gmap[k]){ gmap[k] = []; groups.push({ key:k, raw:b, items:gmap[k], first: ACCOUNTS[i] }); }
     gmap[k].push(i);
   });
+  /* 组序 = 显式行序（brokerRank）优先，其次按组内最小角色序号，最后按名称 */
+  groups.forEach(function(g){ g.rank = brokerRank(g.raw); });
   groups.sort(function(x, y){
     /* 未填写组沉底 */
     if(!x.key && y.key) return 1;
     if(x.key && !y.key) return -1;
+    /* 有显式行序（卤蛋-2）的排前面，按序号升序 */
+    if(x.rank && y.rank && x.rank !== y.rank) return x.rank - y.rank;
+    if(x.rank && !y.rank) return -1;
+    if(!x.rank && y.rank) return 1;
+    /* 都无行序 → 用组内最小角色序号兜底，再退回按名称 */
     const oa = Number(x.first.order) || 0, ob = Number(y.first.order) || 0;
     if(oa && ob && oa !== ob) return oa - ob;
     if(oa && !ob) return -1;
     if(!oa && ob) return 1;
-    return 0;
+    return String(x.key).localeCompare(String(y.key), 'zh-CN');
   });
   /* 组间配色轮转，同一代练人每次打开都是同一套颜色 */
-  /* 主号卡片单独先渲染，不套代练色；之后才是各代练人分栏 */
-  const html = mainItems.map(function(i){
-         return cardHTML(ACCOUNTS[i], i, i + 1, null, true);
-       }).join('')
-       + groups.map(function(g, gi){
-         const color = THEME[gi % THEME.length];
-         return gbarHTML(g.key, g.items.length, color, g.items.map(function(i){ return ACCOUNTS[i]; }))
-              + g.items.map(function(i, pos){ return cardHTML(ACCOUNTS[i], i, pos + 1, color); }).join('');
-       }).join('');
+  const html = groups.map(function(g, gi){
+    const color = THEME[gi % THEME.length];
+    return gbarHTML(g.key, g.items.length, color, g.items.map(function(i){ return ACCOUNTS[i]; }))
+         + g.items.map(function(i, pos){ return cardHTML(ACCOUNTS[i], i, pos + 1, color); }).join('');
+  }).join('');
   box.innerHTML = ACCOUNTS.length
     ? html
     : '<div class="empty-tip panel">暂无角色 —— 点右上角「＋ 新增角色」添加</div>';
@@ -2818,8 +2843,9 @@ function afterCommit(i){
   /* 底部辉光 + 深绿线同步切换：录入后加 .graded（绿渐变 + 线亮起）。
      陌尘未录入时保留 .licheng（紫色）；一旦录入同样按 .graded 走绿色。 */
   const vc = document.querySelector('.row[data-i="' + i + '"] .vcard');
-  if(vc && !isMainChar(ACCOUNTS[i])){   /* 主号紫色恒定，永不切换 */
+  if(vc){
     vc.classList.toggle('graded', recordedToday(ACCOUNTS[i]));
+    vc.classList.toggle('licheng', isMainChar(ACCOUNTS[i]));
   }
   const d = document.getElementById('detail-' + i);
   if(d){
@@ -2847,22 +2873,26 @@ function refreshGbars(){
     if(!oa && ob) return 1;
     return a - b;
   });
-  /* 与 render() 保持一致：主号不进代练分组，也不产生色条 */
+  /* 与 render() 保持一致：按代练人分桶、支持「名称-序号」行序 */
   const groups = [], gmap = {};
   orderIdx.forEach(function(i){
-    if(isMainChar(ACCOUNTS[i])) return;
-    const k = (ACCOUNTS[i].broker || '').trim();
-    if(!gmap[k]){ gmap[k] = []; groups.push({ key:k, items:gmap[k], first: ACCOUNTS[i] }); }
+    const b = (ACCOUNTS[i].broker || '').trim();
+    const k = b ? brokerName(b) : '';
+    if(!gmap[k]){ gmap[k] = []; groups.push({ key:k, raw:b, items:gmap[k], first: ACCOUNTS[i] }); }
     gmap[k].push(i);
   });
+  groups.forEach(function(g){ g.rank = brokerRank(g.raw); });
   groups.sort(function(x, y){
     if(!x.key && y.key) return 1;
     if(x.key && !y.key) return -1;
+    if(x.rank && y.rank && x.rank !== y.rank) return x.rank - y.rank;
+    if(x.rank && !y.rank) return -1;
+    if(!x.rank && y.rank) return 1;
     const oa = Number(x.first.order) || 0, ob = Number(y.first.order) || 0;
     if(oa && ob && oa !== ob) return oa - ob;
     if(oa && !ob) return -1;
     if(!oa && ob) return 1;
-    return 0;
+    return String(x.key).localeCompare(String(y.key), 'zh-CN');
   });
   if(groups.length !== old.length) return;   /* 分组数变了 → 交给下一次 render() */
   groups.forEach(function(g, gi){
@@ -3240,8 +3270,8 @@ function openModal(mode, idx){
   if(brokerList){
     const seen = {}, names = [];
     ACCOUNTS.forEach(function(x){
-      const b = (x.broker || '').trim();
-      if(b && !seen[b]){ seen[b] = 1; names.push(b); }
+      const b = brokerName(x.broker);      /* 候选只给名称，不带 -序号 */
+      if(b && !seen[b]){ seen[b] = 1; names.push(b + '-' + ((brokerRank(x.broker)) || '')); }
     });
     names.sort();
     brokerList.innerHTML = names.map(function(n){
