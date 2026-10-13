@@ -775,6 +775,7 @@
       <button class="chip" id="btnExport" type="button">导出备份</button>
       <button class="chip" id="btnImport" type="button">导入备份</button>
       <button class="chip" id="btnRepo" type="button" title="从仓库快照 data.json 恢复（覆盖本机数据）">仓库恢复</button>
+      <button class="chip" id="btnCloudCfg" type="button" title="配置 GitHub 直连令牌，启用自动存档">云端设置</button>
       <button class="chip iconbtn" id="btnFull" type="button" title="全屏显示" aria-label="全屏显示">
         <span class="fs-on">⛶</span><span class="fs-off">⤡</span>
       </button>
@@ -1560,7 +1561,9 @@ const CFG = {
   owner : 'dycxlcvxv00',
   repo  : 'baozhan-data',
   path  : (typeof window !== 'undefined' && window.__DATA_PATH__) || 'data.json',
-  token : '',                 /* 仅本机调试可填；填了会被 GitHub 推送保护拦下，别提交 */
+  /* GitHub 直连令牌：只存在本机 localStorage（key: gem-ledger-token），绝不写进仓库文件。
+     用「云端设置」按钮填写；填好后每次改动会自动 PUT 到私有仓库 baozhan-data 的 data.json。 */
+  token : (function(){ try{ return localStorage.getItem('gem-ledger-token') || ''; }catch(e){ return ''; } })(),
   branch: 'main'
 };
 /* URL 上的 ?cloud= 优先于源码里的配置（方便部署后立即验证） */
@@ -1893,6 +1896,27 @@ function syncCloudDetail(data){
     chip.title = '点击立即与云端同步一次';
   }
 }
+
+/* ---- GitHub 直连令牌：填一次，之后每次改动自动存档到私有仓库 ---- */
+document.getElementById('btnCloudCfg').addEventListener('click', function(){
+  const cur = (function(){ try{ return localStorage.getItem('gem-ledger-token') || ''; }catch(e){ return ''; } })();
+  const v = prompt(
+    '粘贴 GitHub 令牌（fine-grained token）：\n\n' +
+    '· 权限只需 Contents: Read and write\n' +
+    '· 仓库只勾选 baozhan-data（私有）\n' +
+    '· 令牌只保存在这台电脑的浏览器里，不会写进仓库\n\n' +
+    '留空则清除令牌（退回纯本地模式）',
+    cur ? '********' : '');
+  if(v === null) return;
+  const val = (v === '********') ? cur : v.trim();
+  try{
+    if(val) localStorage.setItem('gem-ledger-token', val);
+    else localStorage.removeItem('gem-ledger-token');
+  }catch(e){ alert('浏览器拒绝写入本地存储：' + e.message); return; }
+  CFG.token = val;
+  toast(val ? '令牌已保存，正在连云端…' : '已清除令牌，转为纯本地模式');
+  setTimeout(function(){ location.reload(); }, 600);
+});
 
 /* ---- 仓库快照（GitHub Pages 静态 data.json）：免导入导出的恢复通道 ----
  * 页面同源 fetch('data.json')，不需要 token / Worker。
