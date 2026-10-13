@@ -682,7 +682,6 @@
   .vcard{position:relative;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
     border:1px solid var(--line,#2a3244);border-radius:12px;
-    border-bottom-width:var(--blw,8px);border-bottom-color:var(--line,#2a3244);
     display:flex;flex-direction:column;gap:8px;padding-top:26px;
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;transition:box-shadow .2s}
   .vcard::before{content:"";position:absolute;inset:0;border-radius:12px;
@@ -698,20 +697,19 @@
     transition:background .35s}
   /* 分组名遮罩层压在上面，避免辉光盖住文字 */
   .vcard > *{position:relative;z-index:1}
-  /* 底部状态线：用「底边框」实现，不再用 SVG / 绝对定位。
-     浏览器原生border 会严格沿 border-radius 收口，左右两侧自然在圆角处向上拐，
-     绝不会超出卡牌轮廓 —— 这正是前几版定位反复出错的地方。
-     高度变量 --blw：8px ≈ 2.1mm（1px ≈ 0.2646mm），落在用户要的 2~3mm 区间；
-     需要微调时只改这一个数值即可。 */
-  .vcard{--blw:8px}
-  .vcard.graded{border-bottom-color:#39ff9e;
+  /* 底部状态线：用「内阴影」画在卡片内部，紧贴内底边。
+     注意：不能用 border 加宽 —— 那会把卡片整体撑高，线落在边框上跑到卡外；
+     inset box-shadow 绘制在 padding box 以内，天然沿 border-radius 收口，
+     左右两侧在圆角处微微上翘，既贴住内底框又绝不超出卡片。
+     --blw：线高 7px ≈ 1.85mm（原 8px 降1px），--blc：线色（未录入为透明）。
+     两个状态类只改 --blc，.row.open 也要带上同一条线，故统一用变量传下去。 */
+  .vcard{--blw:7px;--blc:transparent;
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d,
-      inset 0 -9px 14px -3px #39ff9e70;
-    transition:border-bottom-color .35s, box-shadow .35s}
-  .vcard.licheng{border-bottom-color:#9b7bff;
-    box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d,
-      inset 0 -9px 14px -3px #9b7bff66;
-    transition:border-bottom-color .35s, box-shadow .35s}
+      inset 0 calc(-1 * var(--blw)) 0 var(--blc);
+    transition:box-shadow .35s}
+  /* 已录入 → 神绿（亮度已调暗一档）；陌尘 → 紫（同样调暗） */
+  .vcard.graded{--blc:#2fbf7d}
+  .vcard.licheng{--blc:#7f60e0}
   /* 默认无色；两个状态类各自声明自己的渐变。
      浓度按用户要求在初版基础上加深 30%：绿 45%/18%，紫 45%/18%。 */
   .vcard{--gr-grad:none}
@@ -720,13 +718,14 @@
       color-mix(in srgb,#9b7bff 45%, transparent) 0%,
       color-mix(in srgb,#9b7bff 18%, transparent) 38%,
       transparent 74%)}
-  /* 已录入 → 绿色渐变（同时点亮底部神绿线，用底边框实现） */
+  /* 已录入 → 绿色渐变（同时点亮卡片内部底部的神绿线，用内阴影实现） */
   .vcard.graded{--gr-grad:linear-gradient(0deg,
       color-mix(in srgb,#3fb950 45%, transparent) 0%,
       color-mix(in srgb,#3fb950 18%, transparent) 38%,
       transparent 74%)}
 
-  .row.open .vcard{box-shadow:0 6px 22px #000b}
+  .row.open .vcard{box-shadow:0 6px 22px #000b, inset 0 1px 0 #ffffff0d,
+      inset 0 calc(-1 * var(--blw)) 0 var(--blc)}
   .plate{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
     min-width:48%;white-space:nowrap;text-align:center;
     background:linear-gradient(180deg,#323b4e,#232b3c);
