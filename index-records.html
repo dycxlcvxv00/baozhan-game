@@ -646,32 +646,38 @@
   .empty-tip{grid-column:1/-1}
 
   /* ---------- 代练人分组：组间窄长条分隔 ----------
-     整行通栏（1/-1），高度刻意压到22px ——「窄条」；
-     左侧一条竖色标 + 名字，右侧该组角色数与剩余晶石合计。 */
-  .gbars{display:contents}
+     整行通栏（1/-1），高度 26px ——「窄条」；
+     信息全部左对齐：竖色标 + 代练人名，紧跟本日获取晶石与本日角色平均晶石。
+     右端只留一个轻量「N 个角色」作为补充。 */
   .gbar{grid-column:1/-1;
-    display:flex;align-items:center;gap:10px;
-    height:22px;padding:0 12px 0 10px;margin:4px 0 -14px;
+    display:flex;align-items:center;gap:9px;
+    height:26px;padding:0 12px 0 9px;margin:5px 0 -18px;
     border-radius:6px;
     background:linear-gradient(90deg,
       color-mix(in srgb, var(--gc) 26%, transparent) 0%,
-      color-mix(in srgb, var(--gc) 9%, transparent) 46%,
+      color-mix(in srgb, var(--gc) 8%, transparent) 52%,
       transparent 100%);
     box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--gc) 22%, transparent);
     overflow:hidden;
   }
   /* 左侧竖色标 */
-  .gbar::before{content:"";flex:0 0 3px;align-self:stretch;margin:3px 0;
+  .gbar::before{content:"";flex:0 0 3px;align-self:stretch;margin:4px 0;
     border-radius:2px;background:var(--gc);box-shadow:0 0 7px color-mix(in srgb, var(--gc) 60%, transparent)}
-  .gbar .gn{font-size:12.5px;font-weight:800;letter-spacing:.2px;color:var(--gc);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+  .gbar .gn{font-size:13px;font-weight:800;letter-spacing:.2px;color:var(--gc);
+    white-space:nowrap;flex:0 0 auto;max-width:190px;overflow:hidden;text-overflow:ellipsis}
   .gbar .gn.none{color:#8b95a5}
-  /* 右侧统计：留空占位把文字推到最右 */
-  .gbar .gs{margin-left:auto;display:flex;align-items:center;gap:12px;flex:0 0 auto;
-    font-size:11.5px;color:#93a1b5;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .gbar .gs b{color:#d8e2ef;font-weight:700}
-  .gbar .gs .gi{color:var(--gc);font-weight:800}
-  /* 顶部总计那行不需要组间距补偿 */
+  /* 左对齐的本日指标：小标题 + 数值 */
+  .gbar .gs{display:flex;align-items:baseline;gap:5px;flex:0 0 auto;white-space:nowrap;
+    font-size:11px;color:#8b95a5;font-variant-numeric:tabular-nums}
+  .gbar .gs .k{opacity:.85}
+  .gbar .gs b{font-size:12.5px;font-weight:800;color:#dce5f0;letter-spacing:0}
+  .gbar .gs .gi{color:var(--gc)}
+  /* 组内两项之间的小分隔竖线 */
+  .gbar .sep2{width:1px;height:12px;flex:0 0 1px;margin:0 2px;
+    background:color-mix(in srgb, var(--gc) 32%, transparent)}
+  /* 右端角色数 */
+  .gbar .gc2{margin-left:auto;flex:0 0 auto;font-size:11px;color:#7d8798;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
   #cards>.gbar:first-child{margin-top:0}
   .vcard{position:relative;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
@@ -727,14 +733,6 @@
     background:repeating-linear-gradient(135deg,#ffffff0a 0 4px,#ffffff00 4px 8px);
     border:1px solid var(--line,#2a3244);border-radius:6px}
   .acct-banner.none{border-style:dashed;color:#5a6478}
-  /* 代练人标记：左侧竖条 + 名字，用组色 --gc 由分组渲染时注入 */
-  .broker-tag{margin:0 14px;padding:2px 10px;display:flex;align-items:center;gap:6px;
-    font-size:11px;letter-spacing:.3px;color:#b9c6d8;
-    background:color-mix(in srgb, var(--gc,#7d8ea6) 14%, transparent);
-    border:1px solid color-mix(in srgb, var(--gc,#7d8ea6) 30%, transparent);
-    border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .broker-tag::before{content:"";flex:0 0 3px;align-self:stretch;margin:1px 0;border-radius:2px;
-    background:var(--gc,#7d8ea6)}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 10px}
   .stats .col{display:flex;flex-direction:column;gap:5px}
   .st{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
@@ -2427,8 +2425,6 @@ function cardHTML(c, i, disp, gc){
     +   '</div>'
   +   '<div class="acct-banner' + (c.account ? '' : ' none') + '">'
   +     (c.account ? esc(c.account) : '未填写账号信息') + '</div>'
-  /* 代练人标记：仅在填了代练人时显示，与分组长条呼应 */
-  +   ((c.broker || '').trim() ? '<div class="broker-tag">代练 · ' + esc((c.broker || '').trim()) + '</div>' : '')
     +   '<div class="switches">' + feats + '</div>'
     +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
     +   '<div class="stats">'
@@ -2636,8 +2632,7 @@ function render(){
   /* 组间配色轮转，同一代练人每次打开都是同一套颜色 */
   const html = groups.map(function(g, gi){
     const color = THEME[gi % THEME.length];
-    const left = g.items.reduce(function(s, i){ return s + (totals(ACCOUNTS[i]).gemsLeft || 0); }, 0);
-    return gbarHTML(g.key, g.items.length, left, color)
+    return gbarHTML(g.key, g.items.length, color, g.items.map(function(i){ return ACCOUNTS[i]; }))
          + g.items.map(function(i, pos){ return cardHTML(ACCOUNTS[i], i, pos + 1, color); }).join('');
   }).join('');
   box.innerHTML = ACCOUNTS.length
@@ -2650,16 +2645,31 @@ function render(){
   syncSettleBtn();
 }
 
-/* 代练人分组分隔条（窄长条）
-   —— 名字 + 「N 个角色」+ 该组剩余晶石合计，颜色按组序轮转 */
-function gbarHTML(name, n, left, color){
+/* 代练人分组分隔条（窄长条）—— 全部信息左对齐
+   —— 代练人名 + 本日获取晶石 + 本日角色平均晶石（+ 右端角色数）
+   本日口径（2026-10-13 用户指定）：
+     本日获取晶石     = 组内各角色本日 dayTotals().gained 之和
+     本日录入角色数   = 组内本日有录入的角色数（有明细才算）
+     本日角色平均晶石 = 本日获取晶石 ÷ 本日录入角色数（无录入则显示 —）
+   指标直接复用 dayTotals()，与「每日信息」面板同一套归期口径。 */
+function gbarHTML(name, n, color, cs){
+  const day = today();
+  let gain = 0, act = 0;
+  (cs || []).forEach(function(c){
+    const recs = (c.records || []).filter(function(r){ return settleDateOf(r) === day; });
+    if(!recs.length) return;              /* 本日没录入 → 不进分母 */
+    act++;
+    gain += dayTotals(c, recs).gained || 0;
+  });
+  const avg = act ? Math.round(gain / act) : null;
   return '<div class="gbar" style="--gc:' + color + '">'
     +   '<span class="gn' + (name ? '' : ' none') + '">'
     +     (name ? esc(name) : '未填写代练人') + '</span>'
-    +   '<span class="gs">'
-    +     '<span><b>' + n + '</b> 个角色</span>'
-    +     '<span>剩余晶石 <b class="gi">' + intNum(left) + '</b></span>'
-    +   '</span>'
+    +   '<span class="gs"><span class="k">本日获取</span><b class="gi">' + intNum(gain) + '</b></span>'
+    +   '<span class="sep2"></span>'
+    +   '<span class="gs"><span class="k">本日角色平均</span><b>'
+    +     (avg === null ? '—' : intNum(avg)) + '</b></span>'
+    +   '<span class="gc2">' + n + ' 个角色 · 本日录入 ' + act + '</span>'
     + '</div>';
 }
 
@@ -2742,6 +2752,50 @@ function afterCommit(i){
     d.innerHTML = detailHTML(i);
     if(wasOpen) syncDetailCols(i);
   }
+  /* 分栏色条上的「本日获取 / 本日角色平均」跟着变 —— 只重画色条，不动卡片，
+     避免录入瞬间整屏重排（用户正在输入的框会被清掉） */
+  refreshGbars();
+}
+
+/* 只重画代练人分栏色条（不碰 .row，因此不会打断正在输入的卡片） */
+function refreshGbars(){
+  const box = document.getElementById('cards');
+  if(!box || !ACCOUNTS.length) return;
+  const old = box.querySelectorAll('.gbar');
+  if(!old.length) return;
+  /* 复用 render() 的分组逻辑重算 —— 直接调 render 会重建 DOM，代价大且打断输入，
+     所以这里只把 .gbar 节点原地换掉，.row 节点完全不动。 */
+  const orderIdx = ACCOUNTS.map(function(_, i){ return i; }).sort(function(a, b){
+    const oa = Number(ACCOUNTS[a].order) || 0, ob = Number(ACCOUNTS[b].order) || 0;
+    if(oa && ob && oa !== ob) return oa - ob;
+    if(oa && !ob) return -1;
+    if(!oa && ob) return 1;
+    return a - b;
+  });
+  const groups = [], gmap = {};
+  orderIdx.forEach(function(i){
+    const k = (ACCOUNTS[i].broker || '').trim();
+    if(!gmap[k]){ gmap[k] = []; groups.push({ key:k, items:gmap[k], first: ACCOUNTS[i] }); }
+    gmap[k].push(i);
+  });
+  groups.sort(function(x, y){
+    if(!x.key && y.key) return 1;
+    if(x.key && !y.key) return -1;
+    const oa = Number(x.first.order) || 0, ob = Number(y.first.order) || 0;
+    if(oa && ob && oa !== ob) return oa - ob;
+    if(oa && !ob) return -1;
+    if(!oa && ob) return 1;
+    return 0;
+  });
+  if(groups.length !== old.length) return;   /* 分组数变了 → 交给下一次 render() */
+  groups.forEach(function(g, gi){
+    const el = old[gi];
+    const tmp = document.createElement('div');
+    tmp.innerHTML = gbarHTML(g.key, g.items.length, THEME[gi % THEME.length],
+                             g.items.map(function(i){ return ACCOUNTS[i]; }));
+    const fresh = tmp.firstChild;
+    if(el && fresh) el.replaceWith(fresh);
+  });
 }
 
 /* 凌晨时段（0:00~7:59）录入归前一天 —— toast 里明确告知归属，避免"我明明今天录的" */
