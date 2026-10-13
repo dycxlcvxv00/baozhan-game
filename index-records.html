@@ -686,6 +686,17 @@
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;transition:box-shadow .2s}
   .vcard::before{content:"";position:absolute;inset:0;border-radius:12px;
     border:1px solid color-mix(in srgb, var(--el) 45%, transparent);pointer-events:none}
+  /* 底部辉光：未录入 = 紫，录入后 = 绿；由下至上渐隐到无色。
+     用 ::after 叠在 background 之上，框体样式（边框/圆角/阴影/尺寸）一概不动。
+     --gc 由分组渲染注入，--gr 由 cardHTML 按 recordedToday 切换。 */
+  .vcard::after{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;
+    background:linear-gradient(0deg,
+      color-mix(in srgb, var(--gr,#9b7bff) 34%, transparent) 0%,
+      color-mix(in srgb, var(--gr,#9b7bff) 13%, transparent) 38%,
+      transparent 74%);
+    transition:background .35s}
+  /* 分组名遮罩层压在上面，避免辉光盖住文字 */
+  .vcard > *{position:relative;z-index:1}
   .row.open .vcard{box-shadow:0 6px 22px #000b}
   .plate{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
     min-width:48%;white-space:nowrap;text-align:center;
@@ -2411,7 +2422,8 @@ function cardHTML(c, i, disp, gc){
     '<input class="input" type="number" inputmode="decimal" step="any" '
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
   return '<div class="row vrow" data-i="' + i + '"' + ((c.broker || '').trim() ? ' data-broker="' + esc((c.broker || '').trim()) + '"' : '') + '>'
-    + '<article class="vcard" style="--el:' + color + ';--gc:' + (gc || '#7d8ea6') + '">'
+    + '<article class="vcard" style="--el:' + color + ';--gc:' + (gc || '#7d8ea6')
+    +   ';--gr:' + (recordedToday(c) ? '#3fb950' : '#9b7bff') + '">'
     +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
     +     'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
     +   '<div class="plate' + (recordedToday(c) ? ' fill' : '') + '">'
@@ -2746,6 +2758,9 @@ function afterCommit(i){
   /* 录入后立刻更新名字的「当日已录入」绿色，不用等刷新页面 */
   const nm = document.querySelector('.row[data-i="' + i + '"] .nm');
   if(nm) nm.classList.toggle('today', recordedToday(ACCOUNTS[i]));
+  /* 底部辉光同步切绿（未录入=紫 / 已录入=绿），只改这一个小变量 */
+  const vc = document.querySelector('.row[data-i="' + i + '"] .vcard');
+  if(vc) vc.style.setProperty('--gr', recordedToday(ACCOUNTS[i]) ? '#3fb950' : '#9b7bff');
   const d = document.getElementById('detail-' + i);
   if(d){
     const wasOpen = d.closest('.row') && d.closest('.row').classList.contains('open');
