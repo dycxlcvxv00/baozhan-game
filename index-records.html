@@ -644,6 +644,35 @@
   @media (max-width:560px){#cards{grid-template-columns:1fr}}
   .row{display:contents}
   .empty-tip{grid-column:1/-1}
+
+  /* ---------- 代练人分组：组间窄长条分隔 ----------
+     整行通栏（1/-1），高度刻意压到22px ——「窄条」；
+     左侧一条竖色标 + 名字，右侧该组角色数与剩余晶石合计。 */
+  .gbars{display:contents}
+  .gbar{grid-column:1/-1;
+    display:flex;align-items:center;gap:10px;
+    height:22px;padding:0 12px 0 10px;margin:4px 0 -14px;
+    border-radius:6px;
+    background:linear-gradient(90deg,
+      color-mix(in srgb, var(--gc) 26%, transparent) 0%,
+      color-mix(in srgb, var(--gc) 9%, transparent) 46%,
+      transparent 100%);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--gc) 22%, transparent);
+    overflow:hidden;
+  }
+  /* 左侧竖色标 */
+  .gbar::before{content:"";flex:0 0 3px;align-self:stretch;margin:3px 0;
+    border-radius:2px;background:var(--gc);box-shadow:0 0 7px color-mix(in srgb, var(--gc) 60%, transparent)}
+  .gbar .gn{font-size:12.5px;font-weight:800;letter-spacing:.2px;color:var(--gc);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+  .gbar .gn.none{color:#8b95a5}
+  /* 右侧统计：留空占位把文字推到最右 */
+  .gbar .gs{margin-left:auto;display:flex;align-items:center;gap:12px;flex:0 0 auto;
+    font-size:11.5px;color:#93a1b5;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .gbar .gs b{color:#d8e2ef;font-weight:700}
+  .gbar .gs .gi{color:var(--gc);font-weight:800}
+  /* 顶部总计那行不需要组间距补偿 */
+  #cards>.gbar:first-child{margin-top:0}
   .vcard{position:relative;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
     border:1px solid var(--line,#2a3244);border-radius:12px;
@@ -698,6 +727,14 @@
     background:repeating-linear-gradient(135deg,#ffffff0a 0 4px,#ffffff00 4px 8px);
     border:1px solid var(--line,#2a3244);border-radius:6px}
   .acct-banner.none{border-style:dashed;color:#5a6478}
+  /* 代练人标记：左侧竖条 + 名字，用组色 --gc 由分组渲染时注入 */
+  .broker-tag{margin:0 14px;padding:2px 10px;display:flex;align-items:center;gap:6px;
+    font-size:11px;letter-spacing:.3px;color:#b9c6d8;
+    background:color-mix(in srgb, var(--gc,#7d8ea6) 14%, transparent);
+    border:1px solid color-mix(in srgb, var(--gc,#7d8ea6) 30%, transparent);
+    border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .broker-tag::before{content:"";flex:0 0 3px;align-self:stretch;margin:1px 0;border-radius:2px;
+    background:var(--gc,#7d8ea6)}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 10px}
   .stats .col{display:flex;flex-direction:column;gap:5px}
   .st{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
@@ -864,6 +901,13 @@
       <div class="fhint">填了序号的角色按序号从小到大排在前面；留空的角色按原顺序排在后面。留空 = 不参与排序。</div>
     </div>
     <div class="field">
+      <label for="fBroker">代练人</label>
+      <input id="fBroker" type="text" maxlength="16" autocomplete="off" list="brokerList"
+             placeholder="如 老张（可留空）" />
+      <datalist id="brokerList"></datalist>
+      <div class="fhint">卡牌按代练人分组分行显示，组间有一条窄色块分隔；留空 = 归入「未填写代练人」组，排在最后。</div>
+    </div>
+    <div class="field">
       <label for="fMaxTier">最高T级</label>
       <input id="fMaxTier" type="text" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="如 15（可留空，填数字 13/14/15）" />
       <div class="err">T级请填数字（如 13、14、15）</div>
@@ -916,13 +960,14 @@
  *   id        内部唯一标识
  *   account   账号（可留空，即在卡片「角色名」处直接录入）
  *   name      角色名
+ *   broker    代练人（可留空 = 未分组；卡牌按此字段分组、组间加窄长条分隔）
  *   level     等级    job 职业
  *   gemsLeft / gemsSold / soldValue / laborCost / chaosCost  历史累计基准
  *   initLeft  初始存量：开始记流水之前手里已有的晶石，用作首条记录的起算基准
  *   records[] 明细 [{date, time, gemsLeft, daySold, dayValue, dayLabor, chaosCost}]
  * ============================================================ */
 let ACCOUNTS = [
-  { id:'a1', account:'', name:'', level:'', job:'',
+  { id:'a1', account:'', name:'', level:'', job:'', broker:'',
   gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
   wealth:0, initLeft:0, records:[], flags:{} }
 ];
@@ -1466,13 +1511,14 @@ function saveLocal(){
       snapshots: SNAPSHOTS || {},
       accounts: ACCOUNTS.map(function(c){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
+                 broker: (c.broker == null ? '' : String(c.broker)),
                  gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                  laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                  maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
-                 records:c.records || [], flags:c.flags || {},
-                 laborDays:c.laborDays || [] };
+               records:c.records || [], flags:c.flags || {},
+               laborDays:c.laborDays || [] };
       })
     }));
     stampChanged();
@@ -1507,6 +1553,7 @@ function loadLocal(){
       id: s.id || ('a' + (i+1)),
       account: s.account || '', name: s.name || '',
       level: s.level != null ? s.level : '', job: s.job || '',
+      broker: s.broker == null ? '' : String(s.broker),
       gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
       soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
       chaosCost: Number(s.chaosCost)||0,
@@ -1597,6 +1644,7 @@ function serialize(){
     snapshots: SNAPSHOTS || {},
     accounts: ACCOUNTS.map(function(c){
       return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
+               broker: (c.broker == null ? '' : String(c.broker)),
                gemsLeft:c.gemsLeft, gemsSold:c.gemsSold, soldValue:c.soldValue,
                laborCost:c.laborCost, chaosCost:c.chaosCost||0, wealth:Number(c.wealth)||0,
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
@@ -1738,6 +1786,7 @@ function adopt(data){
       id: s.id || ('a' + (i+1)),
       account: s.account || '', name: s.name || '',
       level: s.level != null ? s.level : '', job: s.job || '',
+      broker: s.broker == null ? '' : String(s.broker),
       gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
       soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
       chaosCost: Number(s.chaosCost)||0,
@@ -2343,7 +2392,7 @@ function tierBoxCard(c){
   if (!parts.length) return '';
   return '<span class="tierbox">' + parts.join('<span class="dash">-</span>') + '</span>';
 }
-function cardHTML(c, i, disp){
+function cardHTML(c, i, disp, gc){
   /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定） */
   const color = recordedToday(c) ? '#3fb950' : '#9aa4b2';
   const t = totals(c);
@@ -2363,8 +2412,8 @@ function cardHTML(c, i, disp){
   const numInput = (f, ph) =>
     '<input class="input" type="number" inputmode="decimal" step="any" '
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
-  return '<div class="row vrow" data-i="' + i + '">'
-    + '<article class="vcard" style="--el:' + color + '">'
+  return '<div class="row vrow" data-i="' + i + '"' + ((c.broker || '').trim() ? ' data-broker="' + esc((c.broker || '').trim()) + '"' : '') + '>'
+    + '<article class="vcard" style="--el:' + color + ';--gc:' + (gc || '#7d8ea6') + '">'
     +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
     +     'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
     +   '<div class="plate' + (recordedToday(c) ? ' fill' : '') + '">'
@@ -2376,8 +2425,10 @@ function cardHTML(c, i, disp){
     +     (c.job ? '<span class="tag">' + esc(c.job) + '</span>' : '')
     +     tierBoxCard(c)
     +   '</div>'
-    +   '<div class="acct-banner' + (c.account ? '' : ' none') + '">'
-    +     (c.account ? esc(c.account) : '未填写账号信息') + '</div>'
+  +   '<div class="acct-banner' + (c.account ? '' : ' none') + '">'
+  +     (c.account ? esc(c.account) : '未填写账号信息') + '</div>'
+  /* 代练人标记：仅在填了代练人时显示，与分组长条呼应 */
+  +   ((c.broker || '').trim() ? '<div class="broker-tag">代练 · ' + esc((c.broker || '').trim()) + '</div>' : '')
     +   '<div class="switches">' + feats + '</div>'
     +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
     +   '<div class="stats">'
@@ -2562,14 +2613,54 @@ function render(){
     if(!oa && ob) return 1;
     return a - b;
   });
+  /* 按代练人分组：组内保持上面那份排序，组间按「组内最小序号」升序，
+     未填写代练人的组一律排最后（2026-10-13 用户指定）。
+     序号在分组后重新连续编号，跨组各算各的 —— 序号只用于组内辨识身份。 */
+  const groups = [], gmap = {};
+  orderIdx.forEach(function(i){
+    const b = (ACCOUNTS[i].broker || '').trim();
+    const k = b || '';
+    if(!gmap[k]){ gmap[k] = []; groups.push({ key:k, items:gmap[k], first: ACCOUNTS[i] }); }
+    gmap[k].push(i);
+  });
+  groups.sort(function(x, y){
+    /* 未填写组沉底 */
+    if(!x.key && y.key) return 1;
+    if(x.key && !y.key) return -1;
+    const oa = Number(x.first.order) || 0, ob = Number(y.first.order) || 0;
+    if(oa && ob && oa !== ob) return oa - ob;
+    if(oa && !ob) return -1;
+    if(!oa && ob) return 1;
+    return 0;
+  });
+  /* 组间配色轮转，同一代练人每次打开都是同一套颜色 */
+  const html = groups.map(function(g, gi){
+    const color = THEME[gi % THEME.length];
+    const left = g.items.reduce(function(s, i){ return s + (totals(ACCOUNTS[i]).gemsLeft || 0); }, 0);
+    return gbarHTML(g.key, g.items.length, left, color)
+         + g.items.map(function(i, pos){ return cardHTML(ACCOUNTS[i], i, pos + 1, color); }).join('');
+  }).join('');
   box.innerHTML = ACCOUNTS.length
-    ? orderIdx.map(function(i, pos){ return cardHTML(ACCOUNTS[i], i, pos + 1); }).join('')
+    ? html
     : '<div class="empty-tip panel">暂无角色 —— 点右上角「＋ 新增角色」添加</div>';
   renderSummary(summarize(ACCOUNTS));
   renderDaily();
   document.getElementById('tbCount').textContent = ACCOUNTS.length + ' 个角色';
   syncCommitAll();
   syncSettleBtn();
+}
+
+/* 代练人分组分隔条（窄长条）
+   —— 名字 + 「N 个角色」+ 该组剩余晶石合计，颜色按组序轮转 */
+function gbarHTML(name, n, left, color){
+  return '<div class="gbar" style="--gc:' + color + '">'
+    +   '<span class="gn' + (name ? '' : ' none') + '">'
+    +     (name ? esc(name) : '未填写代练人') + '</span>'
+    +   '<span class="gs">'
+    +     '<span><b>' + n + '</b> 个角色</span>'
+    +     '<span>剩余晶石 <b class="gi">' + intNum(left) + '</b></span>'
+    +   '</span>'
+    + '</div>';
 }
 
 /* ============================================================
@@ -2986,6 +3077,8 @@ const fLevel   = document.getElementById('fLevel');
 const fWealth  = document.getElementById('fWealth');
 const fInitLeft = document.getElementById('fInitLeft');
 const fOrder   = document.getElementById('fOrder');
+const fBroker  = document.getElementById('fBroker');
+const brokerList = document.getElementById('brokerList');
 let modalMode = 'add';   // 'add' | 'edit'
 let modalIdx  = -1;
 
@@ -3011,7 +3104,20 @@ function openModal(mode, idx){
   fMinTier.value = c ? (c.minTier != null && c.minTier !== '' ? String(c.minTier) : '') : '';
   /* 最高T级：回填独立数值 */
   fMaxTier.value = c ? (c.maxTier != null && c.maxTier !== '' ? String(c.maxTier) : '') : '';
-  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier].forEach(function(el){
+  /* 代练人：回填，并给 datalist 喂上现有代练人名单做自动补全 */
+  fBroker.value = c ? (c.broker || '') : '';
+  if(brokerList){
+    const seen = {}, names = [];
+    ACCOUNTS.forEach(function(x){
+      const b = (x.broker || '').trim();
+      if(b && !seen[b]){ seen[b] = 1; names.push(b); }
+    });
+    names.sort();
+    brokerList.innerHTML = names.map(function(n){
+      return '<option value="' + esc(n) + '"></option>';
+    }).join('');
+  }
+  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fBroker].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
@@ -3087,6 +3193,8 @@ function modalOk(){
   const minTierVal = (tRaw === '') ? '' : Number(tRaw);
   /* 最高T级：同上 */
   const maxTierVal = (mxRaw === '') ? '' : Number(mxRaw);
+  /* 代练人：纯文本，去首尾空格；留空 = 未分组（卡牌归入最后一组） */
+  const brokerVal = fBroker.value.trim();
 
   if(modalMode === 'edit'){
     const c = ACCOUNTS[modalIdx];
@@ -3096,6 +3204,7 @@ function modalOk(){
     c.order = orderVal;
     c.minTier = minTierVal;
     c.maxTier = maxTierVal;
+    c.broker = brokerVal;
     /* 同步更新已展开明细的标题 */
     const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
     if(tt) tt.textContent = (name || '未命名角色') + ' · 每日明细';
@@ -3107,6 +3216,7 @@ function modalOk(){
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
       gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
       wealth: wealthVal, initLeft: initLeftVal, order: orderVal, minTier: minTierVal, maxTier: maxTierVal,
+      broker: brokerVal,
       records:[], flags:{}
     });
     render();
@@ -3129,7 +3239,7 @@ document.getElementById('mdDel').addEventListener('click', function(){
   toast('已删除该角色');
 });
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
-[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier].forEach(function(el){
+[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fBroker].forEach(function(el){
   el.addEventListener('input', function(){
     el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
   });
@@ -3267,6 +3377,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           id: s.id || ('a' + (i+1)),
           account: s.account || '', name: s.name || '',
           level: s.level != null ? s.level : '', job: s.job || '',
+          broker: s.broker == null ? '' : String(s.broker),
           gemsLeft: Number(s.gemsLeft)||0, gemsSold: Number(s.gemsSold)||0,
           soldValue: Number(s.soldValue)||0, laborCost: Number(s.laborCost)||0,
           chaosCost: Number(s.chaosCost)||0,
