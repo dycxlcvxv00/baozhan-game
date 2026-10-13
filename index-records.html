@@ -638,7 +638,9 @@
 <style id="vcStyle">
 /* ================= v12 竖版游戏UI卡牌 ================= */
   .colhead{display:none}
-  #cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:30px 12px;padding-top:26px}
+  /* padding-top：每日信息面板与第一行分组色条之间的留白。
+26px 视觉上偏松，压到 12px 让两者成组。 */
+  #cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:30px 12px;padding-top:12px}
   @media (max-width:1500px){#cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
   @media (max-width:1000px){#cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media (max-width:560px){#cards{grid-template-columns:1fr}}
