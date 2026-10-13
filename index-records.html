@@ -1679,7 +1679,7 @@ function normalizeRead(j){
 /* 拉取云端数据 → {data, sha, raw}；无文件时 {data:null, sha:'', raw:null} */
 async function cloudPull(){
   const r = await fetch(readURL(), { headers: cloudHeaders(), cache:'no-store' });
-  if(r.status === 404) return { data:null, sha:'', raw:null };
+  if(r.status === 404){ const e = new Error('REMOTE_MISSING'); e.missing = true; throw e; }
   if(!r.ok){
     const e = await r.json().catch(function(){ return {}; });
     throw new Error('拉取失败 ' + r.status + (e && e.message ? '：' + e.message : ''));
@@ -1709,6 +1709,26 @@ async function cloudPush(payload){
     throw new Error('推送失败 ' + r.status + (e && e.message ? '：' + e.message : ''));
   }
   return r.json();
+}
+
+/* 仓库或 data.json 不存在时：用令牌自动建私有仓库 + 写入首份数据。
+ * 省掉「去 GitHub 网页手动建仓库」这一步——用户只要填了令牌，剩下的页面自己做完。 */
+async function ensureRemoteExists(payload){
+  if(useWorker() || !CFG.token) return false;
+  const H = { 'Authorization':'Bearer ' + CFG.token,
+              'Accept':'application/vnd.github+json',
+              'Content-Type':'application/json' };
+  /* 1) 仓库不存在 → 建一个 private 仓库（已存在返回 422，忽略即可） */
+  try{
+    await fetch('https://api.github.com/user/repos', {
+      method:'POST', headers:H,
+      body: JSON.stringify({ name: CFG.repo, private:true, auto_init:true,
+                             description:'爆站游戏 · 角色晶石台账数据（自动存档）' })
+    });
+  }catch(e){ /* 网络不通也无所谓，下面写文件时会报真错 */ }
+  /* 2) 直接 PUT 写入整份数据（sha 缺省 = 新建文件） */
+  await cloudPush(payload);
+  return true;
 }
 
 /* 把云端 accounts + snapshots 灌进内存 */
@@ -1963,6 +1983,25 @@ async function cloudInit(){
     remote = r.data; sha = r.sha;
     syncCloudDetail(remote);
   }catch(err){
+    /* 云端还没有仓库/文件，且本机有真实数据 → 自动建仓并完成首次上传 */
+    if(err && err.missing){
+      const localSaved0 = latestStampLocal();
+      if(!useWorker() && CFG.token && localSaved0 && ACCOUNTS.length){
+        try{
+          cloudUI('syncing', '正在创建私有仓库…');
+          saveLocal();
+          await ensureRemoteExists(JSON.parse(localStorage.getItem(LS_KEY)));
+          cloudUI('ok', '云端已接通 ' + cloudTime());
+          toast('已自动创建私有仓库 ' + CFG.repo + ' 并完成首次存档');
+          return;
+        }catch(e2){
+          cloudUI('err', '自动建仓失败·点击重试');
+          const c2 = document.getElementById('tbCloud');
+          if(c2) c2.title = '自动创建私有仓库失败：' + (e2 && e2.message ? e2.message : e2);
+          return;
+        }
+      }
+    }
     cloudUI('err', '云端未连接·点击重试');
     const chip = document.getElementById('tbCloud');
     if(chip) chip.title = String(err.message || err);
