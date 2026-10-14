@@ -475,8 +475,10 @@ def cmd_publish(a):
     """发布：把 HTML 回灌云端数据后提交。
 
     优先走 git（本地有仓库时）；沙箱里没有 .git 或 push 失败，
-    自动降级为 GitHub Contents API 直接提交 —— 保证任何环境下都能发布。"""
-    if getattr(a, 'sync_seed', False):
+    自动降级为 GitHub Contents API 直接提交 —— 保证任何环境下都能发布。
+    回灌种子默认开启（与手册「publish = 回灌 + 提交部署 + 验证 + 同步 Excel」一致），
+    add 内部调用会显式传 sync_seed=True；--no-sync 可跳过回灌直接部署当前 HTML。"""
+    if getattr(a, 'sync_seed', False) or not getattr(a, 'no_sync', False):
         cmd_sync(argparse.Namespace())
 
     html = read_html()
@@ -674,7 +676,9 @@ def main():
     p = sub.add_parser('publish', help='提交+推送+验证+同步')
     p.add_argument('--msg', default=None)
     p.add_argument('--no-wait', action='store_true')
-    p.set_defaults(func=cmd_publish)
+    p.add_argument('--no-sync', action='store_true',
+                   help='跳过云端回灌种子，直接部署当前 HTML')
+    p.set_defaults(func=cmd_publish, sync_seed=True)
 
     p = sub.add_parser('edit', help='按序号修改某条记录（对话侧纠错用）')
     p.add_argument('index', type=int, help='记录序号，从 1 开始')
