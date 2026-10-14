@@ -21,3 +21,4 @@ Thumbs.db
 .secrets/
 *.token
 *.pem
+.gh_token
