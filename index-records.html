@@ -1129,11 +1129,19 @@ function recStamp(r){
 function income(r){ return (Number(r.dayValue)||0); }
 function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v); }
 
-/* 人工费（新口径 2026-10-01）：按「角色×天」计费，每天 15 元；
-   默认不勾选 = 自己打的（免单，0）；勾选 = 用了代练（15）。
-   laborDays 只存「用了代练」的日期（例外集合），其余天默认免单。 */
+/* 人工费（新口径 2026-10-01）：按「角色×天」计费，每天 15 元。
+   两种模式（2026-10-14 新增「默认代练」）：
+   · 普通卡（laborAll 未置位）：默认不勾选 = 自己打的（免单，0）；勾选 = 用了代练（15）。
+     laborDays 只存「用了代练」的日期（例外集合），其余天默认免单。
+   · 代练卡（laborAll = true）：默认每天计代练（15）；
+     laborOff 只存「点击取消」的日期（例外集合），其余天默认代练，
+     再点一次勾回来 → 从 laborOff 移除。历史 laborDays 原样保留、不再参与计算。 */
 function laborDaysOf(c){ return (c && Array.isArray(c.laborDays)) ? c.laborDays : []; }
-function laborOfDay(c, date){ return laborDaysOf(c).indexOf(date) >= 0 ? 15 : 0; }
+function laborOffOf(c){ return (c && Array.isArray(c.laborOff)) ? c.laborOff : []; }
+function laborOfDay(c, date){
+  if(c && c.laborAll){ return laborOffOf(c).indexOf(date) >= 0 ? 0 : 15; }
+  return laborDaysOf(c).indexOf(date) >= 0 ? 15 : 0;
+}
 function laborTotal(c){
   const days = {};
   (c.records || []).forEach(function(r){ const d = settleDateOf(r); if(d) days[d] = 1; });
@@ -1563,7 +1571,8 @@ function saveLocal(){
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                  maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
                records:c.records || [], flags:c.flags || {},
-               laborDays:c.laborDays || [] };
+               laborDays:c.laborDays || [],
+               laborAll:c.laborAll || false, laborOff:c.laborOff || [] };
       })
     }));
     stampChanged();
@@ -1619,6 +1628,8 @@ function loadLocal(){
       /* 人工费新口径：只存「用了代练」的日期（例外集合），其余天默认免单。
          老数据没有该字段 → 置 null，下面统一做一次性迁移。 */
       laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
+      laborAll: !!s.laborAll,
+      laborOff: Array.isArray(s.laborOff) ? s.laborOff.slice() : [],
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
@@ -1696,7 +1707,8 @@ function serialize(){
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                  maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
                records:c.records || [], flags:c.flags || {},
-               laborDays:c.laborDays || [] };
+               laborDays:c.laborDays || [],
+               laborAll:c.laborAll || false, laborOff:c.laborOff || [] };
     })
   };
 }
@@ -1848,6 +1860,8 @@ function adopt(data){
                  chaosCost:Number(r.chaosCost)||0 };
       }) : [],
       laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
+      laborAll: !!s.laborAll,
+      laborOff: Array.isArray(s.laborOff) ? s.laborOff.slice() : [],
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
@@ -2479,6 +2493,9 @@ function cardHTML(c, i, disp, gc){
   }).join('');
   /* 代练开关：点亮 = 今天计人工费 15（与每日信息面板的代练勾选同一份数据） */
   const dlon = laborOfDay(c, today()) > 0;
+  const dltitle = c.laborAll
+    ? '代练开关（默认代练）：点亮=今天计人工费 15；点击取消当天'
+    : '代练开关：点亮=今天计人工费 15；熄灭=自己打的免单';
   const numInput = (f, ph) =>
     '<input class="input" type="number" inputmode="decimal" step="any" '
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
@@ -2489,7 +2506,7 @@ function cardHTML(c, i, disp, gc){
     +   (recordedToday(c) ? ' graded' : '')
     + '" style="--el:' + color + ';--gc:' + (gc || '#7d8ea6') + '">'
     +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
-    +     'title="代练开关：点亮=今天计人工费 15；熄灭=自己打的免单">代</span>'
+    +     'title="' + dltitle + '">代</span>'
     +   '<div class="plate' + (recordedToday(c) ? ' fill' : '') + '">'
     +     '<span class="nm' + (c.name ? '' : ' empty') + (recordedToday(c) ? ' today' : '') + '">'
     +       (c.name ? esc(c.name) : '未命名角色') + '</span>'
@@ -2641,13 +2658,22 @@ function bindDayFold(container, defaultFold){
   });
 }
 
-/* 代练勾选：切换某角色某天是否计人工费（15）；默认不勾=自己打的免单 */
+/* 代练勾选：切换某角色某天是否计人工费（15）。
+   普通卡：默认不勾=自己打的免单，勾选=用了代练（laborDays 例外集合）。
+   代练卡（laborAll）：默认每天代练，取消勾选=该天免单（laborOff 例外集合）。 */
 function toggleLabor(i, d, checked){
   const c = ACCOUNTS[i]; if(!c) return;
-  c.laborDays = c.laborDays || [];
-  const k = c.laborDays.indexOf(d);
-  if(checked && k < 0) c.laborDays.push(d);
-  if(!checked && k >= 0) c.laborDays.splice(k, 1);
+  if(c.laborAll){
+    c.laborOff = c.laborOff || [];
+    const k = c.laborOff.indexOf(d);
+    if(checked && k >= 0) c.laborOff.splice(k, 1);
+    if(!checked && k < 0) c.laborOff.push(d);
+  } else {
+    c.laborDays = c.laborDays || [];
+    const k = c.laborDays.indexOf(d);
+    if(checked && k < 0) c.laborDays.push(d);
+    if(!checked && k >= 0) c.laborDays.splice(k, 1);
+  }
   saveLocal();                 /* 落本地 + 推送云端 */
   renderDaily();               /* 重建每日面板：指标与勾选态跟随（折叠态由 localStorage 记忆保留） */
   refreshNumbers(i);           /* 卡片累计人工 + 顶部总支出联动 */
@@ -3431,10 +3457,18 @@ document.addEventListener('click', function(e){
     const c = ACCOUNTS[i];
     if(!c) return;
     const d = today();
-    const days = laborDaysOf(c).slice();
-    const on = days.indexOf(d) < 0;
-    if(on) days.push(d); else days.splice(days.indexOf(d), 1);
-    c.laborDays = days;
+    let on;
+    if(c.laborAll){
+      c.laborOff = c.laborOff || [];
+      const k = c.laborOff.indexOf(d);
+      on = k >= 0;                      /* 在例外集=当前熄灭 → 点亮 */
+      if(on) c.laborOff.splice(k, 1); else c.laborOff.push(d);
+    } else {
+      c.laborDays = c.laborDays || [];
+      const k = c.laborDays.indexOf(d);
+      on = k < 0;                       /* 不在代练集=当前熄灭 → 点亮 */
+      if(on) c.laborDays.push(d); else c.laborDays.splice(k, 1);
+    }
     dl.classList.toggle('on', on);
     refreshNumbers(i);
     saveLocal();
@@ -3544,6 +3578,8 @@ document.getElementById('fileInput').addEventListener('change', function(e){
                      chaosCost:Number(r.chaosCost)||0 };
           }) : [],
           laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
+          laborAll: !!s.laborAll,
+          laborOff: Array.isArray(s.laborOff) ? s.laborOff.slice() : [],
           flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
         };
       });
