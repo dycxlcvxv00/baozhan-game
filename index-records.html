@@ -342,8 +342,9 @@
   }
   /* 未开启：灰 */
   .feat.off{color:var(--mute);border-color:rgba(125,165,225,0.18);background:rgba(255,255,255,0.02);opacity:.72}
-  /* 已开启：绿 */
+  /* 已开启：绿（「切换」为负面状态，开启时红色） */
   .feat.on{color:var(--ok);border-color:rgba(87,227,155,0.55);background:rgba(87,227,155,0.12)}
+  .feat.on[data-key="toggle5"]{color:#ff5257;border-color:rgba(255,82,87,0.55);background:rgba(255,82,87,0.12)}
   /* 行尾整体：修改按钮，同行相邻、垂直居中对齐 */
   .who .tail{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
 
@@ -762,6 +763,10 @@
   .switches .sw.on[data-key="chaos"]{color:#c77bff;border-color:#c77bff66;
     background:#c77bff1f;box-shadow:0 0 6px #c77bff45;
     text-shadow:0 0 5px #c77bff66}
+  /* 「切换」= 负面状态，开启时红色（2026-10-16 用户指定） */
+  .switches .sw.on[data-key="toggle5"]{color:#ff5257;border-color:#ff525766;
+    background:#ff52571f;box-shadow:0 0 6px #ff525745;
+    text-shadow:0 0 5px #ff525766}
   .switches{display:flex;justify-content:space-between;gap:5px;padding:0 10px}
   .switches .sw{flex:1;padding:0 4px}
   .sw.tagsw{flex:0 0 auto;padding:0 10px;border-radius:6px;line-height:20px}
