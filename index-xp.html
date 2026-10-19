@@ -310,7 +310,7 @@
 const LEVEL_TOTALS = { 86: 1999268000, 87: 2125066400, 88: 2260637300, 89: 2396208200, 90: 2697170100, 91: 299813200 };
 const LEVEL_TOTAL  = LEVEL_TOTALS[87];   /* 当前等级（87）升级总经验 */
 const ltOf = r => LEVEL_TOTALS[r.level] || LEVEL_TOTAL;
-const UPDATED_AT  = '2026-10-19 16:06';
+const UPDATED_AT  = '2026-10-19 16:17';
 
 /* dt 为统计时刻，精确到分秒；
    #1 为 86 级首张统计图按 0 起点计；前两条分秒为补记时刻 */
@@ -2874,6 +2874,11 @@ const XP_SEED = [
     map:'贫民窟', tier:'T15', mobLv:88, mobQty:0,
     pot50:false, pot20:false, stones:752,
     prev:2694217574, cur:69324669, note:'怪物数量 0(面板)；【升91级】补满90级 2,949,526 + 结转91级 69,324,669 = 72,274,195；91级总量 299,813,200', gained:72274195 },
+
+  { dt:'2026-10-19 16:17:23', role:'陌尘', level:91,
+    map:'索诺拉墓园', tier:'T15', mobLv:88, mobQty:0,
+    pot50:false, pot20:false, stones:787,
+    prev:69324669, cur:222709225, note:'怪物数量 0(面板)' },
 ];
 
 /* 运行时数据源：初始为种子数据，cloudInit()拉到云端后会被整体替换。
