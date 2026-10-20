@@ -535,6 +535,45 @@
   .field.bad .err{display:block}
   /* 字段下面的静态说明（不是报错，常显） */
   .field .fhint{font-size:11px;color:var(--mute);margin-top:5px;line-height:1.55}
+  /* 下拉（代练人从名册里选） */
+  .field select{
+    width:100%;height:34px;padding:0 9px;border-radius:9px;
+    background:rgba(255,255,255,0.055);border:1px solid rgba(125,165,225,0.22);
+    color:var(--txt);font-size:13px;font-family:inherit;outline:none;transition:.16s;
+    appearance:none;-webkit-appearance:none;cursor:pointer;
+  }
+  .field select:hover{background:rgba(255,255,255,0.075);border-color:rgba(125,165,225,0.36)}
+  .field select:focus{background:rgba(47,230,208,0.09);border-color:rgba(47,230,208,0.55)}
+  .field select option{background:#131a2a;color:var(--txt)}
+  /* ---------- 设置弹窗：代练人名册 ---------- */
+  .set-modal{width:560px;max-width:100%;max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+  .set-modal .bk-list{flex:1 1 auto;min-height:0;overflow:auto;margin:14px -4px 0 0;padding-right:4px}
+  .set-modal .modal-foot{flex:0 0 auto}
+  .bk-add{display:flex;gap:8px;margin-top:6px}
+  .bk-add input{
+    flex:1 1 auto;height:34px;padding:0 11px;border-radius:9px;
+    background:rgba(255,255,255,0.055);border:1px solid rgba(125,165,225,0.22);
+    color:var(--txt);font-size:13px;font-family:inherit;outline:none;
+  }
+  .bk-add input#bkRank{flex:0 0 74px}
+  .bk-add input:focus{border-color:rgba(47,230,208,0.55);background:rgba(47,230,208,0.09)}
+  .set-modal > .err{margin-top:6px}
+  .bk-list::-webkit-scrollbar{width:8px}
+  .bk-list::-webkit-scrollbar-thumb{background:rgba(125,165,225,0.24);border-radius:4px}
+  .bk-row{
+    display:flex;align-items:center;gap:10px;padding:9px 12px;margin-bottom:8px;
+    border:1px solid rgba(125,165,225,0.18);border-radius:11px;
+    background:rgba(255,255,255,0.022);
+  }
+  .bk-row .bk-n{flex:1 1 auto;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bk-row .bk-c{font-size:11.5px;color:var(--mute);white-space:nowrap}
+  .bk-row .bkb{
+    height:26px;padding:0 10px;border-radius:7px;font-size:11.5px;cursor:pointer;
+    background:rgba(125,165,225,0.10);border:1px solid rgba(125,165,225,0.24);color:var(--text);
+  }
+  .bk-row .bkb:hover{background:rgba(125,165,225,0.20)}
+  .bk-row .bkb.del{background:rgba(255,107,107,0.10);border-color:rgba(255,107,107,0.28);color:#ff9b9b}
+  .bk-row .bkb.del:hover{background:rgba(255,107,107,0.20)}
   .modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
   /* ---------- 结算结果弹窗 ---------- */
   .settle-modal{
@@ -854,6 +893,7 @@
       <span class="dot" id="cloudDot"></span><span id="cloudTxt">云端待连接</span>
     </span>
     <span class="right">
+      <button class="chip" id="btnSetting" type="button" title="代练人名册与页面设置">⚙ 设置</button>
       <button class="chip add" id="btnAdd" type="button" title="新增一个角色卡片"><span class="plus">＋</span>新增角色</button>
       <span class="chip saved" id="tbSaved">已自动保存</span>
       <button class="chip" id="btnExport" type="button">导出备份</button>
@@ -949,13 +989,11 @@
     </div>
     <div class="field">
       <label for="fBroker">代练人</label>
-      <input id="fBroker" type="text" maxlength="16" autocomplete="off" list="brokerList"
-             placeholder="如 老张（可留空）" />
-      <datalist id="brokerList"></datalist>
-      <div class="fhint">卡牌按代练人分组分行显示。想自己控制分栏顺序，就写「名称-序号」，例如
-        <b>卤蛋-2</b>、<b>周到的周-3</b> —— 序号小的分栏排在前面。<br>
-        同组角色请写完全一样的后缀（都是「卤蛋-2」），这样才会归到同一行；分组标题只显示名称，不显示「-序号」。<br>
-        只写名称（不写序号）也可以，只是会排在所有带序号的分栏之后；留空则归入「未填写代练人」组，排在最后。</div>
+      <select id="fBroker">
+        <option value="">未分组</option>
+      </select>
+      <div class="fhint">从顶部「⚙ 设置」的代练人名册里选择。卡牌按代练人分组分行显示，
+        顺序按名册里的序号从小到大；选「未分组」则排在最后。</div>
     </div>
     <div class="field">
       <label for="fMaxTier">最高T级</label>
@@ -975,6 +1013,27 @@
               title="删除该角色卡片，其所有明细一并删除">删除角色</button>
       <button class="mbtn" type="button" id="mdCancel">取消</button>
       <button class="mbtn primary" type="button" id="mdOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 弹窗：设置（代练人名册） ========== -->
+<div class="mask" id="setMask">
+  <div class="modal panel set-modal" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <h2 id="setTitle"><span class="bar"></span><span id="setTitleTxt">代练人名册</span></h2>
+    <div class="hint">在这里统一维护代练人。新增/修改角色时直接下拉选择，不再手写。名称后的「序号」决定分栏顺序（小的排前面）。</div>
+
+    <div class="bk-add">
+      <input id="bkName" type="text" maxlength="16" autocomplete="off" placeholder="代练人名称，如 周到的周" />
+      <input id="bkRank" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="序号" />
+      <button class="mbtn primary" type="button" id="bkAdd">添加</button>
+    </div>
+    <div class="err" id="bkErr">名称已存在</div>
+
+    <div class="bk-list" id="bkList"></div>
+
+    <div class="modal-foot">
+      <button class="mbtn" type="button" id="setClose">关闭</button>
     </div>
   </div>
 </div>
@@ -1025,6 +1084,77 @@ let ACCOUNTS = [
 /* 日结快照库：{ '2026-09-23': {date, accounts:[...], total:{...}}, ... }
  * 与 ACCOUNTS 一起存进 localStorage / 云端 data.json */
 let SNAPSHOTS = {};
+
+/* 代练人名册：[{name:'卤蛋', rank:2}, ...]
+ * 统一在顶部「⚙ 设置」里维护；角色卡片的代练人字段从这里下拉选择。
+ * rank 决定分栏顺序（小的排前面），0 = 未指定序号（排在有序号之后）。 */
+let BROKERS = [];
+
+/* 名册去重：同名同序号视为同一条。返回是否新增 */
+function brokerExists(name, rank){
+  return BROKERS.some(function(b){
+    return b.name === name && (Number(b.rank) || 0) === (Number(rank) || 0);
+  });
+}
+/* 名册排序：先按序号（有数的在前），再按名称 */
+function brokerSorted(){
+  return BROKERS.slice().sort(function(a, b){
+    const ra = Number(a.rank) || 0, rb = Number(b.rank) || 0;
+    if(ra && rb && ra !== rb) return ra - rb;
+    if(ra && !rb) return -1;
+    if(!ra && rb) return 1;
+    return String(a.name).localeCompare(String(b.name), 'zh-CN');
+  });
+}
+/* 卡片里存的是「名称-序号」字符串，名册与卡片互转 */
+function brokerLabel(b){ return (Number(b.rank) || 0) ? (b.name + '-' + Number(b.rank)) : b.name; }
+
+/* 归一化：把卡片上的取值对齐到名册。
+   卡片写「卤蛋」、名册只有「卤蛋-2」时 → 返回「卤蛋-2」（同一人）。
+   名册里完全没有 → 原样返回（老值保留，不丢数据）。 */
+function normalizeBroker(raw){
+  const p = parseBroker(raw);
+  if(!p.name) return '';
+  const hit = BROKERS.filter(function(b){ return b.name === p.name; })[0];
+  if(!hit) return String(raw || '').trim();
+  if(p.rank && p.rank === (Number(hit.rank) || 0)) return brokerLabel(hit);
+  if(!p.rank) return brokerLabel(hit);          /* 只写名称 → 补上名册里的序号 */
+  return brokerLabel(hit);
+}
+
+/* 名册就位后，把所有卡片的代练人取值对齐到名册（同名不同写法统一） */
+function alignBrokers(){
+  ACCOUNTS.forEach(function(c){
+    const v = normalizeBroker(c.broker);
+    if(v) c.broker = v;
+  });
+}
+
+/* 从存档里读名册；缺失/损坏时从现有卡片反推补一份（老数据迁移用） */
+function readBrokers(raw){
+  const out = [], seen = {};
+  (Array.isArray(raw) ? raw : []).forEach(function(b){
+    const nm = String((b && b.name) || '').trim();
+    if(!nm) return;
+    const rk = Number(b && b.rank) || 0;
+    const k = nm + '#' + rk;
+    if(seen[k]) return;
+    seen[k] = 1; out.push({ name:nm, rank:rk });
+  });
+  if(out.length) return out;
+  /* 反推：把卡片里出现过的「名称-序号」都收进名册。
+     同一名称只保留一条（取见过的最大序号）—— 早期数据里同一个代练人
+     可能既写过「卤蛋」又写过「卤蛋-2」，属于同一人，不该拆成两条。 */
+  const byName = {}, order = [];
+  ACCOUNTS.forEach(function(c){
+    const p = parseBroker(c.broker);
+    if(!p.name) return;
+    if(!byName[p.name]){ byName[p.name] = { name:p.name, rank:p.rank }; order.push(p.name); }
+    else if(p.rank > byName[p.name].rank) byName[p.name].rank = p.rank;
+  });
+  order.forEach(function(nm){ out.push(byName[nm]); });
+  return out;
+}
 
 const RING_NUMS = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
 function serial(n){ return n <= 10 ? RING_NUMS[n-1] : String(n); }
@@ -1567,6 +1697,7 @@ function saveLocal(){
     localStorage.setItem(LS_KEY, JSON.stringify({
       v:DATA_V, savedAt:new Date().toISOString(), updatedBy:DEVICE,
       snapshots: SNAPSHOTS || {},
+      brokers: BROKERS || [],
       accounts: ACCOUNTS.map(function(c){
         return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                  broker: (c.broker == null ? '' : String(c.broker)),
@@ -1645,6 +1776,9 @@ function loadLocal(){
   /* 日结快照：老数据没有这个字段，补空对象 */
   SNAPSHOTS = (data.snapshots && typeof data.snapshots === 'object' && !Array.isArray(data.snapshots))
             ? data.snapshots : {};
+  /* 代练人名册：老数据没有该字段 → 兜底从现有卡片反推补一份 */
+  BROKERS = readBrokers(data.brokers);
+  alignBrokers();
   return data.savedAt || null;   /* 返回上次改动时间，供顶部标签恢复 */
 }
 
@@ -1703,6 +1837,7 @@ function serialize(){
     savedAt: new Date().toISOString(),
     updatedBy: DEVICE,
     snapshots: SNAPSHOTS || {},
+    brokers: BROKERS || [],
     accounts: ACCOUNTS.map(function(c){
       return { id:c.id, account:c.account, name:c.name, level:c.level, job:c.job,
                broker: (c.broker == null ? '' : String(c.broker)),
@@ -1874,6 +2009,8 @@ function adopt(data){
             ? data.snapshots : {};
   healRealMarks();               /* 古老云端数据可能缺 real → 就地自愈 */
   migrateLaborDays();            /* 同理可能缺 laborDays → 从历史 dayLabor 重建 */
+  BROKERS = readBrokers(data.brokers);   /* 代练人名册（老数据自动反推） */
+  alignBrokers();
 }
 
 function writeCache(data){
@@ -3262,7 +3399,6 @@ const fWealth  = document.getElementById('fWealth');
 const fInitLeft = document.getElementById('fInitLeft');
 const fOrder   = document.getElementById('fOrder');
 const fBroker  = document.getElementById('fBroker');
-const brokerList = document.getElementById('brokerList');
 let modalMode = 'add';   // 'add' | 'edit'
 let modalIdx  = -1;
 
@@ -3288,19 +3424,21 @@ function openModal(mode, idx){
   fMinTier.value = c ? (c.minTier != null && c.minTier !== '' ? String(c.minTier) : '') : '';
   /* 最高T级：回填独立数值 */
   fMaxTier.value = c ? (c.maxTier != null && c.maxTier !== '' ? String(c.maxTier) : '') : '';
-  /* 代练人：回填，并给 datalist 喂上现有代练人名单做自动补全 */
-  fBroker.value = c ? (c.broker || '') : '';
-  if(brokerList){
-    const seen = {}, names = [];
-    ACCOUNTS.forEach(function(x){
-      const b = brokerName(x.broker);      /* 候选只给名称，不带 -序号 */
-      if(b && !seen[b]){ seen[b] = 1; names.push(b + '-' + ((brokerRank(x.broker)) || '')); }
-    });
-    names.sort();
-    brokerList.innerHTML = names.map(function(n){
-      return '<option value="' + esc(n) + '"></option>';
-    }).join('');
+  /* 代练人：从名册下拉选择；若名册为空（旧数据）则用卡片现有值临时补一项 */
+  const opts = brokerSorted();
+  const curB = normalizeBroker(c ? c.broker : '');
+  const known = opts.some(function(b){ return brokerLabel(b) === curB; });
+  let html = '<option value="">未分组</option>';
+  opts.forEach(function(b){
+    const v = brokerLabel(b);
+    html += '<option value="' + esc(v) + '">' + esc(b.name) +
+            (Number(b.rank) ? '（' + Number(b.rank) + '）' : '') + '</option>';
+  });
+  if(curB && !known){            /* 名册里没有的旧值：保留可选项，避免打开弹窗就丢值 */
+    html += '<option value="' + esc(curB) + '">' + esc(curB) + '（名册外）</option>';
   }
+  fBroker.innerHTML = html;
+  fBroker.value = curB;
   [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fBroker].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
@@ -3542,9 +3680,114 @@ document.getElementById('btnAdd').addEventListener('click', function(){
   openModal('add');
 });
 
+/* ============================================================
+ * 设置弹窗：代练人名册
+ *   —— 名单统一在这里维护，卡片里下拉选择，不再手写「名称-序号」
+ * ========================================================== */
+const setMask = document.getElementById('setMask');
+const bkName = document.getElementById('bkName');
+const bkRank = document.getElementById('bkRank');
+const bkErr  = document.getElementById('bkErr');
+
+/* 渲染名册：每行显示名称、序号、被多少张卡片占用、编辑/删除 */
+function renderBrokerList(){
+  const box = document.getElementById('bkList');
+  if(!box) return;
+  const list = brokerSorted();
+  if(!list.length){
+    box.innerHTML = '<div class="empty-tip">还没有代练人 —— 在上面输入名称，点「添加」</div>';
+    return;
+  }
+  box.innerHTML = list.map(function(b){
+    const v = brokerLabel(b);
+    const used = ACCOUNTS.filter(function(c){ return String(c.broker || '').trim() === v; }).length;
+    return '<div class="bk-row" data-v="' + esc(v) + '">'
+         + '<span class="bk-n">' + esc(b.name)
+         + (Number(b.rank) ? ' <span style="color:var(--mute);font-weight:400">· 序号 ' + Number(b.rank) + '</span>' : '')
+         + '</span>'
+         + '<span class="bk-c">' + (used ? ('已用 ' + used + ' 张卡') : '暂未使用') + '</span>'
+         + '<button class="bkb" type="button" data-act="up" title="上移">↑</button>'
+         + '<button class="bkb" type="button" data-act="down" title="下移">↓</button>'
+         + '<button class="bkb del" type="button" data-act="del" title="从名册删除">删除</button>'
+         + '</div>';
+  }).join('');
+}
+function openSetting(){
+  renderBrokerList();
+  bkErr.style.display = 'none';
+  setMask.classList.add('show');
+  setTimeout(function(){ bkName.focus(); }, 80);
+}
+function closeSetting(){ setMask.classList.remove('show'); }
+
+document.getElementById('btnSetting').addEventListener('click', openSetting);
+document.getElementById('setClose').addEventListener('click', closeSetting);
+setMask.addEventListener('click', function(e){ if(e.target === setMask) closeSetting(); });
+
+/* 添加 / 去重 */
+document.getElementById('bkAdd').addEventListener('click', function(){
+  const nm = bkName.value.trim();
+  const rk = Number(bkRank.value) || 0;
+  if(!nm){ bkErr.textContent = '请填写代练人名称'; bkErr.style.display = 'block'; return; }
+  if(brokerExists(nm, rk)){
+    bkErr.textContent = '名册里已有「' + brokerLabel({name:nm, rank:rk}) + '」';
+    bkErr.style.display = 'block'; return;
+  }
+  BROKERS.push({ name:nm, rank:rk });
+  bkName.value = ''; bkRank.value = '';
+  bkErr.style.display = 'none';
+  renderBrokerList();
+  saveLocal();
+  toast('已添加代练人「' + nm + '」');
+});
+[bkName, bkRank].forEach(function(el){
+  el.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('bkAdd').click(); }
+  });
+});
+
+/* 名册行操作：上移 / 下移 / 删除 */
+document.getElementById('bkList').addEventListener('click', function(e){
+  const btn = e.target.closest('button[data-act]');
+  if(!btn) return;
+  const v = btn.closest('.bk-row').dataset.v;
+  const i = BROKERS.findIndex(function(b){ return brokerLabel(b) === v; });
+  if(i < 0) return;
+  const act = btn.dataset.act;
+  if(act === 'del'){
+    const used = ACCOUNTS.filter(function(c){ return String(c.broker || '').trim() === v; }).length;
+    if(used && !confirm('名册删除「' + v + '」，但仍有 ' + used + ' 张卡片在用它。\n卡片上的记录不会变，只是名册里不再有这一项（仍可从卡片弹窗的「名册外」项保留）。确定删除？')) return;
+    BROKERS.splice(i, 1);
+  }else if(act === 'up' || act === 'down'){
+    /* 名册顺序 = 分栏顺序。调整时整体重排名号，并把卡片上的旧标签同步改成新标签，
+       避免出现「名册外」的孤儿值。 */
+    const list = brokerSorted();
+    const j = list.findIndex(function(b){ return brokerLabel(b) === v; });
+    const k = (act === 'up') ? j - 1 : j + 1;
+    if(j < 0 || k < 0 || k >= list.length) return;
+    list.splice(k, 0, list.splice(j, 1)[0]);
+    const rename = {};                       /* 旧标签 → 新标签 */
+    const next = list.map(function(b, n){
+      const oldL = brokerLabel(b), newB = { name:b.name, rank:n + 1 }, newL = brokerLabel(newB);
+      if(oldL !== newL) rename[oldL] = newL;
+      return newB;
+    });
+    BROKERS = next;
+    if(Object.keys(rename).length){          /* 同步卡片上的代练人取值 */
+      ACCOUNTS.forEach(function(c){
+        const cur = String(c.broker || '').trim();
+        if(rename[cur]) c.broker = rename[cur];
+      });
+    }
+  }
+  renderBrokerList();
+  render();          /* 上移/下移可能改了卡片上的代练人取值，需重排分栏 */
+  saveLocal();
+});
+
 /* 导出 / 导入 */
 document.getElementById('btnExport').addEventListener('click', function(){
-  const data = { v:2, exportedAt:new Date().toISOString(), accounts:ACCOUNTS };
+  const data = { v:2, exportedAt:new Date().toISOString(), brokers:BROKERS, accounts:ACCOUNTS };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -3589,6 +3832,8 @@ document.getElementById('fileInput').addEventListener('change', function(e){
         };
       });
       migrateLaborDays();          /* 老备份缺 laborDays → 从历史 dayLabor 重建 */
+      BROKERS = readBrokers(data.brokers);   /* 代练人名册（老备份自动反推） */
+      alignBrokers();
       render(); saveLocal();
       toast('已导入 ' + ACCOUNTS.length + ' 个角色');
     }catch(err){ toast('导入失败：不是有效的备份文件'); }
