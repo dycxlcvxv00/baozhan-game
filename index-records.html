@@ -1319,6 +1319,7 @@ function transferInOf(date, map){
    注意：跨日结转 —— 某日有转入但主号当天没录入时，转入额顺延到
    主号下一次有记录的结算日扣除，绝不因为「当天没记录」就漏掉。 */
 function mainCharDeduct(c, date){
+  if(!isMainChar(c)) return 0;        /* 只对主号扣，其他角色分文不扣 */
   const p = transferPlan(c);
   const v = p[date];
   return v ? v.use : 0;
@@ -1334,7 +1335,7 @@ function mainCharDeduct(c, date){
 let _transferPlanCache = null;
 function invalidateTransferPlan(){ _transferPlanCache = null; }
 function transferPlan(c){
-  if(!c) return {};
+  if(!c || !isMainChar(c)) return {};   /* 只有主号需要扣减计划 */
   if(_transferPlanCache && _transferPlanCache.forC === c) return _transferPlanCache.map;
   /* 该角色各结算日的原始获取（扣减前） */
   const raw = {};
