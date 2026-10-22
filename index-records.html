@@ -243,6 +243,14 @@
     margin:0 12px 10px;padding:8px 12px;border-radius:9px;
     background:rgba(255,138,92,0.07);border:1px solid rgba(255,138,92,0.18)}
   .labor-row .lr-label{font-size:12px;font-weight:700;color:#ff8a5c}
+  /* 内部转入提示行：橙色系（与代练行同色系），带说明文字 */
+  .labor-row.xfer-row{background:rgba(255,180,84,0.07);border-color:rgba(255,180,84,0.20)}
+  .labor-row.xfer-row .lr-label{color:#ffb454}
+  .labor-row.xfer-row b{color:#ffb454;font-size:12.5px}
+  .labor-row .xfer-hint{font-size:11px;color:var(--mute)}
+  /* 汇总区「内部转移」行的补充说明 */
+  .sm.c-transfer .xfer-note{font-size:11px;color:var(--mute);margin-left:10px;
+    white-space:nowrap;align-self:center}
   .lr-item{display:inline-flex;align-items:center;gap:5px;cursor:pointer;
     font-size:12.5px;color:var(--text);user-select:none}
   .lr-item input{width:15px;height:15px;accent-color:#ff8a5c;cursor:pointer}
@@ -466,6 +474,13 @@
   table.dt td.t .wee{font-style:normal;font-family:inherit;font-size:10px;font-weight:700;
     color:var(--accent2);background:rgba(155,123,255,0.14);border-radius:4px;
     padding:1px 4px;margin-left:4px;vertical-align:1px}   /* 凌晨录入（00:00~07:59，归前一天） */
+  /* 内部转移标记：卖出>0 但收入=0 = 晶石转给陌尘，不是真卖钱 */
+  table.dt td.d .xfer{font-style:normal;font-family:inherit;font-size:10px;font-weight:700;
+    color:#ffb454;background:rgba(255,180,84,0.14);border:1px solid rgba(255,180,84,0.30);
+    border-radius:4px;padding:1px 4px;margin-left:5px;vertical-align:1px;cursor:help}
+  /* 主号明细头提示 */
+  .mainnote{font-size:11px;color:#ffb454;background:rgba(255,180,84,0.10);
+    border:1px solid rgba(255,180,84,0.26);border-radius:6px;padding:2px 8px}
   table.dt td.n.inc{color:var(--accent)}       /* 本次获取晶石：单次增量，恒 ≥ 0 */
   table.dt th.th-t{color:var(--mute)}
   table.dt td.n{font-weight:800}
@@ -1264,6 +1279,91 @@ function recStamp(r){
 function income(r){ return (Number(r.dayValue)||0); }
 function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v); }
 
+/* ============================================================
+ * 内部转移规则（2026-10-23 用户指定）
+ * ------------------------------------------------------------
+ * 小号「卖出晶石 > 0、收入 = 0」= 晶石不是卖钱，而是**转给大号陌尘**。
+ * 这笔晶石在小号侧已经算作「本次获取」，若陌尘侧再算一次就重复计入了。
+ * 因此：陌尘的「获取晶石」要扣掉这笔转入。
+ * 扣减**不设下限**—— 即便转入的晶石当天已被秘境消耗 / 已花掉，
+ * 也照样从陌尘的获取里扣掉，绝不因为「余额没涨」就漏扣。
+ * ========================================================== */
+const MAIN_CHAR_NAME = '陌尘';
+/* 内部转移记录 = 非主号角色的「卖出>0 且 收入=0」 */
+function isTransferOut(c, r){
+  if(!c || !r) return false;
+  if(String(c.name || '').replace(/\s+/g,'') === MAIN_CHAR_NAME) return false;  /* 主号自己不算 */
+  return (Number(r.daySold) || 0) > 0 && (Number(r.dayValue) || 0) === 0;
+}
+/* 全量扫描：按结算日汇总「转入主号的晶石」 { '2026-10-21': 17868, ... } */
+function transferInByDate(){
+  const map = {};
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      if(!isTransferOut(c, r)) return;
+      const d = settleDateOf(r);
+      if(!d) return;
+      map[d] = (map[d] || 0) + (Number(r.daySold) || 0);
+    });
+  });
+  return map;
+}
+/* 某结算日转入主号的晶石总额 */
+function transferInOf(date, map){
+  const m = map || transferInByDate();
+  return Number(m[date]) || 0;
+}
+/* 主号当日「获取」中要扣掉的内部转移额。不设下限：
+   扣完可以为负（表示当天净流出多于转入，如当天消耗大于转入）。
+   仅对主号生效，其他角色返回 0。
+   注意：跨日结转 —— 某日有转入但主号当天没录入时，转入额顺延到
+   主号下一次有记录的结算日扣除，绝不因为「当天没记录」就漏掉。 */
+function mainCharDeduct(c, date){
+  const p = transferPlan(c);
+  const v = p[date];
+  return v ? v.use : 0;
+}
+
+/* ============================================================
+ * 内部转移扣减计划（按结算日预计算一次，dayTotals / 明细逐条共用）
+ *   pool = 截至该日累计待扣的转入额
+ *   use  = 该日实际可扣额 = min(pool, 该日原始获取)，剩余顺延到后续日期
+ * 不设下限：若某日原始获取为 0（余额没涨/ 被消耗掉），use = 0，
+ * 转入额留在池子里等下一天，不会被"漏算成陌尘的收入"。
+ * ========================================================== */
+let _transferPlanCache = null;
+function invalidateTransferPlan(){ _transferPlanCache = null; }
+function transferPlan(c){
+  if(!c) return {};
+  if(_transferPlanCache && _transferPlanCache.forC === c) return _transferPlanCache.map;
+  /* 该角色各结算日的原始获取（扣减前） */
+  const raw = {};
+  const asc = recsAsc(c);
+  let prev = leftBase(c);
+  asc.forEach(function(r){
+    const cur = Number(r.gemsLeft) || 0;
+    const diff = (cur - prev) + (Number(r.daySold) || 0) + (Number(r.chaosCost) || 0);
+    if(diff > 0){ const d = settleDateOf(r); raw[d] = (raw[d] || 0) + diff; }
+    prev = cur;
+  });
+  /* 日期轴= 有原始获取的日子 ∪ 有转入的日子 */
+  const days = Object.keys(raw).concat(Object.keys(transferInByDate()))
+    .filter((v, i, a) => a.indexOf(v) === i).sort();
+  const tmap = transferInByDate();
+  const map = {};
+  let pool = 0;
+  days.forEach(function(d){
+    const tin = Number(tmap[d]) || 0;
+    const r = Number(raw[d]) || 0;
+    pool += tin;
+    const use = Math.min(pool, r);       /* 不设下限：use ≤ r，扣完可为 0 */
+    pool -= use;
+    map[d] = { tin:tin, raw:r, use:use, poolOut:pool };
+  });
+  _transferPlanCache = { forC:c, map:map };
+  return map;
+}
+
 /* 人工费（新口径 2026-10-01）：按「角色×天」计费，每天 15 元。
    两种模式（2026-10-14 新增「默认代练」）：
    · 普通卡（laborAll 未置位）：默认不勾选 = 自己打的（免单，0）；勾选 = 用了代练（15）。
@@ -1349,6 +1449,7 @@ function gainedDeltas(c){
   const recs = recsAsc(c);
   const out = [];
   let prev = leftBase(c);
+  const isMain = isMainChar(c);
   recs.forEach(function(r){
     const cur   = Number(r.gemsLeft)  || 0;
     const sold  = Number(r.daySold)   || 0;
@@ -1357,6 +1458,20 @@ function gainedDeltas(c){
     out.push(diff > 0 ? diff : 0);   /* 逆差（数据不一致）→ 本条获取 0 */
     prev = cur;
   });
+  /* 主号：扣掉内部转入（卖出>0、收入=0 的那些笔）。
+     用transferPlan 的「实际可扣额」，含跨日结转，且扣在当天最后一条上，
+     保证单条不为负、跨条求和 === dayTotals 的口径。 */
+  if(isMainChar(c) && out.length){
+    const plan = transferPlan(c);
+    const lastOfDay = {};
+    recs.forEach(function(r, i){ lastOfDay[settleDateOf(r)] = i; });
+    Object.keys(plan).forEach(function(d){
+      const i = lastOfDay[d];
+      if(i === undefined) return;              /* 当天主号无记录 → 由后续日期结转扣除 */
+      const u = plan[d].use;
+      if(u) out[i] = Math.max(0, out[i] - u);
+    });
+  }
   return out;
 }
 /* 首条记录的参考起点 = 角色的「初始存量」（老数据没有则 0） */
@@ -1449,6 +1564,13 @@ function dayTotals(c, dayRecs){
     t.chaosCost += Number(r.chaosCost) || 0;
     t.recordCount++;
   });
+  /* 主号：扣掉当天从小号转入的晶石（daySold>0 且 收入=0 的那些笔）。
+     **不设下限** —— 转入的晶石当天即使被秘境消耗/花掉，也照样扣净，
+     否则这笔钱会在陌尘这边重复计入「获取」。 */
+  const tDeduct = mainCharDeduct(c, settleDateOf(dayRecs[0]));
+  t.rawGained = t.gained;          /* 扣减前的原始获取（供校验/展示用） */
+  t.transferIn = Number(transferInByDate()[settleDateOf(dayRecs[0])]) || 0;
+  if(tDeduct) t.gained -= tDeduct;
   /* 当天最后一条的剩余 = 当天收工时的存量 */
   t.gemsLeft = Number(dayRecs[dayRecs.length - 1].gemsLeft) || 0;
   t.profit = t.soldValue - t.laborCost;
@@ -1693,6 +1815,7 @@ function restoreChanged(iso){
 }
 
 function saveLocal(){
+  invalidateTransferPlan();          /* 明细变了，内部转移扣减计划要重算 */
   try{
     localStorage.setItem(LS_KEY, JSON.stringify({
       v:DATA_V, savedAt:new Date().toISOString(), updatedBy:DEVICE,
@@ -2316,12 +2439,30 @@ function renderSummary(sum, animate){
     { cls:'c-net',   slot:'s-data',  ico:'trend', key:'profit',     k:'净利润（总）',     v:money(sum.profit) },
     { cls:'c-chaos', slot:'s-data',  ico:'chaos', key:'chaosCost',  k:'秘境消耗晶石总量', v:intNum(sum.chaosCost) }
   ];
+  /* 「内部转移」提示行：说明累计获取里已扣掉多少「小号转给陌尘」的晶石。
+     不占数据列（用s-exp 空位叠在下一行），避免打乱现有 7 列对齐。
+     含「待结转」——已转入但主号当天/后续还没录入，暂挂着等主号有获取时扣除。 */
+  const tmap = transferInByDate();
+  const tDays = Object.keys(tmap);
+  const tTotal = tDays.reduce(function(a, k){ return a + tmap[k]; }, 0);
+  const mainC = (ACCOUNTS || []).filter(isMainChar)[0];
+  const mPlan = mainC ? transferPlan(mainC) : {};
+  const tUsed = Object.keys(mPlan).reduce(function(a, k){ return a + mPlan[k].use; }, 0);
+  const tPend = Math.max(0, tTotal - tUsed);
+  const extra = tTotal
+    ? '<div class="sm c-transfer" style="grid-column:1/-1">'
+      + '<span class="k">' + ico('gain') + '内部转移（小号→陌尘，已从累计获取中扣除）</span>'
+      + '<span class="v" data-sum="transferIn" title="小号「卖出>0、收入=0」的晶石合计，不计为任何人的收入">' + intNum(tTotal) + '</span>'
+      + '<span class="xfer-note">已扣 ' + intNum(tUsed)
+      + (tPend ? ' · 待结转 ' + intNum(tPend) : ' · 已全部扣除')
+      + '</span></div>'
+    : '';
   document.getElementById('summary').innerHTML = items.map(function(i){
     return '<div class="sm panel ' + i.cls + ' ' + i.slot + '">'
       + '<span class="k">' + ico(i.ico) + i.k + '</span>'
       + '<span class="v" data-sum="' + i.key + '">' + i.v + '</span>'
       + '</div>';
-  }).join('') + '<div class="sm s-exp" aria-hidden="true"></div>';
+  }).join('') + extra + '<div class="sm s-exp" aria-hidden="true"></div>';
   /* 负值标红：已获取、净利润、秘境消耗都可能为负 */
   [['gained','neg'],['profit','neg'],['chaosCost','neg']].forEach(function(pair){
     const el = document.querySelector('[data-sum="'+pair[0]+'"]');
@@ -2418,8 +2559,11 @@ function detailHTML(i){
     /* 凌晨标记：00:00~07:59 的录入按结算日归属前一天，给个视觉提示 */
     const weeHour = parseInt(String(r.time || '').split(':')[0], 10);
     const wee = (weeHour >= 0 && weeHour < 8) ? '<i class="wee">凌晨</i>' : '';
+    /* 内部转移标记：这笔「卖出>0、收入=0」= 转给陌尘，不是真卖钱 */
+    const xfer = isTransferOut(c, r);
+    const xferTag = xfer ? '<i class="xfer" title="内部转移：晶石转给陌尘，不计收入">→陌尘</i>' : '';
     return '<tr>'
-      + '<td class="d">' + esc(r.date || '') + '</td>'
+      + '<td class="d">' + esc(r.date || '') + xferTag + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + wee + '</td>'
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
       + '<td class="n inc' + (gInc === 0 ? ' zero' : '') + '">' + num(gInc) + '</td>'
@@ -2437,6 +2581,7 @@ function detailHTML(i){
   return '<div class="detail-inner panel">'
     + '<div class="detail-head">'
     +   '<span class="ttl2">' + esc(c.name || '未命名角色') + ' · 每日明细</span>'
+    +   (isMainChar(c) ? '<span class="mainnote">主号 · 内部转入的晶石已在「获取」中扣除</span>' : '')
     +   '<span>共 ' + recs.length + ' 条</span>'
     +   '<span class="right2"><button class="mini danger" type="button" data-clear="' + i + '">清空明细</button></span>'
     + '</div>'
@@ -2725,6 +2870,8 @@ function daySummarize(date){
     acc.laborCost += t.laborCost;
     acc.profit    += t.profit;
     acc.chaosCost += t.chaosCost;
+    /* 内部转入主号、当天从主号获取里扣掉的量（用于当天面板提示） */
+    if(isMainChar(c)) acc.transferIn = (acc.transferIn || 0) + transferInOf(date);
   });
   return acc;
 }
@@ -2773,13 +2920,19 @@ function daySectHTML(d, isToday){
   const laborRow = lr
     ? ('<div class="labor-row"><span class="lr-label">代练（15/天）：</span>' + lr + '</div>')
     : '';
+  /* 内部转移提示：当天有小号把晶石转给陌尘，这部分已从陌尘的「当日累计获取」里扣掉 */
+  const xferRow = s.transferIn
+    ? ('<div class="labor-row xfer-row"><span class="lr-label">内部转入陌尘：</span>'
+       + '<b>' + intNum(s.transferIn) + '</b>'
+       + '<span class="xfer-hint">（小号卖出、收入为 0 的部分，已从陌尘当日获取中扣除，不计为收入）</span></div>')
+    : '';
   return '<section class="panel daysect" data-day="' + d + '">'
     + '<button class="dayHead" type="button" title="点击折叠 / 展开">'
     +   '<span class="d-date">' + dateLabel + '</span>'
     +   '<span class="d-sum">' + sumLabel + '</span>'
     +   '<span class="d-arrow">▼</span>'
     + '</button>'
-    + '<div class="dayBody">' + laborRow + body + '</div>'
+    + '<div class="dayBody">' + laborRow + xferRow + body + '</div>'
     + '</section>';
 }
 
@@ -2843,6 +2996,7 @@ function renderDaily(){
 }
 
 function render(){
+  invalidateTransferPlan();          /* 渲染前重算扣减计划，保证读到最新数据 */
   const box = document.getElementById('cards');
   /* 排序视图：填了序号(order>0)的按序号升序在前，未填的按原顺序在后；
      传给 cardHTML 的仍是原始数组下标 i，保证 data-* 与主题色不漂移 */
