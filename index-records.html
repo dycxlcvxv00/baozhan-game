@@ -252,7 +252,7 @@
   .dayBody .labor-row{grid-column:1 / -1;margin-bottom:2px}
   @media (max-width:1660px){ .dayBody{grid-template-columns:repeat(4,1fr)} }
   @media (max-width:980px){ .dayBody{grid-template-columns:repeat(2,1fr)} }
-  /* 代练勾选行：每天面板内一行，按角色勾选是否计人工费（15/天） */
+  /* 代练勾选行：每天面板内一行，按角色勾选是否计人工费（单价随结算日分档，见 laborRate） */
   .labor-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;
     margin:0 12px 10px;padding:8px 12px;border-radius:9px;
     background:rgba(255,138,92,0.07);border:1px solid rgba(255,138,92,0.18)}
@@ -1387,18 +1387,27 @@ function transferPlan(c){
   return map;
 }
 
-/* 人工费（新口径 2026-10-01）：按「角色×天」计费，每天 15 元。
+/* 人工费（新口径 2026-10-01）：按「角色×天」计费。
+   单价分档（2026-10-28 凌晨用户指定）：2026-10-27 结算日起 15 → 10 元/天，
+   更早的日期仍按 15 元，历史人工费/净利润不回溯改写。
    两种模式（2026-10-14 新增「默认代练」）：
-   · 普通卡（laborAll 未置位）：默认不勾选 = 自己打的（免单，0）；勾选 = 用了代练（15）。
+   · 普通卡（laborAll 未置位）：默认不勾选 = 自己打的（免单，0）；勾选 = 用了代练（当天单价）。
      laborDays 只存「用了代练」的日期（例外集合），其余天默认免单。
-   · 代练卡（laborAll = true）：默认每天计代练（15）；
+   · 代练卡（laborAll = true）：默认每天计代练（当天单价）；
      laborOff 只存「点击取消」的日期（例外集合），其余天默认代练，
      再点一次勾回来 → 从 laborOff 移除。历史 laborDays 原样保留、不再参与计算。 */
+const LABOR_RATE_OLD = 15;              /* 2026-10-27 结算日之前 */
+const LABOR_RATE_NEW = 10;              /* 2026-10-27 结算日起 */
+const LABOR_RATE_FROM = '2026-10-27';   /* 新单价生效的起始结算日 */
+function laborRate(date){
+  return (date && String(date) >= LABOR_RATE_FROM) ? LABOR_RATE_NEW : LABOR_RATE_OLD;
+}
 function laborDaysOf(c){ return (c && Array.isArray(c.laborDays)) ? c.laborDays : []; }
 function laborOffOf(c){ return (c && Array.isArray(c.laborOff)) ? c.laborOff : []; }
 function laborOfDay(c, date){
-  if(c && c.laborAll){ return laborOffOf(c).indexOf(date) >= 0 ? 0 : 15; }
-  return laborDaysOf(c).indexOf(date) >= 0 ? 15 : 0;
+  const rate = laborRate(date);
+  if(c && c.laborAll){ return laborOffOf(c).indexOf(date) >= 0 ? 0 : rate; }
+  return laborDaysOf(c).indexOf(date) >= 0 ? rate : 0;
 }
 function laborTotal(c){
   const days = {};
@@ -1916,7 +1925,7 @@ function loadLocal(){
     };
   });
   /* 历史兼容迁移（一次性）：老数据用「每条 dayLabor 累加」记人工费，
-     这里把"历史上 dayLabor>0 的那些天"并入 laborDays（按 15/天 标准化），
+     这里把"历史上 dayLabor>0 的那些天"并入 laborDays（按当天单价标准化，见 laborRate），
      保留"哪些天用了代练"的信息；之后以 laborDays 为准。 */
   migrateLaborDays();
   /* 日结快照：老数据没有这个字段，补空对象 */
@@ -2592,7 +2601,7 @@ function detailHTML(i){
       + '<td class="n inc' + (gInc === 0 ? ' zero' : '') + '">' + num(gInc) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
-      + '<td class="n plain'+z(dayLabor)+'" title="代练费按天计（15/天），记在当天最后一笔">'
+      + '<td class="n plain'+z(dayLabor)+'" title="代练费按天计（'+laborRate(d)+'/天），记在当天最后一笔">'
         + num(dayLabor) + '</td>'
       + '<td class="n'+pCls+'">' + money(net) + '</td>'
       + '<td class="n chaos'+z(r.chaosCost)+'">' + intNum(r.chaosCost) + '</td>'
@@ -2750,7 +2759,8 @@ function whoHTML(c, i){
 
 /* 一行一卡：序号 | 角色信息（只读/可编辑） | 7 数值格(居中) + 录入框 | ▼
    7 列：当前剩余晶石 / 累计获取晶石 / 已出售晶石 / 收入 / 人工费用 / 净利润 / 秘境消耗晶石
-   其中「累计获取晶石」「净利润」「人工费用」自动计算（人工费用按天在每日信息面板勾选代练计 15/天），
+   其中「累计获取晶石」「净利润」「人工费用」自动计算（人工费用按天在每日信息面板勾选代练计，
+   单价 2026-10-27 结算日起 10 元/天，此前 15 元/天），
    其余 4 项（当前剩余 / 已出售 / 收入 / 秘境消耗）可录入 */
 /* v12 竖版游戏UI卡牌：铭牌名字 / 标签行(左:等级·职业·T级框, 右:代练开关) /
    账号底纹 / 开关行(混沌·背包·市集·宠物·切换) / 累计两列 / 本次录入行 / 底部按钮 */
@@ -2801,11 +2811,11 @@ function cardHTML(c, i, disp, gc){
       + 'title="点击切换「' + f.label + '」状态（当前：' + (on ? '已开启' : '未开启') + '）">'
       + f.label + '</span>';
   }).join('');
-  /* 代练开关：点亮 = 今天计人工费 15（与每日信息面板的代练勾选同一份数据） */
+  /* 代练开关：点亮 = 今天计人工费（单价随结算日分档，见 laborRate，与每日面板代练勾选同一份数据） */
   const dlon = laborOfDay(c, today()) > 0;
   const dltitle = c.laborAll
-    ? '代练开关（默认代练）：点亮=今天计人工费 15；点击取消当天'
-    : '代练开关：点亮=今天计人工费 15；熄灭=自己打的免单';
+    ? '代练开关（默认代练）：点亮=今天计人工费 '+laborRate(today())+'；点击取消当天'
+    : '代练开关：点亮=今天计人工费 '+laborRate(today())+'；熄灭=自己打的免单';
   const numInput = (f, ph) =>
     '<input class="input" type="number" inputmode="decimal" step="any" '
     + 'data-i="' + i + '" data-f="' + f + '" placeholder="' + ph + '" />';
@@ -2931,7 +2941,7 @@ function daySectHTML(d, isToday){
   }).join('');
   const dateLabel = shortDate(d) + (isToday ? ' <span class="today-tag">今天</span>' : '');
   const sumLabel = s.roles + ' 个角色 · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b> · 支出 <b>' + money(s.laborCost) + '</b>';
-  /* 代练勾选行：列出当天有记录的角色，勾选=该角色当天用了代练（15），不勾=自己打的免单 */
+  /* 代练勾选行：列出当天有记录的角色，勾选=该角色当天用了代练（laborRate(d) 元），不勾=自己打的免单 */
   const lr = ACCOUNTS.map(function(c, i){ return { c:c, i:i }; })
     .filter(function(o){ const g = groupRecordsByDate(o.c)[d]; return g && g.length; })
     .map(function(o){
@@ -2941,7 +2951,7 @@ function daySectHTML(d, isToday){
         + esc(o.c.name || '未命名') + '</span></label>';
     }).join('');
   const laborRow = lr
-    ? ('<div class="labor-row"><span class="lr-label">代练（15/天）：</span>' + lr + '</div>')
+    ? ('<div class="labor-row"><span class="lr-label">代练（' + laborRate(d) + '/天）：</span>' + lr + '</div>')
     : '';
   /* 内部转移提示：当天有小号把晶石转给陌尘，这部分已从陌尘的「当日累计获取」里扣掉 */
   const xferRow = s.transferIn
@@ -2976,7 +2986,7 @@ function bindDayFold(container, defaultFold){
   });
 }
 
-/* 代练勾选：切换某角色某天是否计人工费（15）。
+/* 代练勾选：切换某角色某天是否计人工费（当天单价，见 laborRate）。
    普通卡：默认不勾=自己打的免单，勾选=用了代练（laborDays 例外集合）。
    代练卡（laborAll）：默认每天代练，取消勾选=该天免单（laborOff 例外集合）。 */
 function toggleLabor(i, d, checked){
@@ -3001,7 +3011,7 @@ function toggleLabor(i, d, checked){
     dEl.innerHTML = detailHTML(i);
   }
   const nm = c.name || '未命名';
-  toast(checked ? (nm + ' ' + shortDate(d) + '：记代练（15）') : (nm + ' ' + shortDate(d) + '：自己打的（免单）'));
+  toast(checked ? (nm + ' ' + shortDate(d) + '：记代练（' + laborRate(d) + '）') : (nm + ' ' + shortDate(d) + '：自己打的（免单）'));
 }
 
 function renderDaily(){
@@ -3556,7 +3566,7 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-/* 代练勾选框：事件委托，切换某角色某天的人工费（15 / 免单） */
+/* 代练勾选框：事件委托，切换某角色某天的人工费（当天单价 / 免单） */
 document.addEventListener('change', function(e){
   const t = e.target;
   if(t && t.matches && t.matches('input[data-labor]')){
@@ -3792,7 +3802,7 @@ document.addEventListener('click', function(e){
     dl.classList.toggle('on', on);
     refreshNumbers(i);
     saveLocal();
-    toast((c.name || c.account || '该角色') + (on ? '：记代练（15）' : '：自己打的（免单）'));
+    toast((c.name || c.account || '该角色') + (on ? '：记代练（' + laborRate(d) + '）' : '：自己打的（免单）'));
     return;
   }
 
