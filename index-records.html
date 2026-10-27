@@ -47,7 +47,16 @@
   ::-webkit-scrollbar-thumb{background:rgba(125,165,225,0.22);border-radius:8px}
   ::-webkit-scrollbar-thumb:hover{background:rgba(47,230,208,0.4)}
 
+  /* 内容区宽度：默认 1600px；宽屏（21:9 带鱼屏 / 2K·4K）逐级放宽，
+     否则屏幕两侧会空出一大条。阶梯值同时决定下方 #cards 与 .dayBody 的列数。 */
   .wrap{max-width:1600px;margin:0 auto;padding:22px 26px 56px}
+  @media (min-width:1750px){ .wrap{max-width:1850px} }
+  @media (min-width:2048px){ .wrap{max-width:2200px} }
+  /* 2500 档故意早于列数断点(2600)：让 2560×1080 带鱼屏内容区撑满(~2508px)，
+     否则两侧各空 180px —— 用户明确要求不留空白 */
+  @media (min-width:2500px){ .wrap{max-width:2680px} }
+  @media (min-width:3200px){ .wrap{max-width:3300px} }
+  @media (min-width:3700px){ .wrap{max-width:3900px} }
 
   .panel{
     background:var(--panel); border:1px solid var(--line); border-radius:14px;
@@ -234,6 +243,11 @@
   .dayHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
   .daysect.folded .dayHead .d-arrow{transform:rotate(-90deg)}
   .dayBody{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;padding:0 12px 12px}
+  /* 同上：宽屏加列，格子宽度稳定在 ~170px */
+  @media (min-width:1750px){ .dayBody{grid-template-columns:repeat(10,1fr)} }
+  @media (min-width:2048px){ .dayBody{grid-template-columns:repeat(12,1fr)} }
+  @media (min-width:2600px){ .dayBody{grid-template-columns:repeat(14,1fr)} }
+  @media (min-width:3200px){ .dayBody{grid-template-columns:repeat(18,1fr)} }
   .daysect.folded .dayBody{display:none}
   .dayBody .labor-row{grid-column:1 / -1;margin-bottom:2px}
   @media (max-width:1660px){ .dayBody{grid-template-columns:repeat(4,1fr)} }
@@ -696,6 +710,14 @@
   /* padding-top：每日信息面板与第一行分组色条之间的留白。
 26px 视觉上偏松，压到 12px 让两者成组。 */
   #cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:30px 12px;padding-top:12px}
+  /* 宽屏逐级加列：每个代练分组一行能排下更多卡牌（卡牌宽度仍维持 ~250-270px，
+     不会因为列数变多被挤扁）。断点与 .wrap 的 max-width 阶梯一一对应：
+       1750+ → 7 列    2048+ → 8 列（21:9 带鱼屏主流档）
+       2600+ → 10 列   3200+ → 12 列 */
+  @media (min-width:1750px){#cards{grid-template-columns:repeat(7,minmax(0,1fr))}}
+  @media (min-width:2048px){#cards{grid-template-columns:repeat(8,minmax(0,1fr))}}
+  @media (min-width:2600px){#cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
+  @media (min-width:3200px){#cards{grid-template-columns:repeat(12,minmax(0,1fr))}}
   @media (max-width:1500px){#cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
   @media (max-width:1000px){#cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media (max-width:560px){#cards{grid-template-columns:1fr}}
