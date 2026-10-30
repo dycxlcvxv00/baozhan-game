@@ -238,8 +238,13 @@
   .dayHead:hover{background:rgba(255,255,255,0.03)}
   .dayHead .d-date{font-size:14px;font-weight:800;letter-spacing:.5px;color:var(--gold)}
   .dayHead .today-tag{color:var(--accent);font-size:11px;margin-left:6px;font-weight:700}
-  .dayHead .d-sum{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  /* min-width:0 —— 标题摘要可收缩，窄屏下省略而不是把右侧箭头挤出去 */
+  .dayHead .d-sum{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;
+    min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dayHead .d-sum b{color:var(--txt);font-weight:700}
+  /* 转移数量：晶石口径，用内部转移的橙色与「金额」区分；0 时弱化 */
+  .dayHead .d-sum b.xf{color:#ffb454}
+  .dayHead .d-sum b.xf.zero{color:var(--mute)}
   .dayHead .d-arrow{margin-left:auto;color:var(--dim);font-size:11px;transition:transform .25s ease}
   .daysect.folded .dayHead .d-arrow{transform:rotate(-90deg)}
   .dayBody{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;padding:0 12px 12px}
@@ -2903,9 +2908,11 @@ function daySummarize(date){
     acc.laborCost += t.laborCost;
     acc.profit    += t.profit;
     acc.chaosCost += t.chaosCost;
-    /* 内部转入主号、当天从主号获取里扣掉的量（用于当天面板提示） */
-    if(isMainChar(c)) acc.transferIn = (acc.transferIn || 0) + transferInOf(date);
   });
+  /* 内部转入主号、当天从主号获取里扣掉的量（用于当天面板的「转移」）。
+     刻意放在循环外：陌尘当天没录入时也要照常显示当天转移量 ——
+     放在循环内会被「该角色当天无记录 → return」吞掉。 */
+  acc.transferIn = Number(transferInOf(date)) || 0;
   return acc;
 }
 
@@ -2940,7 +2947,13 @@ function daySectHTML(d, isToday){
       + '<span class="v' + (i.raw < 0 ? ' neg' : '') + '">' + i.v + '</span></div>';
   }).join('');
   const dateLabel = shortDate(d) + (isToday ? ' <span class="today-tag">今天</span>' : '');
-  const sumLabel = s.roles + ' 个角色 · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b> · 支出 <b>' + money(s.laborCost) + '</b>';
+  /* 标题行摘要：角色数 · 累计获取 · 收入 · 支出 · 转移
+     转移 = 当天小号「卖出>0、收入=0」转给陌尘的晶石量（已从陌尘当日获取中扣除，不计收入）。
+     恒显示（含 0），避免有/无转移时标题长度跳动；0 时走 .zero 弱化。 */
+  const sXfer = Number(s.transferIn) || 0;
+  const sumLabel = s.roles + ' 个角色 · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b> · 支出 <b>' + money(s.laborCost) + '</b>'
+    + ' · 转移 <b class="xf' + (sXfer ? '' : ' zero') + '" title="小号转给陌尘的晶石（卖出>0 且收入=0），已从陌尘当日获取中扣除、不计为收入">'
+    + intNum(sXfer) + '</b>';
   /* 代练勾选行：列出当天有记录的角色，勾选=该角色当天用了代练（laborRate(d) 元），不勾=自己打的免单 */
   const lr = ACCOUNTS.map(function(c, i){ return { c:c, i:i }; })
     .filter(function(o){ const g = groupRecordsByDate(o.c)[d]; return g && g.length; })
