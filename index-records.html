@@ -845,7 +845,11 @@
     background:#c77bff1f;box-shadow:0 0 6px #c77bff45;
     text-shadow:0 0 5px #c77bff66}
   /* 「切换」= 负面状态，开启时红色（2026-10-16 用户指定） */
-  .switches .sw.wtag{color:#ffd97a;border-color:#ffd97a4d;background:#ffd97a0f;cursor:pointer;white-space:nowrap}
+  .wealth-modal{max-width:300px}
+  .wealth-modal .field input{width:100%;font-size:15px;padding:8px 10px}
+  .wealth-modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+  .switches .sw.wtag{color:#9aa4b2;border-color:rgba(125,165,225,0.18);background:rgba(255,255,255,0.02);cursor:pointer;white-space:nowrap}
+  .switches .sw.wtag.filled{color:#c77bff;border-color:#c77bff66;background:#c77bff1a}
   .switches .sw.on[data-key="toggle5"]{color:#ff5257;border-color:#ff525766;
     background:#ff52571f;box-shadow:0 0 6px #ff525745;
     text-shadow:0 0 5px #ff525766}
@@ -1056,6 +1060,22 @@
               title="删除该角色卡片，其所有明细一并删除">删除角色</button>
       <button class="mbtn" type="button" id="mdCancel">取消</button>
       <button class="mbtn primary" type="button" id="mdOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 浮层：财富值快捷输入（点击卡面财富数值弹出） ========== -->
+<div class="mask" id="wMask">
+  <div class="modal panel wealth-modal" role="dialog" aria-modal="true" aria-labelledby="wTitle">
+    <h2 id="wTitle"><span class="bar"></span>财富值</h2>
+    <div class="hint" id="wHint">直接填写财富值数值，保存后立即更新卡面</div>
+    <div class="field">
+      <input id="wInput" type="number" inputmode="numeric" step="1" placeholder="财富值" autocomplete="off" />
+    </div>
+    <div class="err" id="wErr">请填写数字</div>
+    <div class="btns">
+      <button class="mbtn" type="button" id="wCancel">取消</button>
+      <button class="mbtn primary" type="button" id="wOk">确定</button>
     </div>
   </div>
 </div>
@@ -2816,9 +2836,9 @@ function cardHTML(c, i, disp, gc){
        只读展示 c.wealth，点击打开「修改」弹窗填写；原 flags.chaos 数据保留不再显示 */
     if(f.key === 'chaos'){
       const wv = wealth(c);
-      return '<span class="sw wtag" data-edit="' + i + '" '
-        + 'title="财富值：' + (wv ? intNum(wv) : '未填写') + '（点击修改弹窗可填写）">'
-        + '财富 ' + (wv ? intNum(wv) : '—') + '</span>';
+      return '<span class="sw wtag' + (wv > 0 ? ' filled' : '') + '" data-wealth="' + i + '" '
+        + 'title="财富值：' + (wv ? intNum(wv) : '未填写') + '（点击直接填写）">'
+        + (wv ? intNum(wv) : '—') + '</span>';
     }
     const on = !!((c.flags || {})[f.key]);
     return '<span class="sw' + (on ? ' on' : '') + '" data-feat="' + i + '" data-key="' + f.key + '" '
@@ -3757,6 +3777,43 @@ function modalOk(){
   closeModal();
 }
 
+/* ---- 财富值快捷浮层：独立于「修改」弹窗，只填财富值一项 ---- */
+let wEditIdx = -1;
+function openWealth(i){
+  const c = ACCOUNTS[i]; if(!c) return;
+  wEditIdx = i;
+  const inp = document.getElementById('wInput');
+  inp.value = (c.wealth != null && Number(c.wealth) !== 0) ? String(c.wealth) : '';
+  document.getElementById('wErr').style.display = 'none';
+  document.getElementById('wMask').classList.add('show');
+  setTimeout(function(){ try{ inp.focus(); inp.select(); }catch(_){} }, 60);
+}
+function closeWealth(){
+  document.getElementById('wMask').classList.remove('show');
+  wEditIdx = -1;
+}
+function saveWealth(){
+  const raw = document.getElementById('wInput').value.trim();
+  if(raw !== '' && !isFinite(Number(raw))){
+    document.getElementById('wErr').style.display = ''; return;
+  }
+  const c = ACCOUNTS[wEditIdx];
+  if(c){
+    c.wealth = raw === '' ? 0 : Number(raw);
+    render(); saveLocal();
+    toast((c.name || c.account || '该角色') + '：财富值已保存（' + (c.wealth ? intNum(c.wealth) : '未填写') + '）');
+  }
+  closeWealth();
+}
+document.getElementById('wCancel').addEventListener('click', closeWealth);
+document.getElementById('wOk').addEventListener('click', saveWealth);
+document.getElementById('wInput').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); saveWealth(); }
+});
+document.getElementById('wMask').addEventListener('click', function(e){
+  if(e.target === this) closeWealth();   /* 点空白处关闭 */
+});
+
 document.getElementById('mdCancel').addEventListener('click', closeModal);
 document.getElementById('mdOk').addEventListener('click', modalOk);
 document.getElementById('mdDel').addEventListener('click', function(){
@@ -3801,6 +3858,10 @@ document.addEventListener('click', function(e){
   /* 修改（弹窗编辑） */
   const ed = e.target.closest('[data-edit]');
   if(ed){ openModal('edit', Number(ed.dataset.edit)); return; }
+
+  /* 财富值快捷输入（2026-11-06）：点击卡面财富数值 → 独立小浮层，只填这一个值 */
+  const wt = e.target.closest('[data-wealth]');
+  if(wt){ openWealth(Number(wt.dataset.wealth)); return; }
 
   /* 代练开关（卡面快捷入口）：与每日信息面板的代练勾选同一份数据 */
   const dl = e.target.closest('[data-dltoday]');
