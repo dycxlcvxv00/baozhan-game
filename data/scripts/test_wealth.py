@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""卡面「混沌」开关 → 财富值数值标签 的本地校验（Playwright，无云端副作用）。
-覆盖：标签渲染、 wealth=0 兜底、点击打开修改弹窗、填写后刷新、其余开关不受影响、持久化。"""
-import asyncio, base64, copy, functools, http.server, json, os, re, socketserver, threading
+"""卡面财富值数值标签（原「混沌」开关位）的本地校验（Playwright，无云端副作用）。
+覆盖：只显数值、紫/灰配色、独立浮层（单输入框）、保存/清空/Enter、其余开关不受影响。"""
+import asyncio, base64, functools, http.server, json, os, re, socketserver, threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -36,7 +36,6 @@ async def main():
 
     from playwright.async_api import async_playwright
     seed = cloud_data()
-    # 构造财富值样本：第 1 个有值，第 2 个为 0
     seed['accounts'][0]['wealth'] = 123456
     seed['accounts'][1]['wealth'] = 0
     async with async_playwright() as pw:
@@ -53,46 +52,77 @@ async def main():
           wt:[...document.querySelectorAll('.switches .sw.wtag')].length,
           chaos:[...document.querySelectorAll('.switches .sw[data-key="chaos"]')].length,
           first:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.textContent.trim(),
+          firstCls:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.classList.contains('filled'),
           zero:document.querySelector('.vrow[data-i="1"] .switches .sw.wtag')?.textContent.trim(),
-          titles:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.getAttribute('title'),
+          zeroCls:document.querySelector('.vrow[data-i="1"] .switches .sw.wtag')?.classList.contains('filled'),
+          title:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.getAttribute('title'),
         })""")
         eq('每个卡面都有财富标签', r['wt'], len(seed['accounts']), f"({r['wt']} 个)")
         eq('「混沌」开关已消失', r['chaos'], 0)
-        eq('有财富值显示数值', r['first'], '财富 123456', f"({r['first']!r})")
-        eq('wealth=0 显示占位', r['zero'], '财富 —', f"({r['zero']!r})")
-        eq('悬浮提示含财富值', '财富值' in (r['titles'] or ''), True)
+        eq('只显数值（无「财富」字样）', r['first'], '123456', f"({r['first']!r})")
+        eq('数值>0 为紫色 filled', r['firstCls'], True)
+        eq('未填显示占位 —', r['zero'], '—')
+        eq('未填为灰色（无 filled）', r['zeroCls'], False)
+        eq('悬浮提示正确', (r['title'] or '').startswith('财富值：123456'), True)
 
-        print('== 点击财富标签 → 打开修改弹窗 ==')
+        print('== 点击财富值 → 独立浮层 ==')
         await pg.click('.vrow[data-i="0"] .switches .sw.wtag')
         await pg.wait_for_timeout(300)
-        vis = await pg.evaluate("()=>document.getElementById('mask').classList.contains('show')")
-        eq('修改弹窗被打开', vis, True)
-        wval = await pg.evaluate("()=>document.getElementById('fWealth')?.value")
-        eq('弹窗预填财富值', wval, '123456', f"({wval!r})")
-        # 改成 888000 保存
-        await pg.fill('#fWealth', '888000')
-        await pg.click('#mdOk, #mdSave, #mdConfirm') if False else None
-        # 弹窗确认按钮 id 待运行时探测：优先常见 id，否则找 mask 内最后一个按钮
-        btn = await pg.evaluate("()=>{const b=[...document.querySelectorAll('#mask button')].filter(x=>x.id!=='mdCancel');return b.length?b[b.length-1].id||b[b.length-1].className:null}")
-        print('       确认按钮:', btn)
-        if btn: await pg.click(f'#mask #{btn}' if not btn.startswith(('btn','md')) and ' ' not in btn else f'.{btn.split()[0]}') if False else await pg.evaluate("id=>{const b=[...document.querySelectorAll('#mask button')].filter(x=>x.id!=='mdCancel');b[b.length-1].click()}", btn)
-        await pg.wait_for_timeout(500)
+        r2 = await pg.evaluate("""()=>({
+          maskOpen:document.getElementById('wMask').classList.contains('show'),
+          mainClosed:!document.getElementById('mask').classList.contains('show'),
+          prefilled:document.getElementById('wInput').value,
+          fields:[...document.querySelectorAll('#wMask input')].length,
+        })""")
+        eq('独立浮层打开', r2['maskOpen'], True)
+        eq('不是完整修改弹窗', r2['mainClosed'], True)
+        eq('浮层只有一个输入框', r2['fields'], 1)
+        eq('预填当前财富值', r2['prefilled'], '123456')
+        await pg.fill('#wInput', '888000')
+        await pg.click('#wOk')
+        await pg.wait_for_timeout(400)
         saved = await pg.evaluate("""()=>({
-          closed:!document.getElementById('mask').classList.contains('show'),
+          closed:!document.getElementById('wMask').classList.contains('show'),
           card:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.textContent.trim(),
+          cls:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.classList.contains('filled'),
           ls:JSON.parse(localStorage.getItem('gem-ledger-v2')).accounts[0].wealth,
         })""")
-        eq('弹窗已关闭', saved['closed'], True)
-        eq('卡面刷新为新值', saved['card'], '财富 888000', f"({saved['card']!r})")
+        eq('浮层已关闭', saved['closed'], True)
+        eq('卡面更新为新数值', saved['card'], '888000', f"({saved['card']!r})")
+        eq('紫色保持', saved['cls'], True)
         eq('localStorage 已持久化', saved['ls'], 888000)
 
+        print('== 清空保存 → 回到未填灰色 ==')
+        await pg.click('.vrow[data-i="0"] .switches .sw.wtag')
+        await pg.wait_for_timeout(200)
+        await pg.fill('#wInput', '')
+        await pg.click('#wOk')
+        await pg.wait_for_timeout(300)
+        cleared = await pg.evaluate("""()=>({txt:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.textContent.trim(),
+          cls:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.classList.contains('filled'),
+          ls:JSON.parse(localStorage.getItem('gem-ledger-v2')).accounts[0].wealth})""")
+        eq('清空后回到占位 —', cleared['txt'], '—', f"({cleared['txt']!r})")
+        eq('清空后灰色', cleared['cls'], False)
+        eq('清空后 wealth=0', cleared['ls'], 0)
+
+        print('== Enter 提交 ==')
+        await pg.click('.vrow[data-i="0"] .switches .sw.wtag')
+        await pg.wait_for_timeout(200)
+        await pg.fill('#wInput', '777')
+        await pg.press('#wInput', 'Enter')
+        await pg.wait_for_timeout(300)
+        ent = await pg.evaluate("""()=>({card:document.querySelector('.vrow[data-i="0"] .switches .sw.wtag')?.textContent.trim(),
+          closed:!document.getElementById('wMask').classList.contains('show')})""")
+        eq('Enter 保存生效', ent['card'], '777')
+        eq('Enter 后浮层关闭', ent['closed'], True)
+
         print('== 其余 4 个开关不受影响 ==')
-        sw = await pg.evaluate("""()=>{const c=document.querySelector('.vcard');const s=c.querySelector('.switches');
+        sw = await pg.evaluate("""()=>{const s=document.querySelector('.vrow[data-i="0"] .switches');
           return {keys:[...s.querySelectorAll('.sw[data-feat]')].map(x=>x.dataset.key),
-                  labels:[...s.querySelectorAll('.sw[data-feat]')].map(x=>x.textContent.trim()),
-                  order:[...s.children].map(x=>x.textContent.trim().split(' ')[0])};}""")
-        eq('剩余开关为 4 个', len(sw['keys']), 4, f"({sw['labels']})")
-        eq('混沌不在开关中', 'chaos' in sw['keys'], False)
+                  order:[...s.children].map(x=>x.textContent.trim())};}""")
+        eq('剩余开关为 4 个', len(sw['keys']), 4, f"({sw['keys']})")
+        eq('开关行顺序：背包·市集·宠物·财富值·切换（原混沌位）', sw['order'],
+           ['背包', '市集', '宠物', '777', '切换'], f"({sw['order']})")
         before = await pg.evaluate("()=>document.querySelector('.vrow[data-i=\"0\"] .switches .sw[data-key=\"bag\"]').classList.contains('on')")
         await pg.click('.vrow[data-i="0"] .switches .sw[data-key="bag"]')
         await pg.wait_for_timeout(200)
