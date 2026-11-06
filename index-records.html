@@ -845,6 +845,16 @@
     background:#c77bff1f;box-shadow:0 0 6px #c77bff45;
     text-shadow:0 0 5px #c77bff66}
   /* 「切换」= 负面状态，开启时红色（2026-10-16 用户指定） */
+  .tier-modal{max-width:420px}
+  .tier-scroll{max-height:56vh;overflow:auto;margin-top:8px;border:1px solid #222b3d;border-radius:8px}
+  .tier-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .tier-table th{position:sticky;top:0;background:#131a29;color:#8b949e;font-weight:700;letter-spacing:.5px;
+    padding:7px 10px;text-align:center;border-bottom:1px solid #222b3d;z-index:1}
+  .tier-table td{padding:5px 10px;text-align:center;border-bottom:1px solid #1a2233;font-variant-numeric:tabular-nums}
+  .tier-table tr:last-child td{border-bottom:none}
+  .tier-table td.t-no{font-weight:700}
+  .tier-table tr.cur td{background:rgba(87,227,155,.10)}
+  .tier-table tr.cur td.t-no{color:#57e39b}
   .wealth-modal{max-width:300px}
   .wealth-modal .field input{width:100%;font-size:15px;padding:8px 10px}
   .wealth-modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
@@ -941,6 +951,7 @@
       <span class="dot" id="cloudDot"></span><span id="cloudTxt">云端待连接</span>
     </span>
     <span class="right">
+      <button class="chip" id="btnTier" type="button" title="财富值档位对照表（灵魂晶石产出加成）">◈ 档位表</button>
       <button class="chip" id="btnSetting" type="button" title="代练人名册与页面设置">⚙ 设置</button>
       <button class="chip add" id="btnAdd" type="button" title="新增一个角色卡片"><span class="plus">＋</span>新增角色</button>
       <span class="chip saved" id="tbSaved">已自动保存</span>
@@ -1082,6 +1093,23 @@
 </div>
 
 <!-- ========== 弹窗：设置（代练人名册） ========== -->
+<!-- ========== 弹窗：财富值档位对照表 ========== -->
+<div class="mask" id="tierMask">
+  <div class="modal panel tier-modal" role="dialog" aria-modal="true" aria-labelledby="tierTitle">
+    <h2 id="tierTitle"><span class="bar"></span>财富值档位对照表</h2>
+    <div class="hint">卡面百分比按财富值自动对档；共 21 档，档位越高灵魂晶石产出加成越高。</div>
+    <div class="tier-scroll">
+      <table class="tier-table">
+        <thead><tr><th>档位</th><th>财宝值</th><th>灵魂晶石产出</th></tr></thead>
+        <tbody id="tierBody"></tbody>
+      </table>
+    </div>
+    <div class="btns" style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button class="mbtn" type="button" id="tierClose">关闭</button>
+    </div>
+  </div>
+</div>
+
 <div class="mask" id="setMask">
   <div class="modal panel set-modal" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <h2 id="setTitle"><span class="bar"></span><span id="setTitleTxt">代练人名册</span></h2>
@@ -4035,6 +4063,29 @@ function openSetting(){
   setTimeout(function(){ bkName.focus(); }, 80);
 }
 function closeSetting(){ setMask.classList.remove('show'); }
+
+/* ---- 财富值档位对照表弹窗：打开时渲染 21 档，并高亮站内最高财富所在档 ---- */
+function renderTierTable(){
+  const maxW = Math.max.apply(null, ACCOUNTS.map(function(c){ return wealth(c); }));
+  const curTier = maxW > 0 ? wealthTierOf(maxW) : 0;
+  let html = '';
+  for(let i = 0; i < WEALTH_TIERS.length; i++){
+    const no = i + 1;
+    const lo = WEALTH_TIER_MIN[i], hi = WEALTH_TIERS[i][0];
+    const col = tierColor(no);
+    const rng = lo + (hi >= 99999 ? '+' : '-' + hi);
+    html += '<tr' + (no === curTier ? ' class="cur"' : '')
+      + '><td class="t-no"><span style="color:' + col.c + '">' + no + '</span></td>'
+      + '<td>' + rng + '</td>'
+      + '<td>+' + WEALTH_TIERS[i][1] + '%</td></tr>';
+  }
+  document.getElementById('tierBody').innerHTML = html;
+}
+function openTier(){ renderTierTable(); tierMask.classList.add('show'); }
+function closeTier(){ tierMask.classList.remove('show'); }
+document.getElementById('btnTier').addEventListener('click', openTier);
+document.getElementById('tierClose').addEventListener('click', closeTier);
+tierMask.addEventListener('click', function(e){ if(e.target === tierMask) closeTier(); });
 
 document.getElementById('btnSetting').addEventListener('click', openSetting);
 document.getElementById('setClose').addEventListener('click', closeSetting);
