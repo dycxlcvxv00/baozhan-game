@@ -71,15 +71,15 @@ async def main():
           tt:[...document.querySelectorAll('.switches .sw.ttag')].length,
           toggle5:[...document.querySelectorAll('.switches .sw[data-key="toggle5"]')].length,
           first:document.querySelector('.vrow[data-i="0"] .switches .sw.ttag')?.textContent.trim(),
-          firstCls:document.querySelector('.vrow[data-i="0"] .switches .sw.ttag')?.classList.contains('filled'),
+          firstStyle:document.querySelector('.vrow[data-i="0"] .switches .sw.ttag')?.getAttribute('style')||'',
           zero:document.querySelector('.vrow[data-i="1"] .switches .sw.ttag')?.textContent.trim(),
           title:document.querySelector('.vrow[data-i="0"] .switches .sw.ttag')?.getAttribute('title'),
         })""")
         eq('每张卡都有档位标签', r['tt'], len(seed['accounts']), f"({r['tt']} 个)")
         eq('「切换」开关已消失', r['toggle5'], 0)
-        eq('财富 1674 → 15档', r['first'], '15档', f"({r['first']!r})")
-        eq('有财富值为紫色 filled', r['firstCls'], True)
-        eq('财富 0 → 1档（灰）', r['zero'], '1档', f"({r['zero']!r})")
+        eq('财富 1674 → +575%', r['first'], '+575%', f"({r['first']!r})")
+        eq('有财富值带梯度色', 'hsl(' in r['firstStyle'], True, f"({r['firstStyle']!r})")
+        eq('财富 0 → +100%（灰）', r['zero'], '+100%', f"({r['zero']!r})")
         eq('悬浮含区间与产出', ('1501-2100' in (r['title'] or '')) and ('+575%' in r['title']), True,
            f"({r['title']!r})")
 
@@ -90,9 +90,17 @@ async def main():
         await pg.click('#wOk')
         await pg.wait_for_timeout(400)
         up = await pg.evaluate("""()=>({t:document.querySelector('.vrow[data-i="1"] .switches .sw.ttag')?.textContent.trim(),
-          filled:document.querySelector('.vrow[data-i="1"] .switches .sw.ttag')?.classList.contains('filled')})""")
-        eq('财富 0→600 档位自动 1档→11档', up['t'], '11档', f"({up['t']!r})")
-        eq('紫色同步点亮', up['filled'], True)
+          style:document.querySelector('.vrow[data-i="1"] .switches .sw.ttag')?.getAttribute('style')||''})""")
+        eq('财富 0→600 显示 +412%（11档）', up['t'], '+412%', f"({up['t']!r})")
+        eq('梯度色同步点亮', 'hsl(' in up['style'], True)
+
+        print('== 档位颜色梯度 ==')
+        grad = await pg.evaluate("""()=>[1,6,11,16,21].map(t=>{
+          const c=tierColor(t); const m=/hsl\\((\\d+) /.exec(c.c); return {t,h:+m[1]};})""")
+        hs=[x['h'] for x in grad]
+        eq('色相随档位递减（紫→金）', hs, sorted(hs, reverse=True), f"({list(zip([x['t'] for x in grad],hs))})")
+        eq('1档色相≈紫', 255<=hs[0]<=270, True)
+        eq('21档色相≈金', 40<=hs[-1]<=55, True)
 
         print('== 其余开关不受影响 ==')
         sw = await pg.evaluate("""()=>{const s=document.querySelector('.vrow[data-i="0"] .switches');
