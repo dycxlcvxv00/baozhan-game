@@ -850,8 +850,7 @@
   .wealth-modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
   .switches .sw.wtag{color:#9aa4b2;border-color:rgba(125,165,225,0.18);background:rgba(255,255,255,0.02);cursor:pointer;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .switches .sw.wtag.filled{color:#c77bff;border-color:#c77bff66;background:#c77bff1a}
-  .switches .sw.ttag{cursor:default;white-space:nowrap}
-  .switches .sw.ttag.filled{color:#c77bff;border-color:#c77bff66;background:#c77bff1a;font-weight:700;font-variant-numeric:tabular-nums}
+  .switches .sw.ttag{cursor:default;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
   .switches .sw.on[data-key="toggle5"]{color:#ff5257;border-color:#ff525766;
     background:#ff52571f;box-shadow:0 0 6px #ff525745;
     text-shadow:0 0 5px #ff525766}
@@ -2748,6 +2747,16 @@ function wealthTierOf(w){
   }
   return WEALTH_TIERS.length;
 }
+/* 档位颜色：1→21 档由暗紫渐变到亮金（色相 262→45，饱和/亮度随档位提升） */
+function tierColor(t){
+  const p = (Math.min(Math.max(t, 1), 21) - 1) / 20;
+  const h = Math.round(262 - 217 * p);
+  const sa = Math.round(58 + 32 * p);
+  const li = Math.round(58 + 12 * p);
+  return { c:`hsl(${h} ${sa}% ${li}%)`,
+           b:`hsl(${h} ${sa}% ${li}% / .55)`,
+           g:`hsl(${h} ${sa}% ${li}% / .14)` };
+}
 function wealthTierLabel(c){
   const wv = wealth(c);
   const t = wealthTierOf(wv);
@@ -2868,10 +2877,14 @@ function cardHTML(c, i, disp, gc){
        根据财富值自动计算，只读显示「X档」，悬浮给出区间与产出加成 */
     if(f.key === 'toggle5'){
       const ti = wealthTierLabel(c);
-      return '<span class="sw ttag' + (ti.wv > 0 ? ' filled' : '') + '" '
-        + 'title="财富值 ' + (ti.wv ? intNum(ti.wv) : 0) + ' → ' + ti.tier + ' 档'
+      const has = ti.wv > 0;
+      const st = has ? ('color:' + tierColor(ti.tier).c
+        + ';border-color:' + tierColor(ti.tier).b
+        + ';background:' + tierColor(ti.tier).g + ';') : '';
+      return '<span class="sw ttag" style="' + st + '" '
+        + 'title="财富值 ' + intNum(ti.wv) + ' → ' + ti.tier + ' 档'
         + '（' + ti.min + (ti.max >= 99999 ? '+' : '-' + ti.max) + '，灵魂晶石产出 +' + ti.pct + '%）">'
-        + ti.tier + '档</span>';
+        + '+' + ti.pct + '%</span>';
     }
     const on = !!((c.flags || {})[f.key]);
     return '<span class="sw' + (on ? ' on' : '') + '" data-feat="' + i + '" data-key="' + f.key + '" '
