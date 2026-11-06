@@ -2884,7 +2884,7 @@ function cardHTML(c, i, disp, gc){
       return '<span class="sw ttag" style="' + st + '" '
         + 'title="财富值 ' + intNum(ti.wv) + ' → ' + ti.tier + ' 档'
         + '（' + ti.min + (ti.max >= 99999 ? '+' : '-' + ti.max) + '，灵魂晶石产出 +' + ti.pct + '%）">'
-        + '+' + ti.pct + '%</span>';
+        + ti.pct + '%</span>';
     }
     const on = !!((c.flags || {})[f.key]);
     return '<span class="sw' + (on ? ' on' : '') + '" data-feat="' + i + '" data-key="' + f.key + '" '
