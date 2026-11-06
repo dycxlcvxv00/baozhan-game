@@ -850,6 +850,8 @@
   .wealth-modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
   .switches .sw.wtag{color:#9aa4b2;border-color:rgba(125,165,225,0.18);background:rgba(255,255,255,0.02);cursor:pointer;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .switches .sw.wtag.filled{color:#c77bff;border-color:#c77bff66;background:#c77bff1a}
+  .switches .sw.ttag{cursor:default;white-space:nowrap}
+  .switches .sw.ttag.filled{color:#c77bff;border-color:#c77bff66;background:#c77bff1a;font-weight:700;font-variant-numeric:tabular-nums}
   .switches .sw.on[data-key="toggle5"]{color:#ff5257;border-color:#ff525766;
     background:#ff52571f;box-shadow:0 0 6px #ff525745;
     text-shadow:0 0 5px #ff525766}
@@ -2731,6 +2733,28 @@ function tierBadge(tier){
    不参与任何自动计算，也不随每日录入变化。 */
 function wealth(c){ return Number(c.wealth) || 0; }
 
+/* ---- 财宝值档位（2026-11-06 用户提供对照表）----
+   WEALTH_TIERS[i] = [档位上界, 灵魂晶石产出加成%]；0-0 为 1 档，8101-99999 为 21 档 */
+const WEALTH_TIERS = [
+  [0,100],[20,200],[45,218],[80,237],[110,256],[150,275],[210,300],[270,325],
+  [350,350],[500,375],[700,412],[900,450],[1100,487],[1500,525],[2100,575],
+  [2700,625],[3300,687],[4500,750],[6300,825],[8100,912],[99999,1000]
+];
+const WEALTH_TIER_MIN = [0,1,21,46,81,111,151,211,271,351,501,701,901,1101,1501,2101,2701,3301,4501,6301,8101];
+function wealthTierOf(w){
+  w = Number(w) || 0;
+  for(let i = 0; i < WEALTH_TIERS.length; i++){
+    if(w <= WEALTH_TIERS[i][0]) return i + 1;
+  }
+  return WEALTH_TIERS.length;
+}
+function wealthTierLabel(c){
+  const wv = wealth(c);
+  const t = wealthTierOf(wv);
+  const pct = WEALTH_TIERS[t - 1][1];
+  return { tier:t, pct:pct, min:WEALTH_TIER_MIN[t - 1], max:WEALTH_TIERS[t - 1][0], wv:wv };
+}
+
 /* 当天有录入 → 角色名字变绿；判定口径与收入归期完全一致：
    记录的归期 date（由 pushRec 写入 today()，已含 8 点分割）=== 当前结算日 today()。
    9.27 早 8 点前录入的（含 9.26 全天 + 9.27 凌晨）归期都是 9.26，
@@ -2839,6 +2863,15 @@ function cardHTML(c, i, disp, gc){
       return '<span class="sw wtag' + (wv > 0 ? ' filled' : '') + '" data-wealth="' + i + '" '
         + 'title="财富值：' + (wv ? intNum(wv) : '未填写') + '（点击直接填写）">'
         + (wv ? intNum(wv) : '—') + '</span>';
+    }
+    /* 「切换」开关已按用户要求替换为档位标签（2026-11-06）：
+       根据财富值自动计算，只读显示「X档」，悬浮给出区间与产出加成 */
+    if(f.key === 'toggle5'){
+      const ti = wealthTierLabel(c);
+      return '<span class="sw ttag' + (ti.wv > 0 ? ' filled' : '') + '" '
+        + 'title="财富值 ' + (ti.wv ? intNum(ti.wv) : 0) + ' → ' + ti.tier + ' 档'
+        + '（' + ti.min + (ti.max >= 99999 ? '+' : '-' + ti.max) + '，灵魂晶石产出 +' + ti.pct + '%）">'
+        + ti.tier + '档</span>';
     }
     const on = !!((c.flags || {})[f.key]);
     return '<span class="sw' + (on ? ' on' : '') + '" data-feat="' + i + '" data-key="' + f.key + '" '
