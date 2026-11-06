@@ -845,6 +845,7 @@
     background:#c77bff1f;box-shadow:0 0 6px #c77bff45;
     text-shadow:0 0 5px #c77bff66}
   /* 「切换」= 负面状态，开启时红色（2026-10-16 用户指定） */
+  .switches .sw.wtag{color:#ffd97a;border-color:#ffd97a4d;background:#ffd97a0f;cursor:pointer;white-space:nowrap}
   .switches .sw.on[data-key="toggle5"]{color:#ff5257;border-color:#ff525766;
     background:#ff52571f;box-shadow:0 0 6px #ff525745;
     text-shadow:0 0 5px #ff525766}
@@ -2811,6 +2812,14 @@ function cardHTML(c, i, disp, gc){
   const p = t.soldValue - t.laborCost;
   const pCls = p > 0 ? ' pos' : (p < 0 ? ' neg' : '');
   const feats = SWITCH_ORDER.map(function(f){
+    /* 「混沌」开关已按用户要求替换为财富值数值（2026-11-06）：
+       只读展示 c.wealth，点击打开「修改」弹窗填写；原 flags.chaos 数据保留不再显示 */
+    if(f.key === 'chaos'){
+      const wv = wealth(c);
+      return '<span class="sw wtag" data-edit="' + i + '" '
+        + 'title="财富值：' + (wv ? intNum(wv) : '未填写') + '（点击修改弹窗可填写）">'
+        + '财富 ' + (wv ? intNum(wv) : '—') + '</span>';
+    }
     const on = !!((c.flags || {})[f.key]);
     return '<span class="sw' + (on ? ' on' : '') + '" data-feat="' + i + '" data-key="' + f.key + '" '
       + 'title="点击切换「' + f.label + '」状态（当前：' + (on ? '已开启' : '未开启') + '）">'
