@@ -519,6 +519,7 @@
   table.dt td.n{font-weight:800}
   table.dt td.n.ok{color:var(--ok)} table.dt td.n.purple{color:var(--accent2)}
   table.dt td.n.gold{color:var(--gold)} table.dt td.n.plain{color:var(--txt)}
+  table.dt td.n.xfer{color:#c77bff}         /* 转移晶石：转给陌尘，不计收入 */
   table.dt td.n.income{color:var(--ok)}
 
   table.dt td.n.zero{color:var(--mute);font-weight:600}
@@ -539,6 +540,10 @@
   }
   table.dt .del:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.45);background:rgba(255,107,107,0.10)}
   .dt-empty{padding:14px;text-align:center;color:var(--mute);font-size:12.5px}
+  /* 明细表底部按钮行：清空放在最底部，远离其它按钮，降低误点 */
+  .detail-foot{display:flex;align-items:center;justify-content:flex-end;gap:10px;
+    padding:10px 2px 2px}
+  .detail-foot .foot-tip{color:var(--mute);font-size:11px}
 
   .empty-tip{padding:26px;text-align:center;color:var(--mute);font-size:13px}
 
@@ -923,6 +928,9 @@
   .ir.gemsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left}
   .ir.gemsrow .k{white-space:nowrap}
   .ir.gemsrow input{text-align:right;flex:1}
+  /* 「转移晶石」输入框：紫色系，与「本次出售」（绿）区分开，避免填错 */
+  .ir.gemsrow.xferrow .k{color:#c77bff}
+  .ir.gemsrow.xferrow input{color:#d9b3ff}
   .vc-foot{display:flex;align-items:center;gap:8px;padding:2px 10px 10px}
   .btn-detail,.btn-edit,.btn-commit{white-space:nowrap}
   .btn-detail,.btn-edit{border:1px solid var(--line,#2a3244);background:#0f1420cc;
@@ -1385,11 +1393,55 @@ function incomeText(r){ const v = income(r); return (v > 0 ? '+' : '') + num(v);
  * 也照样从陌尘的获取里扣掉，绝不因为「余额没涨」就漏扣。
  * ========================================================== */
 const MAIN_CHAR_NAME = '陌尘';
-/* 内部转移记录 = 非主号角色的「卖出>0 且 收入=0」 */
+/* 内部转移记录 = 非主号角色的「卖出>0 且 收入=0」（旧口径）或显式填写了「转移晶石」（新口径）
+ * 新口径（2026-11-10）：录入框里有独立的「转移晶石」输入，
+ * 转移量单独记在记录字段 transfer 上 —— 不再借用 daySold，
+ * 这样「本次出售」只表示真正卖钱，「转移晶石」只表示转给陌尘，两件事互不干扰。 */
 function isTransferOut(c, r){
   if(!c || !r) return false;
   if(String(c.name || '').replace(/\s+/g,'') === MAIN_CHAR_NAME) return false;  /* 主号自己不算 */
-  return (Number(r.daySold) || 0) > 0 && (Number(r.dayValue) || 0) === 0;
+  return transferAmountOf(r, c) > 0;
+}
+/* 把一条记录拆成「真实卖出 / 转给陌尘 / 收入」三部分
+ * ------------------------------------------------------------
+ * 旧口径：卖出>0 且 收入=0 —— 这笔「卖出」其实不是卖钱，而是把晶石转给陌尘
+ *         （晶石离开本号余额，但陌尘那边会收到，所以两边必须配平）
+ * 新口径：独立的 transfer 字段 —— 「本次出售」只管卖钱，「转移晶石」只管转出
+ * 两者都填时以显式 transfer 为准，避免同一笔晶石被加回两次（虚增获取）。 */
+function recParts(r, c){
+  const soldRaw = Number(r.daySold)  || 0;
+  const valRaw  = Number(r.dayValue) || 0;
+  const xferRaw = Number(r.transfer) || 0;
+  /* 主号（陌尘）是接收方：它的晶石来自小号转入，不会「转出」给陌尘自己。
+     所以主号身上不套用任何转移判定，卖出/收入按实际填的算。 */
+  if(isMainChar(c)){
+    return { sold:soldRaw, xfer:0, value:valRaw };
+  }
+  /* 新口径记录（xf=1，2026-11-10 起录入的）：三栏各算各的，
+     「本次出售」= 真卖钱，「转移晶石」= 转给陌尘，「本次收入」= 收入。
+     绝不用「收入=0」去反推是不是转移 —— 现在有专门的输入框了。 */
+  if(r.xf === 1){
+    /* 显式填了「转移晶石」→ 卖出与转出彻底分开。 */
+    if(xferRaw > 0){
+      return { sold:soldRaw, xfer:xferRaw, value:valRaw };
+    }
+    /* 仍沿用老习惯（卖出>0、收入=0 却没填转移）→ 依旧按转移算，
+       免得用户改用新输入框之前填的记录全变成「卖了却没收入」。 */
+    if(valRaw === 0 && soldRaw > 0){
+      return { sold:0, xfer:soldRaw, value:0 };
+    }
+    return { sold:soldRaw, xfer:0, value:valRaw };
+  }
+  /* 旧数据兼容：以前只能靠「卖出>0、收入=0」表达转移，这笔晶石不是卖钱。 */
+  if(valRaw === 0 && soldRaw > 0){
+    return { sold:0, xfer:soldRaw, value:0 };
+  }
+  return { sold:soldRaw, xfer:0, value:valRaw };
+}
+/* 一条记录里「转给陌尘的晶石数」（用于主号侧扣减） */
+function transferAmountOf(r, c){
+  if(!r) return 0;
+  return recParts(r, c).xfer;
 }
 /* 全量扫描：按结算日汇总「转入主号的晶石」 { '2026-10-21': 17868, ... } */
 function transferInByDate(){
@@ -1399,7 +1451,7 @@ function transferInByDate(){
       if(!isTransferOut(c, r)) return;
       const d = settleDateOf(r);
       if(!d) return;
-      map[d] = (map[d] || 0) + (Number(r.daySold) || 0);
+      map[d] = (map[d] || 0) + transferAmountOf(r, c);
     });
   });
   return map;
@@ -1494,11 +1546,15 @@ function totals(c){
   /* 流水字段：累加 */
   const t = { gemsLeft:0, gemsSold:Number(c.gemsSold)||0,
               soldValue:Number(c.soldValue)||0, laborCost:0,
-              chaosCost:Number(c.chaosCost)||0 };
+              chaosCost:Number(c.chaosCost)||0, transfer:0 };
   (c.records||[]).forEach(function(r){
-    t.gemsSold  += Number(r.daySold)   || 0;
-    t.soldValue += Number(r.dayValue)  || 0;
+    const p = recParts(r, c);
+    /* 「已出售晶石」只算真正卖钱的那部分；转出的晶石单列到 transfer，
+       免得「出售」和「转移」两件事混在一个数字里。 */
+    t.gemsSold  += p.sold;
+    t.soldValue += p.value;
     t.chaosCost += Number(r.chaosCost) || 0;
+    t.transfer  += p.xfer;
   });
   /* 人工费（新口径）：按「角色×天」派生，不再读 dayLabor 累加 */
   t.laborCost = laborTotal(c);
@@ -1543,21 +1599,28 @@ function latestLeft(c){
  * ========================================================== */
 function dayGainMap(c){
   const asc = recsAsc(c);
-  const map = {};        /* date -> {raw, gain, sold, chaos, firstIdx, lastIdx, count} */
+  const map = {};        /* date -> {raw, gain, sold, chaos, xfer, firstIdx, lastIdx, count} */
   let prev = leftBase(c);
   asc.forEach(function(r, i){
     const d = settleDateOf(r);
     const cur   = Number(r.gemsLeft)  || 0;
-    const sold  = Number(r.daySold)   || 0;
+    const p     = recParts(r, c);
+    const sold  = p.sold;
     const chaos = Number(r.chaosCost) || 0;
-    const diff  = (cur - prev) + sold + chaos;    /* 不 clamp —— 留给日级统一处理 */
+    /* 转出的晶石（新口径 transfer / 旧口径「卖出>0、收入=0」）同样要加回来，
+       否则会被算成当天净减少（负获取）。
+       注意：主号（陌尘）流入小号的转入量在「转移明细」里单列扣减，
+       这里管的是「从本号转出去」的量，两边不要混。 */
+    const xfer  = p.xfer;
+    const diff  = (cur - prev) + sold + chaos + xfer;    /* 不 clamp —— 留给日级统一处理 */
     if(d){
       let g = map[d];
-      if(!g) g = map[d] = { date:d, raw:0, gain:0, sold:0, chaos:0,
+      if(!g) g = map[d] = { date:d, raw:0, gain:0, sold:0, chaos:0, xfer:0,
                              firstIdx:i, lastIdx:i, count:0 };
       g.raw  += diff;
       g.sold += sold;
       g.chaos+= chaos;
+      g.xfer += xfer;
       g.lastIdx = i;
       g.count++;
     }
@@ -1624,9 +1687,10 @@ function recDeltas(c){
   let prev = leftBase(c);
   asc.forEach(function(r, i){
     const cur   = Number(r.gemsLeft)  || 0;
-    const sold  = Number(r.daySold)   || 0;
+    const p     = recParts(r, c);
     const chaos = Number(r.chaosCost) || 0;
-    out[i] = (cur - prev) + sold + chaos;
+    const xfer  = p.xfer;
+    out[i] = (cur - prev) + p.sold + chaos + xfer;
     prev = cur;
   });
   return out;
@@ -1715,15 +1779,17 @@ function groupRecordsByDate(c){
  *   负值归 0（只在日级 clamp 一次）。 */
 function dayTotals(c, dayRecs){
   const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
-              laborCost:0, profit:0, chaosCost:0, recordCount:0 };
+              laborCost:0, profit:0, chaosCost:0, transfer:0, recordCount:0 };
   if(!dayRecs || !dayRecs.length) return t;
   const day = settleDateOf(dayRecs[0]);
   /* 人工费（新口径）：按天计一次（勾选了代练的当天），不按录入条数累加 */
   t.laborCost = laborOfDay(c, day);
   dayRecs.forEach(function(r){
-    t.gemsSold  += Number(r.daySold)   || 0;
-    t.soldValue += Number(r.dayValue)  || 0;
+    const p = recParts(r, c);
+    t.gemsSold  += p.sold;
+    t.soldValue += p.value;
     t.chaosCost += Number(r.chaosCost) || 0;
+    t.transfer  += p.xfer;
     t.recordCount++;
   });
   /* 「获取」= 日级归集值（与 gainedDeltas / transferPlan 同源同口径） */
@@ -1768,7 +1834,7 @@ function priorLeft(c, dateOrNull){
  * 剩余沿用这天的起始存量。 */
 function blankDayTotals(c, date){
   const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
-              laborCost:0, profit:0, chaosCost:0, recordCount:0 };
+              laborCost:0, profit:0, chaosCost:0, transfer:0, recordCount:0 };
   t.gemsLeft = priorLeft(c, date);
   return t;
 }
@@ -2050,6 +2116,7 @@ function loadLocal(){
                  gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0,
+                 transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
                  wealth:r.wealth != null ? Number(r.wealth) : null,
                  tier:r.tier != null ? Number(r.tier) : null,
                  pct:r.pct != null ? Number(r.pct) : null,
@@ -2292,6 +2359,7 @@ function adopt(data){
                  gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0,
+                 transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
                  /* 档位快照随记录透传 —— 丢了它，账号升档后整段历史会被错挂 */
                  wealth:r.wealth != null ? Number(r.wealth) : null,
                  tier:r.tier != null ? Number(r.tier) : null,
@@ -2628,7 +2696,7 @@ function renderSummary(sum, animate){
   const extra = tTotal
     ? '<div class="sm c-transfer" style="grid-column:1/-1">'
       + '<span class="k">' + ico('gain') + '内部转移（小号→陌尘，已从累计获取中扣除）</span>'
-      + '<span class="v" data-sum="transferIn" title="小号「卖出>0、收入=0」的晶石合计，不计为任何人的收入">' + intNum(tTotal) + '</span>'
+      + '<span class="v" data-sum="transferIn" title="小号转给陌尘的晶石合计（显式「转移晶石」输入框，或旧口径「卖出>0、收入=0」），不计为任何人的收入">' + intNum(tTotal) + '</span>'
       + '<span class="xfer-note">已扣 ' + intNum(tUsed)
       + (tPend ? ' · 待结转 ' + intNum(tPend) : ' · 已全部扣除')
       + '</span></div>'
@@ -2731,7 +2799,10 @@ function recTierCell(c, r){
        + '</td>';
 }
 
-/* 明细表：日期+时间 | 档位 | 剩余 | 已获取 | 已出售 | 收入 | 人工 | 净利润 | 秘境消耗 | 操作 */
+/* 明细表：日期+时间 | 档位 | 剩余 | 已获取 | 秘境消耗 | 已出售 | 转移 | 收入 | 人工 | 净利润 | 操作
+   列序（2026-11-10）：「秘境消耗」移到「本次获取晶石」右侧 —— 获取与消耗是同一件事的两面，
+   放在一起才看得出「这批晶石产了多少、耗了多少」；
+   同时新增「转移晶石」列，把转给陌尘的量单独列出（不再混在「已出售」里）。 */
 function detailHTML(i){
   const c = ACCOUNTS[i];
   const recs = c.records || [];
@@ -2758,13 +2829,15 @@ function detailHTML(i){
     const z = v => (Number(v)||0) === 0 ? ' zero' : '';
     const gInc = deltas[k] || 0;           /* 本条真实增量：可正可负 */
     const gCls = gInc > 0 ? 'inc' : (gInc < 0 ? 'incneg' : 'zero');
-    const net = (Number(r.dayValue)||0) - dayLabor;
+    const p     = recParts(r, c);
+    const net = p.value - dayLabor;
     const pCls = net > 0 ? ' income' : (net < 0 ? ' neg' : ' inc-zero');
     /* 凌晨标记：00:00~07:59 的录入按结算日归属前一天，给个视觉提示 */
     const weeHour = parseInt(String(r.time || '').split(':')[0], 10);
     const wee = (weeHour >= 0 && weeHour < 8) ? '<i class="wee">凌晨</i>' : '';
-    /* 内部转移标记：这笔「卖出>0、收入=0」= 转给陌尘，不是真卖钱 */
-    const xfer = isTransferOut(c, r);
+    /* 内部转移标记：这笔晶石转给陌尘，不是真卖钱 */
+    const xferAmt = p.xfer;
+    const xfer  = xferAmt > 0;
     const xferTag = xfer ? '<i class="xfer" title="内部转移：晶石转给陌尘，不计收入">→陌尘</i>' : '';
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + xferTag + '</td>'
@@ -2772,16 +2845,17 @@ function detailHTML(i){
       + recTierCell(c, r)
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
       + '<td class="n ' + gCls + '">' + num(gInc) + '</td>'
-      + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
-      + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
+      + '<td class="n chaos'+z(r.chaosCost)+'">' + intNum(r.chaosCost) + '</td>'
+      + '<td class="n purple'+z(p.sold)+'">' + intNum(p.sold) + '</td>'
+      + '<td class="n xfer'+z(xferAmt)+'">' + intNum(xferAmt) + '</td>'
+      + '<td class="n gold'+z(p.value)+'">' + num(p.value) + '</td>'
       + '<td class="n plain'+z(dayLabor)+'" title="代练费按天计（'+laborRate(d)+'/天），记在当天最后一笔">'
         + num(dayLabor) + '</td>'
       + '<td class="n'+pCls+'">' + money(net) + '</td>'
-      + '<td class="n chaos'+z(r.chaosCost)+'">' + intNum(r.chaosCost) + '</td>'
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
-  }).join('') : '<tr><td colspan="11"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
+  }).join('') : '<tr><td colspan="12"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
 
   /* 合计行：把「逐条之和」与「日级归集值」的差额摆出来。
      日级口径下，某天若整体净增为负（典型情况：当天卖出/消耗没记全），
@@ -2798,7 +2872,7 @@ function detailHTML(i){
       + '<td colspan="4" class="sumlab">合计 · 日级口径 ' + num(daySum) + '</td>'
       + '<td class="n' + (rowSum ? ' inc' : ' zero') + '" title="各条真实增量之和">'
         + num(rowSum) + '</td>'
-      + '<td colspan="6" class="sumgap' + (gap ? ' warn' : '') + '" title="'
+      + '<td colspan="7" class="sumgap' + (gap ? ' warn' : '') + '" title="'
         + (gap ? ('有 ' + num(gap) + ' 晶石差額：某些日子当天净增为负（多半是卖出或秘境消耗没记全），'
                  + '日级口径记 0，不计入真实产出')
                : '逐条之和与日级口径一致')
@@ -2811,19 +2885,28 @@ function detailHTML(i){
     +   '<span class="ttl2">' + esc(c.name || '未命名角色') + ' · 每日明细</span>'
     +   (isMainChar(c) ? '<span class="mainnote">主号 · 内部转入的晶石已在「获取」中扣除</span>' : '')
     +   '<span>共 ' + recs.length + ' 条</span>'
-    +   '<span class="right2"><button class="mini danger" type="button" data-clear="' + i + '">清空明细</button></span>'
+    +   '<span class="right2"><button class="mini" type="button" data-closedetail="' + i + '" title="收起这张明细表（数据保留）">关闭详情</button></span>'
     + '</div>'
     + '<table class="dt">'
     + '<colgroup><col class="c-date" /><col class="c-time" /><col class="c-tier" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
-    +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
+    +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
+    +   '<col class="c-act" /></colgroup>'
     + '<thead><tr>'
-    +   '<th>日期</th><th>时间</th><th>档位</th><th>剩余晶石</th><th>本次获取晶石</th><th>已出售晶石</th>'
-    +   '<th>收入</th><th>人工费用</th><th>净利润</th><th>秘境消耗</th><th></th>'
+    +   '<th>日期</th><th>时间</th><th>档位</th><th>剩余晶石</th><th>本次获取晶石</th><th>秘境消耗</th>'
+    +   '<th>已出售晶石</th><th>转移晶石</th><th>收入</th><th>人工费用</th><th>净利润</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
     + (sumRow ? '<tfoot>' + sumRow + '</tfoot>' : '')
-    + '</table></div>';
+    + '</table>'
+    /* 清空按钮放在最底部（表格下方），与顶部「关闭详情」分开：
+       「关闭详情」只是收起面板，绝不会动数据；
+       「清空」是破坏性操作，必须二次确认，且离其它按钮远一点，降低误点。 */
+    + '<div class="detail-foot">'
+    +   '<span class="foot-tip">清空会删掉这 ' + recs.length + ' 条明细，且不可撤销</span>'
+    +   '<button class="mini danger" type="button" data-clear="' + i + '">清空</button>'
+    + '</div>'
+    + '</div>';
 }
 
 /* 明细表列宽按上方卡片实际像素对齐
@@ -3098,7 +3181,9 @@ function cardHTML(c, i, disp, gc){
     +         'title="日级口径：每个结算日取「末条剩余 − 首条之前余额 + 当日卖出 + 当日秘境消耗」，'
     +         '当天净增为负记 0（不算产出，也不虚增）">'
     +         g + '</span></div>'
-    +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold">' + intNum(t.gemsSold) + '</span></div>'
+    +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold" '
+    +         'title="只统计真正卖钱的那部分晶石；转给陌尘的量单列在明细表的「转移晶石」列，不计入此数">'
+    +         intNum(t.gemsSold) + '</span></div>'
     +       '<div class="st"><div class="k">累计秘境消耗</div><span class="v chaos" data-v="chaosCost">' + intNum(t.chaosCost) + '</span></div>'
     +     '</div>'
     +     '<div class="col">'
@@ -3107,12 +3192,15 @@ function cardHTML(c, i, disp, gc){
     +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
     +     '</div>'
     +   '</div>'
-    +   '<div class="inputrow">'
-    +     '<div class="ir"><div class="k">本次出售</div>' + numInput('gemsSold','本次出售') + '</div>'
-    +     '<div class="ir"><div class="k">本次收入</div>' + numInput('soldValue','本次收入') + '</div>'
-    +     '<div class="ir"><div class="k">秘境消耗</div>' + numInput('chaosCost','0') + '</div>'
-    +   '</div>'
-    +   '<div class="ir gemsrow"><div class="k">剩余晶石</div>' + numInput('gemsLeft','现有多少填多少') + '</div>'
+  +   '<div class="inputrow">'
+  +     '<div class="ir"><div class="k">本次出售</div>' + numInput('gemsSold','本次出售') + '</div>'
+  +     '<div class="ir"><div class="k">本次收入</div>' + numInput('soldValue','本次收入') + '</div>'
+  +     '<div class="ir"><div class="k">秘境消耗</div>' + numInput('chaosCost','0') + '</div>'
+  +   '</div>'
+  +   '<div class="ir gemsrow"><div class="k">剩余晶石</div>' + numInput('gemsLeft','现有多少填多少') + '</div>'
+  /* 「转移晶石」只对小号有意义（转给陌尘）；主号是接收方，不显示这个框 */
+  +   (isMainChar(c) ? '' : '<div class="ir gemsrow xferrow"><div class="k">转移晶石</div>'
+                        + numInput('transfer','转给陌尘的晶石') + '</div>')
     +   '<div class="vc-foot">'
     +     '<button class="btn-detail" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
     +       '<span class="t">详细</span><span class="arw">▼</span></button>'
@@ -3220,7 +3308,7 @@ function daySectHTML(d, isToday){
   const xferRow = s.transferIn
     ? ('<div class="labor-row xfer-row"><span class="lr-label">内部转入陌尘：</span>'
        + '<b>' + intNum(s.transferIn) + '</b>'
-       + '<span class="xfer-hint">（小号卖出、收入为 0 的部分，已从陌尘当日获取中扣除，不计为收入）</span></div>')
+       + '<span class="xfer-hint">（小号「转移晶石」填写的量，已从陌尘当日获取中扣除，不计为收入）</span></div>')
     : '';
   return '<section class="panel daysect" data-day="' + d + '">'
     + '<button class="dayHead" type="button" title="点击折叠 / 展开">'
@@ -3443,6 +3531,11 @@ function pushRec(i, got){
     dayValue:  got.v.soldValue || 0,
     dayLabor:  got.v.laborCost || 0,
     chaosCost: got.v.chaosCost || 0,
+    /* 转移晶石（2026-11-10 新增）：独立字段，不借用 daySold。
+       「本次出售」只表示真卖钱，「转移晶石」只表示转给陌尘 —— 两件事互不干扰。
+       xf=1 标记「新口径记录」：解析时不再靠「收入=0」反推是不是转移。 */
+    transfer:  got.v.transfer  || 0,
+    xf:        1,
     wealth:    wv,
     tier:      tier,
     pct:       WEALTH_TIERS[tier - 1][1],
@@ -4148,7 +4241,20 @@ document.addEventListener('click', function(e){
     toast('已删除该条记录');
     return;
   }
-  /* 清空该角色明细 */
+  /* 关闭详情（2026-11-10）：只收起明细面板，**不动任何数据**。
+     之前这里放的是「清空明细」，一键就抹掉整段历史，误点代价太高。 */
+  const cd = e.target.closest('[data-closedetail]');
+  if(cd){
+    const i = Number(cd.dataset.closedetail);
+    const row = cd.closest('.row');
+    if(row){
+      row.classList.remove('open');
+      const tg = row.querySelector('[data-toggle]');
+      if(tg) tg.setAttribute('aria-expanded', 'false');
+    }
+    return;
+  }
+  /* 清空该角色明细（破坏性操作，底部按钮 + 二次确认） */
   const cl = e.target.closest('[data-clear]');
   if(cl){
     const i = Number(cl.dataset.clear);
@@ -4348,6 +4454,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
                      gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                      dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                      chaosCost:Number(r.chaosCost)||0,
+                     transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
                      wealth:r.wealth != null ? Number(r.wealth) : null,
                      tier:r.tier != null ? Number(r.tier) : null,
                      pct:r.pct != null ? Number(r.pct) : null,
