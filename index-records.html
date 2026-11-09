@@ -481,16 +481,16 @@
   table.dt{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;table-layout:fixed}
   /* 列宽：日期/时间/档位/操作固定，其余 7 个数值列平分剩余宽度
      （档位列 2026-11 新增：记录录入当刻的档位快照） */
-  table.dt col.c-date{width:82px}
-  table.dt col.c-time{width:98px}
-  table.dt col.c-tier{width:96px}
+  table.dt col.c-date{width:120px}
+  table.dt col.c-time{width:104px}
+  table.dt col.c-tier{width:138px}
   table.dt col.c-act{width:46px}
   /* 档位单元格：T 级标签 + 加成百分比 +（旧记录）估算标记 */
   table.dt td.tierc{white-space:nowrap}
-  table.dt td.tierc .tier{padding:0 6px;font-size:11px}
-  table.dt td.tierc .tpct{margin-left:4px;color:var(--mute);font-size:11px;font-weight:700}
+  table.dt td.tierc .tier{padding:0 7px;font-size:11px}
+  table.dt td.tierc .tpct{margin-left:5px;color:var(--mute);font-size:11px;font-weight:700}
   table.dt td.tierc .est{font-style:normal;font-size:10px;font-weight:700;color:var(--mute);
-    border:1px solid rgba(125,165,225,.30);border-radius:4px;padding:0 3px;margin-left:4px}
+    border:1px solid rgba(125,165,225,.30);border-radius:4px;padding:0 3px;margin-left:5px}
   table.dt td.tierc.none{color:var(--mute);font-weight:600}
   /* 列宽由 JS 按上方卡片的实际像素写入（见 syncDetailCols），保证 4 个数据列与卡片格中心对齐 */
   table.dt th{
@@ -527,6 +527,11 @@
     padding:8px 10px;font-weight:800;color:var(--txt);border-top:1px solid rgba(125,165,225,0.18);
     border-bottom:0;font-size:12.5px;
   }
+  /* 明细表合计行：逐条之和 + 与日级口径的差额说明 */
+  table.dt tfoot tr.sumrow td{border-top:1px solid rgba(125,165,225,0.22);border-bottom:0}
+  table.dt tfoot td.sumlab{text-align:right;color:var(--mute);font-weight:700;font-size:11.5px}
+  table.dt tfoot td.sumgap{text-align:left;color:var(--mute);font-weight:600;font-size:11px}
+  table.dt tfoot td.sumgap.warn{color:#ffb454}
   table.dt .del{
     width:22px;height:22px;border-radius:6px;border:1px solid transparent;
     background:transparent;color:var(--mute);cursor:pointer;font-size:12px;line-height:1;
@@ -2778,6 +2783,29 @@ function detailHTML(i){
       + '</tr>';
   }).join('') : '<tr><td colspan="11"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
 
+  /* 合计行：把「逐条之和」与「日级归集值」的差额摆出来。
+     日级口径下，某天若整体净增为负（典型情况：当天卖出/消耗没记全），
+     该日计 0（不虚增）；而逐条真实增量里保留着这个负数。
+     两者差额 = 这些「负日」的绝对值之和 —— 不是真实产出，只是数据缺口，
+     单独列出来，避免看的人以为卡片数字算错了。 */
+  const sumRow = (function(){
+    const dm = dayGainMap(c);
+    const daySum = Object.keys(dm).reduce(function(a, d){ return a + dm[d].gain; }, 0);
+    const rowSum = deltas.reduce(function(a, b){ return a + b; }, 0);
+    const gap = daySum - rowSum;
+    if(!recs.length) return '';
+    return '<tr class="sumrow">'
+      + '<td colspan="4" class="sumlab">合计 · 日级口径 ' + num(daySum) + '</td>'
+      + '<td class="n' + (rowSum ? ' inc' : ' zero') + '" title="各条真实增量之和">'
+        + num(rowSum) + '</td>'
+      + '<td colspan="6" class="sumgap' + (gap ? ' warn' : '') + '" title="'
+        + (gap ? ('有 ' + num(gap) + ' 晶石差額：某些日子当天净增为负（多半是卖出或秘境消耗没记全），'
+                 + '日级口径记 0，不计入真实产出')
+               : '逐条之和与日级口径一致')
+        + '">' + (gap ? ('差额 ' + num(gap) + '（负日不计入产出）') : '逐条之和 = 日级口径') + '</td>'
+      + '</tr>';
+  })();
+
   return '<div class="detail-inner panel">'
     + '<div class="detail-head">'
     +   '<span class="ttl2">' + esc(c.name || '未命名角色') + ' · 每日明细</span>'
@@ -2794,11 +2822,12 @@ function detailHTML(i){
     +   '<th>收入</th><th>人工费用</th><th>净利润</th><th>秘境消耗</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
+    + (sumRow ? '<tfoot>' + sumRow + '</tfoot>' : '')
     + '</table></div>';
 }
 
 /* 明细表列宽按上方卡片实际像素对齐
-   colgroup: [日期, 时间, 剩余, 已获取, 已出售, 收入, 人工, 净利润, 秘境消耗, 展开] */
+   colgroup: [日期, 时间, 档位, 剩余, 已获取, 已出售, 收入, 人工, 净利润, 秘境消耗, 操作] */
 function syncDetailCols(i){
   const row = document.querySelector('.row[data-i="' + i + '"]');
   if(!row) return;
@@ -2822,14 +2851,16 @@ function syncDetailCols(i){
   const timeW = 78;
   cols[0].style.width = px(Math.max(dateW - timeW, 60));
   cols[1].style.width = px(timeW);
-  /* 7 个数据列逐一按卡片 .cell 的实际宽度写入，保证与列标题条 7 栏严格对齐 */
+  /* 7 个数据列逐一按卡片 .cell 的实际宽度写入，保证与列标题条 7 栏严格对齐
+     注意：档位列固定在索引 2，数据列从索引 3 起，操作列在最后 —— 不能错位覆盖。 */
   const n = cellEls.length;
   for(let k = 0; k < n; k++){
     const w = cellEls[k] ? cellEls[k].getBoundingClientRect().width
                          : (tblW - dateW - actW) / Math.max(n, 1);
-    if(cols[k + 2]) cols[k + 2].style.width = px(w);
+    if(cols[k + 3]) cols[k + 3].style.width = px(w);
   }
-  if(cols[n + 2]) cols[n + 2].style.width = px(actW);
+  /* 操作列 = 最后一列；档位列（索引 2）保持 CSS 里的固定宽度，不动 */
+  if(cols[cols.length - 1]) cols[cols.length - 1].style.width = px(actW);
 }
 
 function syncAllDetailCols(){
@@ -3063,7 +3094,10 @@ function cardHTML(c, i, disp, gc){
     +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
     +   '<div class="stats">'
     +     '<div class="col">'
-    +       '<div class="st"><div class="k">累计获取晶石</div><span class="v plain" data-v="gained">' + g + '</span></div>'
+    +       '<div class="st"><div class="k">累计获取晶石</div><span class="v plain" data-v="gained" '
+    +         'title="日级口径：每个结算日取「末条剩余 − 首条之前余额 + 当日卖出 + 当日秘境消耗」，'
+    +         '当天净增为负记 0（不算产出，也不虚增）">'
+    +         g + '</span></div>'
     +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold">' + intNum(t.gemsSold) + '</span></div>'
     +       '<div class="st"><div class="k">累计秘境消耗</div><span class="v chaos" data-v="chaosCost">' + intNum(t.chaosCost) + '</span></div>'
     +     '</div>'
