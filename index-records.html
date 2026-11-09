@@ -479,6 +479,19 @@
   .mini.danger:hover{color:#ff8a8a;border-color:rgba(255,107,107,0.5)}
 
   table.dt{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;table-layout:fixed}
+  /* 列宽：日期/时间/档位/操作固定，其余 7 个数值列平分剩余宽度
+     （档位列 2026-11 新增：记录录入当刻的档位快照） */
+  table.dt col.c-date{width:82px}
+  table.dt col.c-time{width:98px}
+  table.dt col.c-tier{width:96px}
+  table.dt col.c-act{width:46px}
+  /* 档位单元格：T 级标签 + 加成百分比 +（旧记录）估算标记 */
+  table.dt td.tierc{white-space:nowrap}
+  table.dt td.tierc .tier{padding:0 6px;font-size:11px}
+  table.dt td.tierc .tpct{margin-left:4px;color:var(--mute);font-size:11px;font-weight:700}
+  table.dt td.tierc .est{font-style:normal;font-size:10px;font-weight:700;color:var(--mute);
+    border:1px solid rgba(125,165,225,.30);border-radius:4px;padding:0 3px;margin-left:4px}
+  table.dt td.tierc.none{color:var(--mute);font-weight:600}
   /* 列宽由 JS 按上方卡片的实际像素写入（见 syncDetailCols），保证 4 个数据列与卡片格中心对齐 */
   table.dt th{
     font-weight:600;color:var(--mute);font-size:11px;
@@ -500,7 +513,8 @@
   /* 主号明细头提示 */
   .mainnote{font-size:11px;color:#ffb454;background:rgba(255,180,84,0.10);
     border:1px solid rgba(255,180,84,0.26);border-radius:6px;padding:2px 8px}
-  table.dt td.n.inc{color:var(--accent)}       /* 本次获取晶石：单次增量，恒 ≥ 0 */
+  table.dt td.n.inc{color:var(--accent)}       /* 本次获取晶石：本条真实增量 */
+  table.dt td.n.incneg{color:#ff8a8a}          /* 本条真实增量为负（余额被其它用途抵消） */
   table.dt th.th-t{color:var(--mute)}
   table.dt td.n{font-weight:800}
   table.dt td.n.ok{color:var(--ok)} table.dt td.n.purple{color:var(--accent2)}
@@ -1414,16 +1428,10 @@ function invalidateTransferPlan(){ _transferPlanCache = null; }
 function transferPlan(c){
   if(!c || !isMainChar(c)) return {};   /* 只有主号需要扣减计划 */
   if(_transferPlanCache && _transferPlanCache.forC === c) return _transferPlanCache.map;
-  /* 该角色各结算日的原始获取（扣减前） */
+  /* 该角色各结算日的原始获取（扣减前）—— 与 gainedDeltas / dayTotals 同为日级口径 */
   const raw = {};
-  const asc = recsAsc(c);
-  let prev = leftBase(c);
-  asc.forEach(function(r){
-    const cur = Number(r.gemsLeft) || 0;
-    const diff = (cur - prev) + (Number(r.daySold) || 0) + (Number(r.chaosCost) || 0);
-    if(diff > 0){ const d = settleDateOf(r); raw[d] = (raw[d] || 0) + diff; }
-    prev = cur;
-  });
+  const dm = dayGainMap(c);
+  Object.keys(dm).forEach(function(d){ raw[d] = dm[d].gain; });
   /* 日期轴= 有原始获取的日子 ∪ 有转入的日子 */
   const days = Object.keys(raw).concat(Object.keys(transferInByDate()))
     .filter((v, i, a) => a.indexOf(v) === i).sort();
@@ -1515,15 +1523,55 @@ function latestLeft(c){
   return Number(asc[asc.length - 1].gemsLeft) || 0;
 }
 
-/* 累计获取晶石 = 逐条累加「(本条剩余 − 上一条剩余) + 本条卖出 + 本条秘境消耗」
+/* ============================================================
+ * 日级归集（2026-11-09）：算出每个结算日的「真实获取晶石」
  * ------------------------------------------------------------
- * 口径（2026-09-26 定）：晶石是「先获取，再卖出/消耗，最后剩这么多」——
+ * 问题：旧口径是**逐条** clamp（diff<0 记 0），日内多笔记录时，
+ *       中间的负增量被丢掉、后面的正增量被完整保留 → 总量虚增
+ *       （实测全站虚增 22 万晶石、38 个结算日受影响）。
+ * 口径：日级 telescoping（余额差分首尾相消）
+ *       dayRaw = (该日末条剩余 − 该日首条之前的余额)
+ *                + Σ当日卖出 + Σ当日秘境消耗
+ *       dayGain = max(0, dayRaw)      ← clamp 只在日级做一次
+ *   逐条 diff 不再单独 clamp，负增量由后续记录自然抵消，
+ *   跨天也自然衔接（首条之前那条的余额即「日初存量」）。
+ * ========================================================== */
+function dayGainMap(c){
+  const asc = recsAsc(c);
+  const map = {};        /* date -> {raw, gain, sold, chaos, firstIdx, lastIdx, count} */
+  let prev = leftBase(c);
+  asc.forEach(function(r, i){
+    const d = settleDateOf(r);
+    const cur   = Number(r.gemsLeft)  || 0;
+    const sold  = Number(r.daySold)   || 0;
+    const chaos = Number(r.chaosCost) || 0;
+    const diff  = (cur - prev) + sold + chaos;    /* 不 clamp —— 留给日级统一处理 */
+    if(d){
+      let g = map[d];
+      if(!g) g = map[d] = { date:d, raw:0, gain:0, sold:0, chaos:0,
+                             firstIdx:i, lastIdx:i, count:0 };
+      g.raw  += diff;
+      g.sold += sold;
+      g.chaos+= chaos;
+      g.lastIdx = i;
+      g.count++;
+    }
+    prev = cur;
+  });
+  Object.keys(map).forEach(function(d){
+    const g = map[d];
+    g.gain = g.raw > 0 ? g.raw : 0;      /* 日级唯一一次 clamp */
+  });
+  return map;
+}
+
+/* 累计获取晶石 = 各结算日真实获取之和
+ * ------------------------------------------------------------
+ * 逐条口径（2026-09-26 定，已于 2026-11-09 改为日级归集）：
+ *   晶石是「先获取，再卖出/消耗，最后剩这么多」——
  *   本条剩余 = 上一条剩余 + 本次获取 − 本次卖出 − 本次消耗
  *   → 本次获取 = (本条剩余 − 上一条剩余) + 本条卖出 + 本条消耗
- * 例：上次剩 100，本次卖出 20、秘境消耗 10、剩 150
- *     → 本次实际获取 = 50 + 20 + 10 = 80（旧口径只算 50，漏了被卖掉/消耗的部分）
- * 逆差保护：若加上卖出/消耗后仍为负（漏填流水等数据不一致），
- *   该条获取记 0，总数恒 ≥ 0。
+ *   逆差保护：整日相加后仍为负（漏填流水等数据不一致）→ 该日获取记 0。
  * 用 recsAsc() 保证按录入先后遍历（同一秒内也稳定）。
  *
  * 基准值 leftBase()：首条记录的参考起点。
@@ -1531,34 +1579,67 @@ function latestLeft(c){
  *   填了它，首条就从它起算，不会把老本算成「今天获取的」。
  *   没填（=0）则退回老行为：首条相对 0，整条都算作本次获取。
  * ------------------------------------------------------------
- * 单条增量（供明细表逐条展示）：返回 deltas[]，与 recsAsc() 同序。 */
+ * 单条增量（供明细表逐条展示）：返回 deltas[]，与 recsAsc() 同序。
+ *   日级归集值记在**该结算日的最后一条**上（同人工费「记在当天最后一笔」的约定），
+ *   当天其余记录该列记 0 —— 这样「各行之和 === 卡片累计获取」始终成立。 */
 function gainedDeltas(c){
   const recs = recsAsc(c);
-  const out = [];
-  let prev = leftBase(c);
-  const isMain = isMainChar(c);
-  recs.forEach(function(r){
-    const cur   = Number(r.gemsLeft)  || 0;
-    const sold  = Number(r.daySold)   || 0;
-    const chaos = Number(r.chaosCost) || 0;
-    const diff  = (cur - prev) + sold + chaos;   /* 剩余增量 + 卖出 + 消耗 */
-    out.push(diff > 0 ? diff : 0);   /* 逆差（数据不一致）→ 本条获取 0 */
-    prev = cur;
+  const out = new Array(recs.length).fill(0);
+  if(!recs.length) return out;
+  const dm = dayGainMap(c);
+  Object.keys(dm).forEach(function(d){
+    const g = dm[d];
+    out[g.lastIdx] = g.gain;
   });
   /* 主号：扣掉内部转入（卖出>0、收入=0 的那些笔）。
      用transferPlan 的「实际可扣额」，含跨日结转，且扣在当天最后一条上，
      保证单条不为负、跨条求和 === dayTotals 的口径。 */
-  if(isMainChar(c) && out.length){
+  if(isMainChar(c)){
     const plan = transferPlan(c);
-    const lastOfDay = {};
-    recs.forEach(function(r, i){ lastOfDay[settleDateOf(r)] = i; });
     Object.keys(plan).forEach(function(d){
-      const i = lastOfDay[d];
-      if(i === undefined) return;              /* 当天主号无记录 → 由后续日期结转扣除 */
+      const g = dm[d];
+      if(!g) return;                    /* 当天主号无记录 → 由后续日期结转扣除 */
       const u = plan[d].use;
-      if(u) out[i] = Math.max(0, out[i] - u);
+      if(u) out[g.lastIdx] = Math.max(0, out[g.lastIdx] - u);
     });
   }
+  return out;
+}
+/* 逐条真实增量（明细表「本次获取晶石」列用）
+ * ------------------------------------------------------------
+ * diff_i = (本条剩余 − 上一条剩余) + 本条卖出 + 本条秘境消耗
+ *   —— 不做 clamp，允许为负（余额被别的用途掉了）
+ * 关键性质：同一结算日内，各条 diff 之和 === dayGainMap 的 raw，
+ *   所以「明细各行之和 === 日级归集值 === 卡片累计获取」三者始终一致，
+ *   且日内多条记录时，每一行都能显示自己那一笔的真实产出，
+ *   而不是把整天都堆在最后一行上。 */
+function recDeltas(c){
+  const asc = recsAsc(c);
+  const out = new Array(asc.length).fill(0);
+  let prev = leftBase(c);
+  asc.forEach(function(r, i){
+    const cur   = Number(r.gemsLeft)  || 0;
+    const sold  = Number(r.daySold)   || 0;
+    const chaos = Number(r.chaosCost) || 0;
+    out[i] = (cur - prev) + sold + chaos;
+    prev = cur;
+  });
+  return out;
+}
+/* 明细表逐条展示用的增量：逐条真实 diff + 主号内部转入的日级扣减
+   （扣减记在该结算日的最后一条，与 gainedDeltas / dayTotals 同一口径） */
+function detailDeltas(c){
+  const asc = recsAsc(c);
+  const out = recDeltas(c);
+  if(!asc.length || !isMainChar(c)) return out;
+  const plan = transferPlan(c);
+  const dm = dayGainMap(c);
+  Object.keys(plan).forEach(function(d){
+    const g = dm[d];
+    const u = plan[d].use;
+    if(!g || !u) return;
+    out[g.lastIdx] = out[g.lastIdx] - u;   /* 允许为负：扣的是当天转入的量 */
+  });
   return out;
 }
 /* 首条记录的参考起点 = 角色的「初始存量」（老数据没有则 0） */
@@ -1624,39 +1705,31 @@ function groupRecordsByDate(c){
  *     9/21：prev = 初始存量        → 增长 100
  *     9/23：prev = 100（取自 9/21）→ 增长  50      ← 不再把 150 整条算成当天获取
  * 若当天就是首条，则以「初始存量」leftBase() 起算。
- * 「获取」口径与 gainedDeltas() 一致：剩余增量 + 本条卖出 + 本条秘境消耗。 */
+ * 「获取」口径与 gainedDeltas() 一致，且同为**日级归集**（2026-11-09）：
+ *   当日获取 = (当日末条剩余 − 当日首条之前的余额) + Σ当日卖出 + Σ当日秘境消耗，
+ *   负值归 0（只在日级 clamp 一次）。 */
 function dayTotals(c, dayRecs){
   const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
               laborCost:0, profit:0, chaosCost:0, recordCount:0 };
   if(!dayRecs || !dayRecs.length) return t;
-  /* 当天第一条的起点：找它在全量时序里的前一条 */
-  const asc = recsAsc(c);
-  const first = dayRecs[0];
-  const gi = asc.indexOf(first);
-  let prev = (gi > 0)
-    ? (Number(asc[gi - 1].gemsLeft) || 0)     /* 接上上一条（可能在前几天） */
-    : leftBase(c);                            /* 真是首条 → 用初始存量 */
-  /* 人工费（新口径）：按天计一次 15（勾选了代练的当天），不按录入条数累加 */
-  t.laborCost = laborOfDay(c, settleDateOf(dayRecs[0]));
+  const day = settleDateOf(dayRecs[0]);
+  /* 人工费（新口径）：按天计一次（勾选了代练的当天），不按录入条数累加 */
+  t.laborCost = laborOfDay(c, day);
   dayRecs.forEach(function(r){
-    const cur   = Number(r.gemsLeft)  || 0;
-    const sold  = Number(r.daySold)   || 0;
-    const chaos = Number(r.chaosCost) || 0;
-    /* 获取 = 剩余增量 + 本条卖出 + 本条秘境消耗（先获取，卖掉/消耗后才剩这么多），逆差记 0 */
-    const diff = (cur - prev) + sold + chaos;
-    if(diff > 0) t.gained += diff;
-    prev = cur;
     t.gemsSold  += Number(r.daySold)   || 0;
     t.soldValue += Number(r.dayValue)  || 0;
     t.chaosCost += Number(r.chaosCost) || 0;
     t.recordCount++;
   });
+  /* 「获取」= 日级归集值（与 gainedDeltas / transferPlan 同源同口径） */
+  const dm = dayGainMap(c);
+  t.gained = dm[day] ? dm[day].gain : 0;
   /* 主号：扣掉当天从小号转入的晶石（daySold>0 且 收入=0 的那些笔）。
      **不设下限** —— 转入的晶石当天即使被秘境消耗/花掉，也照样扣净，
      否则这笔钱会在陌尘这边重复计入「获取」。 */
-  const tDeduct = mainCharDeduct(c, settleDateOf(dayRecs[0]));
+  const tDeduct = mainCharDeduct(c, day);
   t.rawGained = t.gained;          /* 扣减前的原始获取（供校验/展示用） */
-  t.transferIn = Number(transferInByDate()[settleDateOf(dayRecs[0])]) || 0;
+  t.transferIn = Number(transferInByDate()[day]) || 0;
   if(tDeduct) t.gained -= tDeduct;
   /* 当天最后一条的剩余 = 当天收工时的存量 */
   t.gemsLeft = Number(dayRecs[dayRecs.length - 1].gemsLeft) || 0;
@@ -1965,11 +2038,17 @@ function loadLocal(){
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0。
            real 必须原样透传 —— 拷贝时漏掉它，归期会退化成「沿用 date」，
-           凌晨录入的记录会被算进当天（「今天没录却显示已录入」的根因）。 */
+           凌晨录入的记录会被算进当天（「今天没录却显示已录入」的根因）。
+           档位快照（wealth/tier/pct/level）同样必须透传 ——
+           漏了它，历史记录就只剩「当前档位」，升档后整段历史会被错挂。 */
         return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
                  gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
-                 chaosCost:Number(r.chaosCost)||0 };
+                 chaosCost:Number(r.chaosCost)||0,
+                 wealth:r.wealth != null ? Number(r.wealth) : null,
+                 tier:r.tier != null ? Number(r.tier) : null,
+                 pct:r.pct != null ? Number(r.pct) : null,
+                 level:r.level != null ? r.level : null };
       }) : [],
       /* 人工费新口径：只存「用了代练」的日期（例外集合），其余天默认免单。
          老数据没有该字段 → 置 null，下面统一做一次性迁移。 */
@@ -2207,7 +2286,12 @@ function adopt(data){
         return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
                  gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
-                 chaosCost:Number(r.chaosCost)||0 };
+                 chaosCost:Number(r.chaosCost)||0,
+                 /* 档位快照随记录透传 —— 丢了它，账号升档后整段历史会被错挂 */
+                 wealth:r.wealth != null ? Number(r.wealth) : null,
+                 tier:r.tier != null ? Number(r.tier) : null,
+                 pct:r.pct != null ? Number(r.pct) : null,
+                 level:r.level != null ? r.level : null };
       }) : [],
       laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
       laborAll: !!s.laborAll,
@@ -2615,18 +2699,45 @@ function setText(sel, html, anim){
   if(anim){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
 }
 
-/* 明细表：日期+时间 | 剩余 | 已获取 | 已出售 | 收入 | 人工 | 净利润 | 秘境消耗 | 操作 */
+/* 记录级档位快照单元格
+   优先用录入当刻的快照（r.tier / r.pct / r.wealth）—— 账号后来升档，历史记录不会漂移；
+   旧记录没有快照时回退到账号当前档位，并标注「估算」以示区别。 */
+function recTierCell(c, r){
+  const has = r.tier != null && r.tier !== '' && Number(r.tier) > 0;
+  let tier, pct, wv, est = false;
+  if(has){
+    tier = Number(r.tier);
+    pct  = (r.pct != null && r.pct !== '') ? Number(r.pct)
+          : (WEALTH_TIERS[tier - 1] ? WEALTH_TIERS[tier - 1][1] : '');
+    wv   = (r.wealth != null && r.wealth !== '') ? Number(r.wealth) : null;
+  }else{
+    const ti = wealthTierLabel(c);
+    tier = ti.tier; pct = ti.pct; wv = ti.wv; est = true;
+    if(!(wv > 0)) return '<td class="tierc none">—</td>';
+  }
+  const col = tierColor(tier).c;
+  const title = '录入时财富值 ' + (wv != null ? intNum(wv) : '未知')
+              + ' → ' + tier + ' 档（产出加成 +' + pct + '%）'
+              + (est ? '｜该条为旧记录，无档位快照，显示的是账号当前档位（估算）' : '');
+  return '<td class="tierc" title="' + esc(title) + '">'
+       + '<span class="tier" style="color:' + col + ';background:' + col + '1f;border:1px solid ' + col + '59">T' + tier + '</span>'
+       + '<span class="tpct">' + pct + '%</span>'
+       + (est ? '<i class="est" title="旧记录无档位快照，按账号当前档位估算">估</i>' : '')
+       + '</td>';
+}
+
+/* 明细表：日期+时间 | 档位 | 剩余 | 已获取 | 已出售 | 收入 | 人工 | 净利润 | 秘境消耗 | 操作 */
 function detailHTML(i){
   const c = ACCOUNTS[i];
   const recs = c.records || [];
   /* 稳定时序：先按时间升序（同一秒按录入先后），再反转得到"最新在最上" */
   const asc = recsAsc(c);
   const ordered = asc.slice().reverse();
-  /* 「本次获取晶石」= 单次增量（不是累计）：剩余增量 + 本条卖出 + 本条秘境消耗，逆差记 0。
-     直接用 gainedDeltas()，与卡片上的「累计获取晶石」总数共用同一份计算，
-     明细各行的增量之和 === 卡片显示的总数，两处永远一致。
-     净利润仍是单条记录的「收入 − 人工」，本就与累计无关。 */
-  const deltas = gainedDeltas(c);          /* 与 asc 同序，负增量已归 0 */
+  /* 「本次获取晶石」= 该条记录的真实增量：剩余增量 + 本条卖出 + 本条秘境消耗。
+     日级归集口径下，同一天各条增量之和 === 当日真实获取（clamp 只在日级做一次），
+     因此逐条显示与卡片「累计获取晶石」、日结面板「当日获取」三者始终一致，
+     且日内多次录入时每一行都能显示自己那一笔的产出。 */
+  const deltas = detailDeltas(c);
   const idxOf = new Map();
   asc.forEach(function(r, k){ idxOf.set(r, k); });
   let prevDate = '__none__';
@@ -2640,7 +2751,8 @@ function detailHTML(i){
     prevDate = d;
     const dayLabor = isLastOfDay ? laborOfDay(c, d) : 0;
     const z = v => (Number(v)||0) === 0 ? ' zero' : '';
-    const gInc = deltas[k] || 0;           /* 本次获取晶石：单次增量，恒 ≥ 0 */
+    const gInc = deltas[k] || 0;           /* 本条真实增量：可正可负 */
+    const gCls = gInc > 0 ? 'inc' : (gInc < 0 ? 'incneg' : 'zero');
     const net = (Number(r.dayValue)||0) - dayLabor;
     const pCls = net > 0 ? ' income' : (net < 0 ? ' neg' : ' inc-zero');
     /* 凌晨标记：00:00~07:59 的录入按结算日归属前一天，给个视觉提示 */
@@ -2652,8 +2764,9 @@ function detailHTML(i){
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + xferTag + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + wee + '</td>'
+      + recTierCell(c, r)
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
-      + '<td class="n inc' + (gInc === 0 ? ' zero' : '') + '">' + num(gInc) + '</td>'
+      + '<td class="n ' + gCls + '">' + num(gInc) + '</td>'
       + '<td class="n purple'+z(r.daySold)+'">' + intNum(r.daySold) + '</td>'
       + '<td class="n gold'+z(r.dayValue)+'">' + num(r.dayValue) + '</td>'
       + '<td class="n plain'+z(dayLabor)+'" title="代练费按天计（'+laborRate(d)+'/天），记在当天最后一笔">'
@@ -2663,7 +2776,7 @@ function detailHTML(i){
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
-  }).join('') : '<tr><td colspan="10"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
+  }).join('') : '<tr><td colspan="11"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
 
   return '<div class="detail-inner panel">'
     + '<div class="detail-head">'
@@ -2673,11 +2786,11 @@ function detailHTML(i){
     +   '<span class="right2"><button class="mini danger" type="button" data-clear="' + i + '">清空明细</button></span>'
     + '</div>'
     + '<table class="dt">'
-    + '<colgroup><col class="c-date" /><col class="c-time" />'
+    + '<colgroup><col class="c-date" /><col class="c-time" /><col class="c-tier" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
     + '<thead><tr>'
-    +   '<th>日期</th><th>时间</th><th>剩余晶石</th><th>本次获取晶石</th><th>已出售晶石</th>'
+    +   '<th>日期</th><th>时间</th><th>档位</th><th>剩余晶石</th><th>本次获取晶石</th><th>已出售晶石</th>'
     +   '<th>收入</th><th>人工费用</th><th>净利润</th><th>秘境消耗</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
@@ -3283,13 +3396,23 @@ function pushRec(i, got){
   const curLeft = latestLeft(ACCOUNTS[i]);
   /* date/time 永远如实记录录入时刻（精确到秒），real:1 标记"实际日期口径"；
      归期（8 点分割）由 settleDateOf() 在统计时计算，不改写明细 */
+  /* 档位快照（2026-11-09）：把**录入当刻**的财富值/档位/加成%/等级存进这条记录。
+     为什么必须存快照：账号的财富值是会涨的 —— 升档后若按"当前财富值"回算历史，
+     整段历史都会被错挂到新档位上，档位×产出的分析就全废了。
+     存了快照，每条记录自带"当时是几档、产出加成多少"，历史永不漂移。 */
+  const wv   = wealth(ACCOUNTS[i]);
+  const tier = wealthTierOf(wv);
   const rec = {
     date: nowDate(), time: nowTime(), real: 1,
     gemsLeft:  got.leftFilled ? got.v.gemsLeft : curLeft,
     daySold:   got.v.gemsSold  || 0,
     dayValue:  got.v.soldValue || 0,
     dayLabor:  got.v.laborCost || 0,
-    chaosCost: got.v.chaosCost || 0
+    chaosCost: got.v.chaosCost || 0,
+    wealth:    wv,
+    tier:      tier,
+    pct:       WEALTH_TIERS[tier - 1][1],
+    level:     ACCOUNTS[i].level == null ? '' : ACCOUNTS[i].level
   };
   ACCOUNTS[i].records.push(rec);
   Array.prototype.forEach.call(got.ins, function(el){ el.value = ''; });
@@ -4190,7 +4313,11 @@ document.getElementById('fileInput').addEventListener('change', function(e){
             return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
                      gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
                      dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
-                     chaosCost:Number(r.chaosCost)||0 };
+                     chaosCost:Number(r.chaosCost)||0,
+                     wealth:r.wealth != null ? Number(r.wealth) : null,
+                     tier:r.tier != null ? Number(r.tier) : null,
+                     pct:r.pct != null ? Number(r.pct) : null,
+                     level:r.level != null ? r.level : null };
           }) : [],
           laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
           laborAll: !!s.laborAll,
