@@ -919,7 +919,11 @@
   .v.purple{color:var(--purple,#bc8cff)} .v.chaos{color:var(--chaos,#f778ba)}
   .v.plain{color:var(--tx,#e6edf3)} .v.redlite{color:#ff9b9b}
   .v.pos{color:var(--pos,#3fb950)} .v.neg{color:var(--neg,#f85149)}
-  .inputrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px}
+  /* 录入区：两行两格
+     第一行 = 本次出售 | 本次收入
+     第二行 = 秘境消耗 | 转移晶石（小号专用；主号无转移框，此时秘境消耗跨两格）
+     「剩余晶石」是盘点值，单独占一整行（.gemsrow） */
+  .inputrow{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 10px}
   .ir{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
     padding:4px 8px;text-align:center}
   .ir .k{font-size:10px;color:var(--ok,#3fb950);letter-spacing:.5px}
@@ -928,9 +932,11 @@
   .ir.gemsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left}
   .ir.gemsrow .k{white-space:nowrap}
   .ir.gemsrow input{text-align:right;flex:1}
+  /* 主号没有「转移晶石」框 → 第二行只剩「秘境消耗」，让它跨满两格，不留空位 */
+  .ir.span2{grid-column:1 / -1}
   /* 「转移晶石」输入框：紫色系，与「本次出售」（绿）区分开，避免填错 */
-  .ir.gemsrow.xferrow .k{color:#c77bff}
-  .ir.gemsrow.xferrow input{color:#d9b3ff}
+  .ir.xferrow .k{color:#c77bff}
+  .ir.xferrow input{color:#d9b3ff}
   .vc-foot{display:flex;align-items:center;gap:8px;padding:2px 10px 10px}
   .btn-detail,.btn-edit,.btn-commit{white-space:nowrap}
   .btn-detail,.btn-edit{border:1px solid var(--line,#2a3244);background:#0f1420cc;
@@ -3192,15 +3198,20 @@ function cardHTML(c, i, disp, gc){
     +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
     +     '</div>'
     +   '</div>'
+  /* 录入区（2026-11-09 改造）：两行两格
+     第一行 = 本次出售 | 本次收入
+     第二行 = 秘境消耗 | 转移晶石（小号专用；主号是接收方，无转移框 → 秘境消耗跨两格）
+     「剩余晶石」是盘点值，单独占一整行 */
   +   '<div class="inputrow">'
   +     '<div class="ir"><div class="k">本次出售</div>' + numInput('gemsSold','本次出售') + '</div>'
   +     '<div class="ir"><div class="k">本次收入</div>' + numInput('soldValue','本次收入') + '</div>'
-  +     '<div class="ir"><div class="k">秘境消耗</div>' + numInput('chaosCost','0') + '</div>'
+  +     '<div class="ir' + (isMainChar(c) ? ' span2' : '') + '"><div class="k">秘境消耗</div>'
+  +       numInput('chaosCost','0') + '</div>'
+  /* 「转移晶石」只对小号有意义（转给陌尘）；主号是接收方，不显示这个框 */
+  +     (isMainChar(c) ? '' : '<div class="ir xferrow"><div class="k">转移晶石</div>'
+  +                       numInput('transfer','转给陌尘的晶石') + '</div>')
   +   '</div>'
   +   '<div class="ir gemsrow"><div class="k">剩余晶石</div>' + numInput('gemsLeft','现有多少填多少') + '</div>'
-  /* 「转移晶石」只对小号有意义（转给陌尘）；主号是接收方，不显示这个框 */
-  +   (isMainChar(c) ? '' : '<div class="ir gemsrow xferrow"><div class="k">转移晶石</div>'
-                        + numInput('transfer','转给陌尘的晶石') + '</div>')
     +   '<div class="vc-foot">'
     +     '<button class="btn-detail" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
     +       '<span class="t">详细</span><span class="arw">▼</span></button>'
