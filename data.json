@@ -1,7 +1,7 @@
 {
   "v": 3,
-  "savedAt": "2026-11-10T12:20:01.840137Z",
-  "updatedBy": "节点打包 · node1",
+  "savedAt": "2026-11-10T13:15:56.856Z",
+  "updatedBy": "设备-q5gen",
   "node": {
     "id": "node1",
     "seq": "1",
@@ -334,14 +334,13 @@
           "real": 1,
           "gemsLeft": 9172,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -351,7 +350,8 @@
           "wealth": 157,
           "tier": 7,
           "pct": 300,
-          "level": 84
+          "level": 84,
+          "bl": 1
         }
       ],
       "flags": {
@@ -411,14 +411,13 @@
           "real": 1,
           "gemsLeft": 14242,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -428,7 +427,8 @@
           "wealth": 1674,
           "tier": 15,
           "pct": 575,
-          "level": 85
+          "level": 85,
+          "bl": 1
         }
       ],
       "flags": {
@@ -466,14 +466,13 @@
           "real": 1,
           "gemsLeft": 22215,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -483,7 +482,8 @@
           "wealth": 27,
           "tier": 3,
           "pct": 218,
-          "level": 79
+          "level": 79,
+          "bl": 1
         }
       ],
       "flags": {
@@ -541,14 +541,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -558,7 +557,8 @@
           "wealth": 0,
           "tier": 1,
           "pct": 100,
-          "level": 65
+          "level": 65,
+          "bl": 1
         }
       ],
       "flags": {
@@ -596,14 +596,13 @@
           "real": 1,
           "gemsLeft": 43310,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -613,7 +612,8 @@
           "wealth": 24,
           "tier": 3,
           "pct": 218,
-          "level": 84
+          "level": 84,
+          "bl": 1
         }
       ],
       "flags": {
@@ -673,14 +673,13 @@
           "real": 1,
           "gemsLeft": 35997,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -690,7 +689,8 @@
           "wealth": 12,
           "tier": 2,
           "pct": 200,
-          "level": 81
+          "level": 81,
+          "bl": 1
         }
       ],
       "flags": {
@@ -749,14 +749,13 @@
           "real": 1,
           "gemsLeft": 26222,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -766,7 +765,8 @@
           "wealth": 23,
           "tier": 3,
           "pct": 218,
-          "level": 84
+          "level": 84,
+          "bl": 1
         }
       ],
       "flags": {
@@ -827,14 +827,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -844,7 +843,8 @@
           "wealth": 10,
           "tier": 2,
           "pct": 200,
-          "level": 78
+          "level": 78,
+          "bl": 1
         }
       ],
       "flags": {
@@ -904,14 +904,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -921,7 +920,8 @@
           "wealth": 6,
           "tier": 2,
           "pct": 200,
-          "level": 76
+          "level": 76,
+          "bl": 1
         }
       ],
       "flags": {
@@ -977,14 +977,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -994,7 +993,8 @@
           "wealth": 8,
           "tier": 2,
           "pct": 200,
-          "level": 75
+          "level": 75,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1044,14 +1044,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1061,7 +1060,8 @@
           "wealth": 0,
           "tier": 1,
           "pct": 100,
-          "level": 69
+          "level": 69,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1099,14 +1099,13 @@
           "real": 1,
           "gemsLeft": 35880,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1116,7 +1115,8 @@
           "wealth": 39,
           "tier": 3,
           "pct": 218,
-          "level": 84
+          "level": 84,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1165,14 +1165,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1182,7 +1181,8 @@
           "wealth": 5,
           "tier": 2,
           "pct": 200,
-          "level": 76
+          "level": 76,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1230,14 +1230,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1247,7 +1246,8 @@
           "wealth": 6,
           "tier": 2,
           "pct": 200,
-          "level": 74
+          "level": 74,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1291,14 +1291,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1308,7 +1307,8 @@
           "wealth": 6,
           "tier": 2,
           "pct": 200,
-          "level": 76
+          "level": 76,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1352,14 +1352,13 @@
           "real": 1,
           "gemsLeft": 27495,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1369,7 +1368,8 @@
           "wealth": 29,
           "tier": 3,
           "pct": 218,
-          "level": 80
+          "level": 80,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1416,14 +1416,13 @@
           "real": 1,
           "gemsLeft": 4885,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1433,7 +1432,8 @@
           "wealth": 23,
           "tier": 3,
           "pct": 218,
-          "level": 68
+          "level": 68,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1474,14 +1474,13 @@
           "real": 1,
           "gemsLeft": 636,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1491,7 +1490,8 @@
           "wealth": 115,
           "tier": 6,
           "pct": 275,
-          "level": 81
+          "level": 81,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1537,14 +1537,13 @@
           "real": 1,
           "gemsLeft": 10540,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1554,7 +1553,8 @@
           "wealth": 65,
           "tier": 4,
           "pct": 237,
-          "level": 78
+          "level": 78,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1598,14 +1598,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1615,7 +1614,8 @@
           "wealth": 7,
           "tier": 2,
           "pct": 200,
-          "level": 73
+          "level": 73,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1660,14 +1660,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1677,7 +1676,8 @@
           "wealth": 0,
           "tier": 1,
           "pct": 100,
-          "level": 34
+          "level": 34,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1713,14 +1713,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1730,7 +1729,8 @@
           "wealth": 15,
           "tier": 2,
           "pct": 200,
-          "level": 74
+          "level": 74,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1772,14 +1772,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1789,7 +1788,8 @@
           "wealth": 21,
           "tier": 3,
           "pct": 218,
-          "level": 73
+          "level": 73,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1831,14 +1831,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1848,7 +1847,8 @@
           "wealth": 9,
           "tier": 2,
           "pct": 200,
-          "level": 80
+          "level": 80,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1889,14 +1889,13 @@
           "real": 1,
           "gemsLeft": 38529,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1906,7 +1905,8 @@
           "wealth": 465,
           "tier": 10,
           "pct": 375,
-          "level": 89
+          "level": 89,
+          "bl": 1
         }
       ],
       "flags": {
@@ -1945,14 +1945,13 @@
           "real": 1,
           "gemsLeft": 0,
           "gl": 0,
+          "dsrc": "",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
-          "dsrc": "",
-          "bl": 1,
           "dunGain": null,
           "dg": 0,
           "mkt": null,
@@ -1962,7 +1961,8 @@
           "wealth": 0,
           "tier": 1,
           "pct": 100,
-          "level": ""
+          "level": "",
+          "bl": 1
         }
       ],
       "flags": {},
