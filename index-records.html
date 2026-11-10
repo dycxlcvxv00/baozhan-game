@@ -280,6 +280,17 @@
   /* 汇总区「内部转移」行的补充说明 */
   .sm.c-transfer .xfer-note{font-size:11px;color:var(--mute);margin-left:10px;
     white-space:nowrap;align-self:center}
+  /* 汇总区「三来源拆分」行：异界（青）/ 市集（靛）/ 转移（粉）三个数字并排 */
+  .sm.c-srcrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:6px 12px;border-radius:9px;
+    background:rgba(47,230,208,0.05);border:1px solid rgba(47,230,208,0.16)}
+  .sm.c-srcrow .k{font-size:11.5px;color:var(--dim);font-weight:700}
+  .sm.c-srcrow .v{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+  .sm.c-srcrow .v.src-dun{color:#8fe3f2}
+  .sm.c-srcrow .v.src-mkt{color:#b9c8ee}
+  .sm.c-srcrow .v.src-xfer{color:#f8a8cd}
+  .sm.c-srcrow .xfer-note{font-size:11px;color:var(--mute);margin-left:auto;
+    white-space:nowrap;align-self:center}
   .lr-item{display:inline-flex;align-items:center;gap:5px;cursor:pointer;
     font-size:12.5px;color:var(--text);user-select:none}
   .lr-item input{width:15px;height:15px;accent-color:#ff8a5c;cursor:pointer}
@@ -926,6 +937,20 @@
     border:1px solid var(--line,#2a3244);border-radius:6px}
   .acct-banner.none{border-style:dashed;color:#5a6478}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 10px}
+  /* ---- 三来源分区（2026-11-11 夜）----
+     异界产出 / 市集收入 / 转移收入 横排三格，跨满整行。
+     为什么要单独一行：这三者是「钱从哪来」的三个完全不同的来源，
+     混在两列网格里会被人工费用、净利润之类挤散，看不出对比。
+     转移（粉）是站内搬砖 —— 不是赚来的钱，视觉上要和产出区分开。 */
+  .srcrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px;margin-bottom:5px}
+  .srcrow .st.src{padding:4px 5px}
+  .srcrow .st .k{font-size:9.5px;letter-spacing:0}
+  .srcrow .st .v{font-size:13px}
+  /* 三个来源各自的配色（与录入区色系一致，防止认错） */
+  .st.src.dun{background:#0d1a22;border-color:#2b6b7a}     /* 异界：青 */
+  .st.src.mkt{background:#12141f;border-color:#3a4370}     /* 市集：靛 */
+  .st.src.xfer{background:#1b141d;border-color:#5c3a58}    /* 转移：粉 */
+  .v.mkt{color:#b9c8ee} .v.xfin{color:#f8a8cd} .v.xfout{color:#c77bff}
   .stats .col{display:flex;flex-direction:column;gap:5px}
   .st{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
     padding:4px 8px;text-align:center}
@@ -1679,14 +1704,23 @@ function xferInRowHTML(c, i){
   const d = today();
   const amt = transferInOfAcct(c.id, d);
   const srcs = transferInSources(c.id, d);
+  /* 今天这一格显示「今日转入」，累计数在卡面统计区的「转移收入」格里。
+     两处都摆着，是为了当场就能对：今天进来的钱应该能在卡面累计里对得上。 */
+  const total = transferInTotal(c);
+  const tail = total > amt
+    ? '<div class="src">累计 ' + intNum(total) + '</div>'
+    : '';
   if(!srcs.length){
     return '<div class="ir xferinrow none"><div class="k">转移收入</div>'
-      + '<div class="v">0</div><div class="src">今天还没有号转进来</div></div>';
+      + '<div class="v">0</div>'
+      + '<div class="src">今天还没有号转进来</div>'
+      + (total > 0 ? tail : '') + '</div>';
   }
   const names = srcs.map(function(x){ return esc(x.fromName); }).join('、');
   return '<div class="ir xferinrow"><div class="k">转移收入</div>'
     + '<div class="v">' + intNum(amt) + '</div>'
-    + '<div class="src" title="' + names + '">← ' + names + '（已扣5%手续费）</div></div>';
+    + '<div class="src" title="' + names + '">← ' + names + '（已扣5%手续费）</div>'
+    + tail + '</div>';
 }
 
 /* ============================================================
@@ -1741,6 +1775,49 @@ function xferTargetOf(c, r){
 function xferOutOf(c, r){
   if(!c || !r) return 0;
   return Number(r.transfer) || 0;
+}
+
+/* ============================================================
+ * 转移收支的累计统计（2026-11-11 夜，卡面排版改造）
+ * ------------------------------------------------------------
+ * 为什么单独统计：
+ *   闭合反推的残差里**已经把转入扣掉了**（v = 期末 − 期初 − 转入 + 流出），
+ *   所以「市集/转入」桶其实是纯市集残差，**不含**转移 —— 名字起得有歧义。
+ *   而转移是「站内搬砖」：不是赚来的钱，把它混进产出会虚增收益。
+ *   所以卡面拆成三个来源并列：
+ *     异界产出（dsrc=dun 段残差）
+ *     市集收入（dsrc=mkt 段残差，已扣转入 → 与转移天然不重叠）
+ *     转移收入（本号从别的号收到的实收额，已扣 5% 手续费）
+ *   异界 + 市集 = 真实总产出；转移只反映站内搬运。
+ * ============================================================ */
+
+/* 本号累计收到的转入（实收，已扣 5% 手续费）—— 全时段合计 */
+function transferInTotal(c){
+  if(!c) return 0;
+  const m = transferInByAcct(c.id);
+  return Object.keys(m).reduce(function(a, k){ return a + (Number(m[k]) || 0); }, 0);
+}
+/* 本号累计转出的晶石（全额离开本号，含手续费那部分由转出方承担） */
+function transferOutTotal(c){
+  if(!c) return 0;
+  let s = 0;
+  (c.records || []).forEach(function(r){ s += transferAmountOf(r, c); });
+  return s;
+}
+/* 本号累计收到的转入，按来源号拆分 [{fromId, fromName, amt}] —— 全时段 */
+function transferInSourcesAll(c){
+  const out = {};
+  (ACCOUNTS || []).forEach(function(src){
+    (src.records || []).forEach(function(r){
+      const amt = transferAmountOf(r, src);
+      if(amt <= 0) return;
+      if(xferTargetOf(src, r) !== c.id) return;
+      const k = src.id;
+      if(!out[k]) out[k] = { fromId:src.id, fromName:src.name || src.account || '未命名', amt:0 };
+      out[k].amt += xferNetOfRec(r, src);
+    });
+  });
+  return Object.keys(out).map(function(k){ return out[k]; });
 }
 
 /* 全量扫描：按结算日汇总「转入的晶石」（任意号→任意号） { '2026-10-21': 17868, ... } */
@@ -2433,7 +2510,10 @@ function totals(c){
               chaosCost:Number(c.chaosCost)||0, transfer:0,
               dungeonGain:0, hasDun:false, dunManual:false,
               dunFromClosure:false, dunLegacy:false,
-              marketGain:0, hasMkt:false };
+              /* 市集收入：dsrc=mkt 段的净增残差（**已扣转入**，与转移天然不重叠） */
+              marketGain:0, hasMkt:false,
+              /* 转移收支：站内搬砖，单独统计，不与产出混在一起 */
+              xferIn:0, hasXferIn:false, xferOut:0 };
   (c.records||[]).forEach(function(r){
     const p = recParts(r, c);
     /* 「已出售晶石」只算真正卖钱的那部分；转出的晶石单列到 transfer，
@@ -2452,13 +2532,19 @@ function totals(c){
       else if(dg.src === 'closure') t.dunFromClosure = true;
       else if(dg.src === 'legacy') t.dunLegacy = true;
     }
-    /* 「市集/转入」桶：标了 mkt 的区间的净增 —— 不算异界产出，单独归集 */
+    /* 市集收入桶：标了 mkt 的区间的净增残差 ——
+       不算异界产出，单独归集。闭合残差已把「转入」扣掉，
+       所以这个桶里**不含**转移收入，两者天然不重叠。 */
     const mg = marketGainEffective(r, c);
     if(mg.v != null){
       t.marketGain += mg.v;
       t.hasMkt = true;
     }
   });
+  /* 转移收支：累计收到的（实收，已扣 5% 手续费）/ 累计转出的（全额离开本号） */
+  t.xferIn  = transferInTotal(c);
+  t.hasXferIn = t.xferIn > 0;
+  t.xferOut = transferOutTotal(c);
   /* 人工费（新口径）：按「角色×天」派生，不再读 dayLabor 累加 */
   t.laborCost = laborTotal(c);
   /* 剩余：取时序上最后一条录入的值；没有明细时退回基准值 */
@@ -2642,12 +2728,16 @@ function summarize(list){
       if(t.dunLegacy) a.dunLegacy = true;
     }
     if(t.hasMkt){ a.marketGain += t.marketGain; a.hasMkt = true; }
+    /* 转移收支（站点级）：站内搬砖的总量 —— 转出与转入会互相抵消，
+       这里两个都留着，好看出全站到底在倒腾多少晶石。 */
+    a.xferIn += t.xferIn; a.xferOut += t.xferOut;
     return a;
   }, { roles:list.length, gemsLeft:0, gained:0, gemsSold:0,
        soldValue:0, laborCost:0, profit:0, chaosCost:0,
        dungeonGain:0, hasDun:false, dunManual:false,
        dunFromClosure:false, dunLegacy:false,
-       marketGain:0, hasMkt:false });
+       marketGain:0, hasMkt:false,
+       xferIn:0, xferOut:0 });
 }
 /* 已废弃：保留仅为兼容旧引用，实际使用 netProfit() */
 function roleIncome(c){ return netProfit(c); }
@@ -3738,7 +3828,7 @@ function renderSummary(sum, animate){
     { cls:'c-dun',   slot:'s-data',  ico:'gem',   key:'dungeonGain', k:'异界产出总量(纯口径)', v:sum.hasDun ? intNum(sum.dungeonGain) : '未记录',
       tip:'纯净口径：只含打异界掉落的晶石。来源：' + (dungeonSourceLabel(sum) || '未记录')
         + '（闭合反推 = 由「剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入」解收支方程算出来，再按录入时点的来源标记分桶）'
-        + (sum.hasMkt ? ('；另有归因到「市集/转入」的 ' + intNum(sum.marketGain) + ' 未计入本数') : '') },
+        + (sum.hasMkt ? ('；另有市集收入 ' + intNum(sum.marketGain) + ' 未计入本数') : '') },
     { cls:'c-left',  slot:'s-data',  ico:'gem',   key:'gemsLeft',   k:'剩余晶石总量',     v:intNum(sum.gemsLeft) },
     { cls:'c-gain',  slot:'s-data',  ico:'gain',  key:'gained',     k:'累计获取(含集市)',   v:num(sum.gained) },
     { cls:'c-sold',  slot:'s-data',  ico:'box',   key:'gemsSold',   k:'出售晶石总量',     v:intNum(sum.gemsSold) },
@@ -3760,6 +3850,18 @@ function renderSummary(sum, animate){
     Object.keys(pl).forEach(function(k){ tUsed += pl[k].use; });
   });
   const tPend = Math.max(0, tTotal - tUsed);
+  /* 「三来源」提示行：把全站的异界 / 市集 / 转移摆在一起 ——
+     异界 + 市集 = 真实总产出；转移是站内搬砖，不计入任何人的收入。
+     市集收入与转移并列显示，是为了让人一眼看出「转移没混进产出里」。 */
+  const srcRow = (sum.hasDun || sum.hasMkt || tTotal)
+    ? '<div class="sm c-srcrow" style="grid-column:1/-1">'
+      + '<span class="k">' + ico('gem') + '三来源拆分</span>'
+      + '<span class="v src-dun" title="纯净口径：打异界掉落的晶石。做「财富值档位 → 每日产出」分析用这个数">异界 ' + (sum.hasDun ? intNum(sum.dungeonGain) : '—') + '</span>'
+      + '<span class="v src-mkt" title="市集收入 = 标了「市集/转入」的区间的净增残差（已扣转入），不是异界产出">市集 ' + (sum.hasMkt ? intNum(sum.marketGain) : '—') + '</span>'
+      + '<span class="v src-xfer" title="内部转移晶石合计（接收方实收，已扣 5% 手续费；历史记录无手续费）。站内搬砖，不计为任何人的收入">转移 ' + intNum(tTotal) + '</span>'
+      + '<span class="xfer-note">异界 + 市集 = 真实总产出；转移只是站内搬砖，不算收入</span>'
+      + '</div>'
+    : '';
   const extra = tTotal
     ? '<div class="sm c-transfer" style="grid-column:1/-1">'
       + '<span class="k">' + ico('gain') + '内部转移（号↔号，已从累计获取中扣除）</span>'
@@ -3774,7 +3876,7 @@ function renderSummary(sum, animate){
       + '<span class="v" data-sum="' + i.key + '"'
       + (i.tip ? ' title="' + i.tip + '"' : '') + '>' + i.v + '</span>'
       + '</div>';
-  }).join('') + extra + '<div class="sm s-exp" aria-hidden="true"></div>';
+  }).join('') + srcRow + extra + '<div class="sm s-exp" aria-hidden="true"></div>';
   /* 负值标红：已获取、净利润、秘境消耗都可能为负 */
   [['gained','neg'],['profit','neg'],['chaosCost','neg']].forEach(function(pair){
     const el = document.querySelector('[data-sum="'+pair[0]+'"]');
@@ -3811,7 +3913,26 @@ function refreshNumbers(i){
       + '　｜　闭合反推 = 由「剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入」解收支方程算出来，再按录入时点的「异界」按钮归到异界桶';
     setV(row,'marketGain', t.hasMkt ? intNum(t.marketGain) : '未记录', 'hit');
     const mktEl = row.querySelector('[data-v="marketGain"]');
-    if(mktEl) mktEl.title = '录入时没点「异界」按钮的记录，其净增残差归到这里。不是异界产出，不参与档位分析';
+    if(mktEl) mktEl.title = '录入时没点「异界」按钮的记录，其净增残差归到这里（已扣转入，不含转移收入）。不是异界产出，不参与档位分析';
+    /* 转移收支：累计收到 / 累计转出（站内搬砖，不算收入） */
+    setV(row,'xferIn',  t.hasXferIn ? intNum(t.xferIn) : '0', 'hit');
+    const xinEl = row.querySelector('[data-v="xferIn"]');
+    if(xinEl){
+      const srcs = transferInSourcesAll(c);
+      xinEl.title = srcs.length
+        ? ('来自：' + srcs.map(function(x){ return esc(x.fromName) + ' ' + intNum(x.amt); }).join('、')
+           + '（实收，已扣 5% 手续费）。站内搬砖，不是赚来的钱，不计入产出，也不计入利润')
+        : '别的号转给本号的晶石（实收，已扣 5% 手续费）。站内搬砖，不是赚来的钱，不计入产出，也不计入利润';
+    }
+    setV(row,'xferOut', intNum(t.xferOut), 'hit');
+    const xoutEl = row.querySelector('[data-v="xferOut"]');
+    if(xoutEl) xoutEl.title = '本号转给别的号的晶石（全额离开本号）。与「转移收入」成对看，就是这个号的净调拨量';
+    const netX = t.xferIn - t.xferOut;
+    const netEl = row.querySelector('[data-v="xferNet"]');
+    if(netEl) netEl.className = 'v ' + (netX >= 0 ? 'xfin' : 'xfout');
+    setV(row,'xferNet', (netX > 0 ? '+' : '') + intNum(netX), 'hit');
+    if(netEl) netEl.title = '累计收到的转入 − 累计转出的晶石。正数 = 净吸晶石，负数 = 净输出。'
+      + '纯站内调拨，不影响这个号的真实产出';
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
@@ -3933,14 +4054,14 @@ function detailHTML(i){
       : '';
     /* 「异界产出」= 有效异界产出：现在只有闭合反推一个来源。
        算不出来就把原因写在 title 里，不给假数。
-       注意：本列**只放异界桶**。标了「市集/转入」的残差不进这一列
+       注意：本列**只放异界桶**。归到市集收入的残差不进这一列
        （做档位→产出分析只认异界桶），但残差数值写进 title，别把信息丢掉。 */
     const dgE = dungeonGainEffective(r, c);
     const mgE = marketGainEffective(r, c);
     const dgCell = (dgE.v == null)
       ? '<td class="n dun none" title="'
         + (mgE.v != null
-            ? '本次归因到「市集/转入」（残差 ' + intNum(mgE.v) + '），不计入异界产出'
+            ? '本次归因到市集收入（残差 ' + intNum(mgE.v) + '，已扣转入），不计入异界产出'
             : (closureWhyOf(r, c)
                 ? '闭合不可算：' + closureWhyOf(r, c)
                 : '这条记录无法反推异界产出'))
@@ -3994,7 +4115,7 @@ function detailHTML(i){
       return a + (e.v == null ? 0 : e.v);
     }, 0);
     const dunHas = recs.some(function(r){ return dungeonGainEffective(r, c).v != null; });
-    /* 市集/转入桶合计：单独归因到市集/转入的净增，不计入异界产出 */
+    /* 市集收入合计：单独归因到市集的净增（已扣转入），不计入异界产出 */
     const mktSum = recs.reduce(function(a, r){
       const e = marketGainEffective(r, c);
       return a + (e.v == null ? 0 : e.v);
@@ -4006,7 +4127,7 @@ function detailHTML(i){
       + '<td class="n' + (rowSum ? ' inc' : ' zero') + '" title="各条真实增量之和">'
         + num(rowSum) + '</td>'
       + '<td class="n dun' + (dunHas ? '' : ' none') + '" title="有效异界产出之和（纯净口径：闭合反推）'
-        + (mktHas ? ('；另有归因到「市集/转入」的净增 ' + intNum(mktSum) + '（不计入异界产出）') : '')
+        + (mktHas ? ('；另有市集收入 ' + intNum(mktSum) + '（不计入异界产出）') : '')
         + '">'
         + (dunHas ? intNum(dunSum) : '—') + '</td>'
       + '<td colspan="7" class="sumgap' + (gap ? ' warn' : '') + '" title="'
@@ -4258,6 +4379,8 @@ function cardHTML(c, i, disp, gc){
   /* 净利润 = 收入 − 人工费用 */
   const p = t.soldValue - t.laborCost;
   const pCls = p > 0 ? ' pos' : (p < 0 ? ' neg' : '');
+  /* 转移净额 = 累计转入 − 累计转出（站内调拨的净方向） */
+  const netXfer = t.xferIn - t.xferOut;
   const feats = SWITCH_ORDER.map(function(f){
     /* 「混沌」开关已按用户要求替换为财富值数值（2026-11-06）：
        只读展示 c.wealth，点击打开「修改」弹窗填写；原 flags.chaos 数据保留不再显示 */
@@ -4314,33 +4437,56 @@ function cardHTML(c, i, disp, gc){
   +     (c.account ? esc(c.account) : '未填写账号信息') + '</div>'
     +   '<div class="switches">' + feats + '</div>'
     +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
+  /* ---- 统计区（2026-11-11 夜重排）----
+   * 核心变化：把「异界产出 / 市集收入 / 转移收入」三个来源**并列横排**，
+   * 一眼看出钱从哪来。转移是站内搬砖（别的号转来的），不是赚到的钱，
+   * 混进产出会虚增收益 —— 必须单独一格。
+   *
+   * 上排：剩余晶石（宽）→ 存量锚点
+   * 中排：三来源分区（异界 青 / 市集 靛 / 转移 粉），跨满整行
+   * 下排：流水与收支（两列）
+   */
+  +   '<div class="srcrow">'
+  /* 异界产出 = 纯净的「打异界掉落的晶石」。做「档位 → 每日产出」分析只能用这个数。 */
+  +     '<div class="st src dun"><div class="k">异界产出</div><span class="v dun" data-v="dungeonGain" '
+  +       'title="纯净口径：只含打异界掉落的晶石。来源：手填 / 闭合反推（由剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入解方程算出，并按录入时点的「异界」按钮归到异界桶）。'
+  +       '做「财富值档位 → 每日产出」分析请用这个数">'
+  +       (t.hasDun ? (intNum(t.dungeonGain) + (dungeonSourceLabel(t) === '闭合反推' || dungeonSourceLabel(t) === '手填+闭合' || dungeonSourceLabel(t) === '闭合+历史' ? '（推算）' : '')) : '未记录') + '</span></div>'
+  /* 市集收入 = 标了「市集/转入」的区间的净增残差。闭合残差已扣掉转入 → 不含转移。 */
+  +     '<div class="st src mkt"><div class="k">市集收入</div><span class="v mkt" data-v="marketGain" '
+  +       'title="录入时没点「异界」按钮的那几笔，其净增残差归到这里（余额净增 + 秘境消耗 + 卖出 + 转出 − 转入）。'
+  +       '不是异界产出，不参与「档位 → 产出」分析，但也不该被丢掉。转入已被扣掉，所以这一格不含转移收入">'
+  +       (t.hasMkt ? intNum(t.marketGain) : '未记录') + '</span></div>'
+  /* 转移收入 = 别的号转进来的实收额（已扣 5% 手续费）。站内搬砖，不是赚到的钱。 */
+  +     '<div class="st src xfer"><div class="k">转移收入</div><span class="v xfin" data-v="xferIn" '
+  +       'title="别的号转给本号的晶石（实收，已扣 5% 手续费）。这是站内搬砖，不是赚来的钱，不计入产出，也不计入利润">'
+  +       (t.hasXferIn ? intNum(t.xferIn) : '0') + '</span></div>'
+  +   '</div>'
   +   '<div class="stats">'
   +     '<div class="col">'
-  /* 「累计异界产出」= 纯净的「打异界掉落的晶石」，2026-11-10 新增。
-     做「档位 → 每日产出」分析必须用这个数，不能用下面那个混合口径。 */
-  +       '<div class="st"><div class="k">累计异界产出</div><span class="v dun" data-v="dungeonGain" '
-  +         'title="纯净口径：只含打异界掉落的晶石。来源：手填 / 闭合反推（由剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入解方程算出，并按录入时点的「异界」按钮归到异界桶）。'
-  +         '做「财富值档位 → 每日产出」分析请用这个数">'
-  +         (t.hasDun ? (intNum(t.dungeonGain) + (dungeonSourceLabel(t) === '闭合反推' || dungeonSourceLabel(t) === '手填+闭合' || dungeonSourceLabel(t) === '闭合+历史' ? '（推算）' : '')) : '未记录') + '</span></div>'
-  +       '<div class="st"><div class="k">累计市集/转入</div><span class="v plain" data-v="marketGain" '
-  +         'title="录入时没点「异界」按钮的那几笔，其净增残差归到这个桶。它不是异界产出，不参与「档位 → 产出」分析，但也不该被丢掉">'
-  +         (t.hasMkt ? intNum(t.marketGain) : '未记录') + '</span></div>'
-  +       '<div class="st"><div class="k">累计获取(含集市)</div><span class="v plain" data-v="gained" '
+  +       '<div class="st"><div class="k">累计获取(含市集)</div><span class="v plain" data-v="gained" '
   +         'title="混合口径：每个结算日取「末条剩余 − 首条之前余额 + 当日卖出 + 当日秘境消耗」，'
   +         '当天净增为负记 0。这个数里混着集市买入、任务奖励等非异界来源（实测约占 62%），'
   +         '不要用它算档位产出">'
   +         g + '</span></div>'
   +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold" '
-  +         'title="只统计真正卖钱的那部分晶石；转给陌尘的量单列在明细表的「转移晶石」列，不计入此数">'
+  +         'title="只统计真正卖钱的那部分晶石；转给别的号的量单列在「累计转出」与明细表的「转移晶石」列，不计入此数">'
   +         intNum(t.gemsSold) + '</span></div>'
   +       '<div class="st"><div class="k">累计秘境消耗</div><span class="v chaos" data-v="chaosCost">' + intNum(t.chaosCost) + '</span></div>'
+  +       '<div class="st"><div class="k">转移净额</div><span class="v' + (netXfer >= 0 ? ' xfin' : ' xfout') + '" data-v="xferNet" '
+  +         'title="累计收到的转入 − 累计转出的晶石。正数 = 这个号净吸晶石（别的号补给它），'
+  +         '负数 = 净输出（它把晶石调给了别的号）。纯站内调拨，不影响这个号的真实产出">'
+  +         (netXfer > 0 ? '+' : '') + intNum(netXfer) + '</span></div>'
   +     '</div>'
     +     '<div class="col">'
-    +       '<div class="st"><div class="k">人工费用</div><span class="v redlite" data-v="laborCost">' + money(t.laborCost) + '</span></div>'
-    +       '<div class="st"><div class="k">累计收入</div><span class="v gold" data-v="soldValue">' + money(t.soldValue) + '</span></div>'
-    +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
-    +     '</div>'
-    +   '</div>'
+  +       '<div class="st"><div class="k">累计转出晶石</div><span class="v xfout" data-v="xferOut" '
+  +         'title="本号转给别的号的晶石（全额离开本号）。与「转移收入」成对看，就是这个号的净调拨量">'
+  +         intNum(t.xferOut) + '</span></div>'
+  +       '<div class="st"><div class="k">人工费用</div><span class="v redlite" data-v="laborCost">' + money(t.laborCost) + '</span></div>'
+  +       '<div class="st"><div class="k">累计收入</div><span class="v gold" data-v="soldValue">' + money(t.soldValue) + '</span></div>'
+  +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
+  +     '</div>'
+  +   '</div>'
   /* 录入区（2026-11-11 改造）：四行两格 + 剩余晶石独占一行
      第一行 = 出售晶石 | 现金收入
      第二行 = 秘境消耗 | 转移晶石（带「转给哪个号」选择器）
@@ -4466,7 +4612,7 @@ function daySectHTML(d, isToday){
     { cls:'c-dun',   ico:'gem',   k:'当日异界产出',     v:s.hasDun ? intNum(s.dungeonGain) : '未记录', raw:s.hasDun ? s.dungeonGain : 0,
       tip:'纯净口径：当天所有角色异界产出之和。来源：' + (dungeonSourceLabel(s) || '未记录')
         + '（闭合反推 = 由「剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入」解收支方程算出来，再按来源标记分桶）'
-        + (s.hasMkt ? ('；另有归因到「市集/转入」的 ' + intNum(s.marketGain) + ' 未计入本数') : '') },
+        + (s.hasMkt ? ('；另有市集收入 ' + intNum(s.marketGain) + ' 未计入本数') : '') },
     { cls:'c-gain',  ico:'gain',  k:'当日累计获取(含集市)', v:num(s.gained),  raw:s.gained },
     { cls:'c-sold',  ico:'box',   k:'当日出售晶石',     v:intNum(s.gemsSold), raw:s.gemsSold },
     { cls:'c-money', ico:'money', k:'当日收入',         v:money(s.soldValue), raw:s.soldValue },
