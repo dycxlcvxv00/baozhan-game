@@ -1,6 +1,6 @@
 {
   "v": 3,
-  "savedAt": "2026-11-10T01:29:53.877Z",
+  "savedAt": "2026-11-10T02:25:08.868Z",
   "updatedBy": "设备-q5gen",
   "snapshots": {
     "2026-09-23": {
@@ -13525,7 +13525,7 @@
     },
     "2026-11-10": {
       "date": "2026-11-10",
-      "generatedAt": "2026-11-10T01:29:52.669Z",
+      "generatedAt": "2026-11-10T02:25:07.657Z",
       "device": "设备-q5gen",
       "accounts": [
         {
@@ -13550,14 +13550,14 @@
           "name": "陌尘",
           "level": 85,
           "job": "弓马",
-          "gemsLeft": 72517,
-          "gained": 17118,
+          "gemsLeft": 56194,
+          "gained": 795,
           "gemsSold": 0,
           "soldValue": 0,
           "laborCost": 0,
           "profit": 0,
           "chaosCost": 45000,
-          "recordCount": 1,
+          "recordCount": 2,
           "blank": false
         },
         {
@@ -13902,27 +13902,27 @@
           "name": "小龙宝",
           "level": 89,
           "job": "电法",
-          "gemsLeft": 693,
-          "gained": 0,
+          "gemsLeft": 38529,
+          "gained": 67836,
           "gemsSold": 0,
           "soldValue": 0,
           "laborCost": 0,
           "profit": 0,
-          "chaosCost": 0,
-          "recordCount": 0,
-          "blank": true
+          "chaosCost": 30000,
+          "recordCount": 2,
+          "blank": false
         }
       ],
       "total": {
         "roles": 24,
-        "gemsLeft": 296580,
-        "gained": 27655,
+        "gemsLeft": 318093,
+        "gained": 79168,
         "gemsSold": 0,
         "soldValue": 0,
         "laborCost": 60,
         "profit": -60,
-        "chaosCost": 45000,
-        "recordCount": 12
+        "chaosCost": 75000,
+        "recordCount": 15
       }
     }
   },
@@ -14948,7 +14948,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 13532,
+          "dg": 1
         },
         {
           "date": "2026-09-28",
@@ -14964,7 +14966,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 15156,
+          "dg": 1
         },
         {
           "date": "2026-09-29",
@@ -14996,7 +15000,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 13738,
+          "dg": 1
         },
         {
           "date": "2026-09-30",
@@ -15012,7 +15018,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 15067,
+          "dg": 1
         },
         {
           "date": "2026-10-01",
@@ -15028,7 +15036,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 14895,
+          "dg": 1
         },
         {
           "date": "2026-10-02",
@@ -15044,7 +15054,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 15095,
+          "dg": 1
         },
         {
           "date": "2026-10-03",
@@ -15060,7 +15072,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 14682,
+          "dg": 1
         },
         {
           "date": "2026-10-04",
@@ -15092,7 +15106,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 14154,
+          "dg": 1
         },
         {
           "date": "2026-10-06",
@@ -15108,7 +15124,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 14656,
+          "dg": 1
         },
         {
           "date": "2026-10-07",
@@ -15124,7 +15142,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 15205,
+          "dg": 1
         },
         {
           "date": "2026-10-08",
@@ -15156,7 +15176,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 15420,
+          "dg": 1
         },
         {
           "date": "2026-10-10",
@@ -15172,7 +15194,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 15727,
+          "dg": 1
         },
         {
           "date": "2026-10-11",
@@ -15204,7 +15228,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 15408,
+          "dg": 1
         },
         {
           "date": "2026-10-12",
@@ -15220,7 +15246,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 14503,
+          "dg": 1
         },
         {
           "date": "2026-10-12",
@@ -15236,7 +15264,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 16549,
+          "dg": 1
         },
         {
           "date": "2026-10-14",
@@ -15252,7 +15282,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 16845,
+          "dg": 1
         },
         {
           "date": "2026-10-16",
@@ -15284,7 +15316,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 17888,
+          "dg": 1
         },
         {
           "date": "2026-10-18",
@@ -15300,7 +15334,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 17981,
+          "dg": 1
         },
         {
           "date": "2026-10-19",
@@ -15316,7 +15352,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 18133,
+          "dg": 1
         },
         {
           "date": "2026-10-20",
@@ -15348,7 +15386,9 @@
           "wealth": null,
           "tier": null,
           "pct": null,
-          "level": null
+          "level": null,
+          "dunGain": 4498,
+          "dg": 1
         },
         {
           "date": "2026-10-21",
@@ -15640,13 +15680,29 @@
         },
         {
           "date": "2026-11-10",
-          "time": "06:55:12",
+          "time": "08:55:12",
           "real": 1,
           "gemsLeft": 72517,
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 45000,
+          "transfer": 0,
+          "xf": 1,
+          "wealth": 1674,
+          "tier": 15,
+          "pct": 575,
+          "level": 85
+        },
+        {
+          "date": "2026-11-10",
+          "time": "09:56:40",
+          "real": 1,
+          "gemsLeft": 56194,
+          "daySold": 0,
+          "dayValue": 0,
+          "dayLabor": 0,
+          "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
           "wealth": 1674,
@@ -20060,7 +20116,7 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:06:25",
+          "time": "09:06:25",
           "real": 1,
           "gemsLeft": 4651,
           "daySold": 0,
@@ -20076,7 +20132,7 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:08:13",
+          "time": "09:08:13",
           "real": 1,
           "gemsLeft": 0,
           "daySold": 0,
@@ -21582,7 +21638,7 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:10:04",
+          "time": "09:10:04",
           "real": 1,
           "gemsLeft": 9851,
           "daySold": 0,
@@ -21598,13 +21654,13 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:10:59",
+          "time": "09:10:59",
           "real": 1,
           "gemsLeft": 0,
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
-          "chaosCost": 9851.0,
+          "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
           "wealth": 8,
@@ -25039,7 +25095,7 @@
         },
         {
           "date": "2026-11-10",
-          "time": "06:57:10",
+          "time": "08:57:10",
           "real": 1,
           "gemsLeft": 7654,
           "daySold": 0,
@@ -25735,7 +25791,7 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:12:35",
+          "time": "09:12:35",
           "real": 1,
           "gemsLeft": 16897,
           "daySold": 0,
@@ -25751,13 +25807,13 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:13:18",
+          "time": "09:13:18",
           "real": 1,
           "gemsLeft": 0,
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
-          "chaosCost": 16897.0,
+          "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
           "wealth": 7,
@@ -26053,7 +26109,7 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:24:23",
+          "time": "09:24:23",
           "real": 1,
           "gemsLeft": 17600,
           "daySold": 0,
@@ -26069,13 +26125,13 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:29:52",
+          "time": "09:29:52",
           "real": 1,
           "gemsLeft": 0,
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
-          "chaosCost": 17600.0,
+          "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
           "wealth": 15,
@@ -26583,7 +26639,7 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:19:12",
+          "time": "09:19:12",
           "real": 1,
           "gemsLeft": 18686,
           "daySold": 0,
@@ -26599,13 +26655,13 @@
         },
         {
           "date": "2026-11-10",
-          "time": "07:21:42",
+          "time": "09:21:42",
           "real": 1,
           "gemsLeft": 0,
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
-          "chaosCost": 18686.0,
+          "chaosCost": 0,
           "transfer": 0,
           "xf": 1,
           "wealth": 9,
@@ -26848,6 +26904,38 @@
           "chaosCost": 27000,
           "transfer": 0,
           "xf": 0,
+          "wealth": 465,
+          "tier": 10,
+          "pct": 375,
+          "level": 89
+        },
+        {
+          "date": "2026-11-10",
+          "time": "09:56:51",
+          "real": 1,
+          "gemsLeft": 68529,
+          "daySold": 0,
+          "dayValue": 0,
+          "dayLabor": 0,
+          "chaosCost": 0,
+          "transfer": 0,
+          "xf": 1,
+          "wealth": 465,
+          "tier": 10,
+          "pct": 375,
+          "level": 89
+        },
+        {
+          "date": "2026-11-10",
+          "time": "10:25:07",
+          "real": 1,
+          "gemsLeft": 38529,
+          "daySold": 0,
+          "dayValue": 0,
+          "dayLabor": 0,
+          "chaosCost": 30000,
+          "transfer": 0,
+          "xf": 1,
           "wealth": 465,
           "tier": 10,
           "pct": 375,
