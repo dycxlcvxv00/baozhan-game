@@ -31,13 +31,14 @@ def main():
     dst = gh_json(DST + '?ref=main')
     sha = dst['sha'] if dst else None
     body = {'message': '仓库快照：同步云端最新数据（供页面「仓库恢复」使用）',
-            'content': base64.b64encode(json.dumps(data, ensure_ascii=False).encode()).decode(),
+            'content': base64.b64encode((json.dumps(data, ensure_ascii=False, indent=2) + '\n').encode()).decode(),
             'branch': 'main'}
     if sha: body['sha'] = sha
     r = gh_json(DST, 'PUT', body)
     print('Pages 快照提交 →', r['commit']['sha'][:7])
     # 同步本地镜像
-    json.dump(data, open(os.path.join(ROOT, 'data', 'data.json'), 'w'), ensure_ascii=False)
+    json.dump(data, open(os.path.join(ROOT, 'data', 'data.json'), 'w', encoding='utf-8'),
+              ensure_ascii=False, indent=2)
     print('本地镜像已更新')
 
 if __name__ == '__main__':
