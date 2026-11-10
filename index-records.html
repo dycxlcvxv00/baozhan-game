@@ -86,6 +86,9 @@
   .chip.on{color:var(--accent);border-color:rgba(47,230,208,0.5)}
   .chip.saved{color:var(--ok);border-color:rgba(87,227,155,0.4)}
   .chip.time{color:var(--gold);border-color:rgba(255,207,107,0.38);font-variant-numeric:tabular-nums}
+  /* 数据节点：显示当前处于哪一段数据的起点 */
+  .chip.node{color:var(--accent2);border-color:rgba(155,123,255,0.38);font-variant-numeric:tabular-nums}
+  .chip.node.none{color:var(--mute);border-color:var(--line)}
   .chip.time.hit{animation:flash .7s ease}
   /* 云端同步状态：灰=待连接 / 黄=同步中 / 绿=已同步 / 红=失败 */
   .chip.cloud{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-variant-numeric:tabular-nums}
@@ -516,6 +519,10 @@
   /* 内部转移标记：卖出>0 但收入=0 = 晶石转给陌尘，不是真卖钱 */
   table.dt td.d .xfer{font-style:normal;font-family:inherit;font-size:10px;font-weight:700;
     color:#ffb454;background:rgba(255,180,84,0.14);border:1px solid rgba(255,180,84,0.30);
+    border-radius:4px;padding:1px 4px;margin-left:5px;vertical-align:1px;cursor:help}
+  /* 基线标记（2026-11-10 节点打包）：这条是节点期初的存量基准，不是一次录入 */
+  table.dt td.d .bl{font-style:normal;font-family:inherit;font-size:10px;font-weight:700;
+    color:var(--gold);background:rgba(255,207,107,0.14);border:1px solid rgba(255,207,107,0.32);
     border-radius:4px;padding:1px 4px;margin-left:5px;vertical-align:1px;cursor:help}
   /* 主号明细头提示 */
   .mainnote{font-size:11px;color:#ffb454;background:rgba(255,180,84,0.10);
@@ -1072,6 +1079,7 @@
     <span class="sep"></span>
     <span class="chip on" id="tbCount">0 个角色</span>
     <span class="chip time" id="tbChanged" title="本次数据改动时间">最后更改 --:--</span>
+    <span class="chip node" id="tbNode" title="当前数据节点（数据分段起点）">未分节点</span>
     <span class="chip cloud" id="tbCloud" title="点击立即与云端同步一次">
       <span class="dot" id="cloudDot"></span><span id="cloudTxt">云端待连接</span>
     </span>
@@ -1321,7 +1329,42 @@ let SNAPSHOTS = {};
 /* 代练人名册：[{name:'卤蛋', rank:2}, ...]
  * 统一在顶部「⚙ 设置」里维护；角色卡片的代练人字段从这里下拉选择。
  * rank 决定分栏顺序（小的排前面），0 = 未指定序号（排在有序号之后）。 */
+/* 数据节点（2026-11-10 起）：一次「备份 + 节点打包」会生成一个节点。
+   节点 = 数据分析的新起点：节点之前的历史已归档到 archive/，页面上不再保留；
+   节点之后每个账号从一条「基线记录」（= 上一次实测剩余晶石）开始重新记录。
+   node = null 表示还没切过节点（老数据，全部保留）。 */
+let NODE = null;
+
 let BROKERS = [];
+
+/* ---- 数据节点 ----
+ * 节点 = 数据分析的新起点。节点打包后，每个账号只剩一条「基线记录」，
+ * 节点之前的历史已归档到私有仓库 archive/<日期>-<节点号>/。
+ * 页面只负责：把节点信息原样带过来、显示当前在哪个节点、
+ * 以及发现本机节点与云端/仓库不一致时提醒用户去点「仓库恢复」。 */
+function readNode(d){
+  if(!d || !d.node || typeof d.node !== 'object') return null;
+  const n = d.node;
+  if(!n.id) return null;
+  return {
+    id: String(n.id),
+    seq: (n.seq == null ? '' : String(n.seq)),
+    at: n.at || '',
+    label: n.label || ('节点' + (n.seq || '')),
+    date: n.date || '',
+    mode: n.mode || '',
+    note: n.note || '',
+    archive: n.archive || '',
+    history: (n.history && typeof n.history === 'object') ? n.history : {},
+    baseline: (n.baseline && typeof n.baseline === 'object') ? n.baseline : {}
+  };
+}
+/* 两个节点是不是同一个（比 id + 建立时刻） */
+function sameNode(a, b){
+  if(!a && !b) return true;
+  if(!a || !b) return false;
+  return String(a.id) === String(b.id) && String(a.at || '') === String(b.at || '');
+}
 
 /* 名册去重：同名同序号视为同一条。返回是否新增 */
 function brokerExists(name, rank){
@@ -2943,6 +2986,8 @@ function saveLocal(){
   try{
     localStorage.setItem(LS_KEY, JSON.stringify({
       v:DATA_V, savedAt:new Date().toISOString(), updatedBy:DEVICE,
+      /* 数据节点必须透传 —— 存本地、云端、导出都靠它，丢了就不知道当前是哪一段数据 */
+      node: NODE || null,
       snapshots: SNAPSHOTS || {},
       brokers: BROKERS || [],
       accounts: ACCOUNTS.map(function(c){
@@ -3039,7 +3084,9 @@ function loadLocal(){
                  wealth:r.wealth != null ? Number(r.wealth) : null,
                  tier:r.tier != null ? Number(r.tier) : null,
                  pct:r.pct != null ? Number(r.pct) : null,
-                 level:r.level != null ? r.level : null };
+                 level:r.level != null ? r.level : null  ,
+                 /* 基线标记 bl=1（2026-11-10 节点打包生成）：这条不是一次录入，是节点期初的存量基准（= 上一次实测剩余晶石），不参与产出计算 */
+                 bl:(Number(r.bl)||0) };
       }) : [],
       /* 人工费新口径：只存「用了代练」的日期（例外集合），其余天默认免单。
          老数据没有该字段 → 置 null，下面统一做一次性迁移。 */
@@ -3060,6 +3107,7 @@ function loadLocal(){
   /* 代练人名册：老数据没有该字段 → 兜底从现有卡片反推补一份 */
   BROKERS = readBrokers(data.brokers);
   alignBrokers();
+  NODE = readNode(data);          /* 当前数据节点（2026-11-10） */
   return data.savedAt || null;   /* 返回上次改动时间，供顶部标签恢复 */
 }
 
@@ -3117,6 +3165,8 @@ function serialize(){
     v: DATA_V,
     savedAt: new Date().toISOString(),
     updatedBy: DEVICE,
+    /* 数据节点（2026-11-10）：随数据一起存，丢了就不知道这段数据从哪起算 */
+    node: NODE || null,
     snapshots: SNAPSHOTS || {},
     brokers: BROKERS || [],
     accounts: ACCOUNTS.map(function(c){
@@ -3310,7 +3360,9 @@ function adopt(data){
                  wealth:r.wealth != null ? Number(r.wealth) : null,
                  tier:r.tier != null ? Number(r.tier) : null,
                  pct:r.pct != null ? Number(r.pct) : null,
-                 level:r.level != null ? r.level : null };
+                 level:r.level != null ? r.level : null  ,
+                 /* 基线标记 bl=1（2026-11-10 节点打包生成）：这条不是一次录入，是节点期初的存量基准（= 上一次实测剩余晶石），不参与产出计算 */
+                 bl:(Number(r.bl)||0) };
       }) : [],
       laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
       laborAll: !!s.laborAll,
@@ -3325,6 +3377,7 @@ function adopt(data){
   migrateLaborDays();            /* 同理可能缺 laborDays → 从历史 dayLabor 重建 */
   BROKERS = readBrokers(data.brokers);   /* 代练人名册（老数据自动反推） */
   alignBrokers();
+  NODE = readNode(data);                 /* 当前数据节点（2026-11-10） */
 }
 
 function writeCache(data){
@@ -3335,6 +3388,9 @@ function writeCache(data){
  * 失败会自动退避重试（3s → 8s → 20s → 60s），断网恢复后无需手动点。
  * 重试用尽后停手，但 pushPending 保持 true，用户下次改动或点胶囊即可续推。 */
 let pushTimer = null, pushPending = false, pushRetry = 0, retryTimer = null;
+/* 节点守卫（2026-11-10）：云端有节点、本机还没切过去时置 true，阻止本机数据覆盖云端。
+   CLOUD_NODE = cloudInit 时看到的云端节点。 */
+let nodeGuardOn = false, CLOUD_NODE = null;
 const RETRY_DELAYS = [3000, 8000, 20000, 60000];
 
 /* 改动序号：每产生一次待推送的改动就 +1。
@@ -3362,6 +3418,20 @@ function schedulePush(delay){
 }
 async function doPush(){
   if(!pushPending) return;
+  /* 节点守卫（2026-11-10）：云端已经是某个节点，而本机还停留在节点之前
+     （本机 NODE 为空 / 与云端不是同一个节点）时，**禁止把本机数据推上去**。
+     否则设备端那套旧页面会把云端的节点数据整个覆盖掉 —— 节点字段被抹平，
+     新模式起点就没了。正确做法是让用户点「仓库恢复」，把本机切到云端节点。 */
+  if(nodeGuardOn){
+    cloudUI('err', '节点待切换');
+    const chip = document.getElementById('tbCloud');
+    if(chip) chip.title = '云端数据在节点「' + (CLOUD_NODE ? (CLOUD_NODE.seq || CLOUD_NODE.id) : '?')
+                      + '」，本机还在节点之前 —— 已阻止推送，避免覆盖云端节点数据。\n'
+                      + '请点右上角「仓库恢复」把本机切到该节点。';
+    toast('已阻止推送：本机与云端不在同一节点，请先点「仓库恢复」');
+    pushPending = false;
+    return;
+  }
   const seqAtSend = pushSeq;                /* 记住这次推的是第几版数据 */
   const payload = serialize();
   try{
@@ -3518,6 +3588,8 @@ async function restoreFromRepo(silent){
     const d = await fetchRepoSnapshot();
     adopt(d);
     saveLocal();
+    nodeGuardOn = false;      /* 已切到仓库快照的节点 → 解除守卫 */
+    CLOUD_NODE = NODE;
     render();
     toast('已从仓库快照恢复 ' + ACCOUNTS.length + ' 个角色');
     return true;
@@ -3576,9 +3648,29 @@ async function cloudInit(){
   const remoteSaved = remote && remote.savedAt;
   const remoteHasData = !!(remote && remote.accounts && remote.accounts.length);
 
+  /* 节点不一致检查（2026-11-10 节点打包）：
+   * 本机和云端若处在不同节点 —— 通常意味着本机还是节点前的旧数据，
+   * 而云端已经切到新节点。这种情况不能靠时间戳自动合并
+   * （本机时间戳往往更新，因为老数据一直在被读写），
+   * 必须明确让用户去点「仓库恢复」切节点，否则两套数据会互相覆盖。 */
+  const remoteNode = remote ? readNode(remote) : null;
+  CLOUD_NODE = remoteNode;
+  const nodeDiff = remoteHasData && !sameNode(remoteNode, NODE);
+  if(nodeDiff){
+    nodeGuardOn = true;      /* 阻止本机旧数据把云端节点覆盖掉 */
+    cloudUI('err', '节点不一致');
+    const chip = document.getElementById('tbCloud');
+    if(chip) chip.title = '云端数据在「' + (remoteNode ? ('节点 ' + (remoteNode.seq || remoteNode.id)) : '未分节点')
+                      + '」，但本机在「' + (NODE ? ('节点 ' + (NODE.seq || NODE.id)) : '未分节点')
+                      + '」。\n请点右上角「仓库恢复」把本机切到云端节点。';
+    toast('节点不一致：本机与云端不在同一个数据节点，请点「仓库恢复」切换');
+    return;                     /* 不自动合并，交给用户显式操作 */
+  }
+
   if(remoteHasData && (!localSaved || new Date(remoteSaved) > new Date(localSaved))){
     /* 云端更新 → 采用云端 */
     adopt(remote); writeCache(remote); render();
+    nodeGuardOn = false;      /* 已采用云端 → 本机与云端同节点，可以正常推送 */
     const _auto = autoSettle();              /* 云端数据落地后自动补齐缺的快照 */
     if(_auto.added.length || _auto.refreshed.length) saveLocal();
     restoreChanged(remoteSaved);
@@ -3604,6 +3696,27 @@ window.addEventListener('beforeunload', function(){
 /* ============================================================
  * 渲染
  * ============================================================ */
+/* 顶部「当前节点」标签：显示本机数据处在哪个节点。
+ * 没节点（老数据）→ 显示「未分节点」；有节点 → 显示节点序号 + 日期。 */
+function renderNode(){
+  const el = document.getElementById('tbNode');
+  if(!el) return;
+  if(!NODE){
+    el.textContent = '未分节点';
+    el.classList.add('none');
+    el.title = '当前数据未分节点（全部历史都还在）';
+    return;
+  }
+  el.classList.remove('none');
+  el.textContent = '节点 ' + (NODE.seq || NODE.id) + (NODE.date ? ' · ' + NODE.date : '');
+  const h = NODE.history || {};
+  el.title = '当前数据节点：' + (NODE.label || NODE.id)
+           + '\n节点之前的历史已归档到 ' + (NODE.archive || 'archive/')
+           + '\n归档区间 ' + (h.from || '?') + ' ~ ' + (h.to || '?')
+           + '（' + (h.records || 0) + ' 条记录 / ' + (h.accounts || 0) + ' 个角色）'
+           + (NODE.note ? '\n' + NODE.note : '');
+}
+
 /* ---- 汇总卡图标：内联 SVG，不依赖 emoji 字体，任何浏览器渲染一致 ---- */
 const ICONS = {
   roles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20c0-3.9 3.3-6.4 7.4-6.4s7.4 2.5 7.4 6.4"/></svg>',
@@ -3813,6 +3926,11 @@ function detailHTML(i){
       return t ? (t.name || t.account || '未命名') : '未指定';
     })();
     const xferTag = xfer ? '<i class="xfer" title="内部转移：晶石转给「' + esc(xferToName) + '」，不计收入">→' + esc(xferToName) + '</i>' : '';
+    /* 基线记录（bl=1）：节点期初的存量基准 = 上一次实测剩余晶石。
+       它不是一次录入 —— 不产生收入、不作盘点锚点，只当「起算余额」用。 */
+    const blTag = (Number(r.bl) === 1)
+      ? '<i class="bl" title="基线记录：节点期初的存量基准（= 上一次实测剩余晶石），不是一次录入，不计入产出">基</i>'
+      : '';
     /* 「异界产出」= 有效异界产出：现在只有闭合反推一个来源。
        算不出来就把原因写在 title 里，不给假数。
        注意：本列**只放异界桶**。标了「市集/转入」的残差不进这一列
@@ -3842,7 +3960,7 @@ function detailHTML(i){
         + (dgE.src === 'legacy' ? '<i class="est" title="历史记录无来源标记，按异界推定">推</i>' : '')
         + '</td>';
     return '<tr>'
-      + '<td class="d">' + esc(r.date || '') + xferTag + '</td>'
+      + '<td class="d">' + esc(r.date || '') + xferTag + blTag + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + wee + '</td>'
       + recTierCell(c, r)
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
@@ -4517,6 +4635,7 @@ function render(){
     : '<div class="empty-tip panel">暂无角色 —— 点右上角「＋ 新增角色」添加</div>';
   renderSummary(summarize(ACCOUNTS));
   renderDaily();
+  renderNode();
   document.getElementById('tbCount').textContent = ACCOUNTS.length + ' 个角色';
   syncCommitAll();
   syncSettleBtn();
@@ -5595,7 +5714,8 @@ document.getElementById('bkList').addEventListener('click', function(e){
 
 /* 导出 / 导入 */
 document.getElementById('btnExport').addEventListener('click', function(){
-  const data = { v:2, exportedAt:new Date().toISOString(), brokers:BROKERS, accounts:ACCOUNTS };
+  const data = { v:2, exportedAt:new Date().toISOString(), node: NODE || null,
+                 brokers:BROKERS, accounts:ACCOUNTS };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -5660,7 +5780,9 @@ document.getElementById('fileInput').addEventListener('change', function(e){
                      wealth:r.wealth != null ? Number(r.wealth) : null,
                      tier:r.tier != null ? Number(r.tier) : null,
                      pct:r.pct != null ? Number(r.pct) : null,
-                     level:r.level != null ? r.level : null };
+                     level:r.level != null ? r.level : null  ,
+                     /* 基线标记 bl=1（2026-11-10 节点打包生成）：这条不是一次录入，是节点期初的存量基准（= 上一次实测剩余晶石），不参与产出计算 */
+                     bl:(Number(r.bl)||0) };
           }) : [],
           laborDays: Array.isArray(s.laborDays) ? s.laborDays.slice() : null,
           laborAll: !!s.laborAll,
@@ -5672,6 +5794,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
       migrateLaborDays();          /* 老备份缺 laborDays → 从历史 dayLabor 重建 */
       BROKERS = readBrokers(data.brokers);   /* 代练人名册（老备份自动反推） */
       alignBrokers();
+      NODE = readNode(data);                 /* 数据节点（2026-11-10）：备份里带了就跟着切 */
       render(); saveLocal();
       toast('已导入 ' + ACCOUNTS.length + ' 个角色');
     }catch(err){ toast('导入失败：不是有效的备份文件'); }
