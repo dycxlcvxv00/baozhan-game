@@ -1,6 +1,6 @@
 {
   "v": 3,
-  "savedAt": "2026-11-10T16:20:16.939Z",
+  "savedAt": "2026-11-10T17:07:33.078Z",
   "updatedBy": "设备-q5gen",
   "node": {
     "id": "node1",
@@ -284,7 +284,7 @@
   "snapshots": {
     "2026-11-10": {
       "date": "2026-11-10",
-      "generatedAt": "2026-11-10T16:20:15.733Z",
+      "generatedAt": "2026-11-10T17:07:31.873Z",
       "device": "设备-q5gen",
       "accounts": [
         {
@@ -310,7 +310,7 @@
           "level": 85,
           "job": "弓马",
           "gemsLeft": 40144,
-          "gained": 7784,
+          "gained": 21982,
           "gemsSold": 0,
           "soldValue": 0,
           "laborCost": 0,
@@ -707,7 +707,7 @@
       "total": {
         "roles": 26,
         "gemsLeft": 309509,
-        "gained": 53340,
+        "gained": 67538,
         "gemsSold": 0,
         "soldValue": 0,
         "laborCost": 190,
@@ -2507,19 +2507,24 @@
           "real": 1,
           "gemsLeft": 5056,
           "gl": 1,
+          "dsrc": "dun",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
-          "xferTo": "",
           "xf": 1,
+          "dunGain": null,
+          "dg": 0,
+          "mkt": null,
+          "craft": null,
+          "xferTo": "",
           "mapTier": "",
-          "dsrc": "dun",
           "wealth": 21,
           "tier": 3,
           "pct": 218,
-          "level": 73
+          "level": 73,
+          "bl": 0
         }
       ],
       "flags": {
