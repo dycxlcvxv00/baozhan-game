@@ -979,6 +979,18 @@
   .ir{background:#0f1420;border:1px solid #222b3d;border-radius:7px;
     padding:4px 8px;text-align:center}
   .ir .k{font-size:10px;color:var(--ok,#3fb950);letter-spacing:.5px}
+  /* 录入区四个标签的语义色（2026-11-11 定稿）：
+     与统计区对应项的数字颜色**完全一致** —— 看录入区就能预判这个数填进去后
+     会出现在卡片的哪个彩色格子里：
+       出售晶石 → 紫（对应统计区「出售晶石」紫罗兰数字）
+       现金收入 → 金（对应统计区「现金收入」金色数字）
+       秘境消耗 → 红（对应统计区「秘境消耗」红色数字）
+       转移晶石 → 亮紫罗兰（比出售更亮，示区别 —— 转移是站内搬砖，不是变现）
+     数值文字保持中性（--tx），不跟着染色 —— 避免录入区全是彩字晃眼。 */
+  .ir.sell  .k{color:#c77bff}
+  .ir.cash  .k{color:#e8c46a}
+  .ir.chaos .k{color:#ff8f8f}
+  .ir.xferrow .k{color:#c9a8ff}
   .ir input{color:var(--tx,#e6edf3)}
   .ir input::placeholder{color:#4c5668}
   .ir.gemsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left}
@@ -1009,9 +1021,9 @@
   /* ---- 转移目标选择（2026-11-11）----
      「转移晶石」格里的目标号按钮：显示当前选中的目标，点开弹窗换人。 */
   .ir .xferpick{margin-top:4px;width:100%;display:flex;align-items:center;justify-content:center;gap:4px;
-    background:#f778ba1a;border:1px solid #f778ba55;color:#f8a8cd;border-radius:5px;
+    background:#1d1630;border:1px solid #3d2f63;color:#c9a8ff;border-radius:5px;
     font-size:10.5px;padding:3px 0;cursor:pointer;line-height:1.4}
-  .ir .xferpick:hover{background:#f778ba2e;border-color:#f778ba88}
+  .ir .xferpick:hover{background:#281d40;border-color:#54418c}
   .ir .xferpick b{font-weight:600}
   .ir .xferpick .arw{opacity:.6;font-size:9px}
   .ir .xferpick.none{color:var(--mute);border-color:#333c50;background:#0f1420}
@@ -1059,8 +1071,8 @@
   /* 主号没有「转移晶石」框 → 第二行只剩「秘境消耗」，让它跨满两格，不留空位 */
   .ir.span2{grid-column:1 / -1}
   /* 「转移晶石」输入框：紫色系，与「本次出售」（绿）区分开，避免填错 */
-  .ir.xferrow .k{color:#c77bff}
-  .ir.xferrow input{color:#d9b3ff}
+  .ir.xferrow .k{color:#c9a8ff}
+  .ir.xferrow input{color:var(--tx,#e6edf3)}
   .vc-foot{display:flex;align-items:center;gap:8px;padding:2px 10px 10px}
   .btn-detail,.btn-edit,.btn-commit{white-space:nowrap}
   .btn-detail,.btn-edit{border:1px solid var(--line,#2a3244);background:#0f1420cc;
