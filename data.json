@@ -1,6 +1,6 @@
 {
   "v": 3,
-  "savedAt": "2026-11-10T16:12:29.315Z",
+  "savedAt": "2026-11-10T16:20:16.939Z",
   "updatedBy": "设备-q5gen",
   "node": {
     "id": "node1",
@@ -284,7 +284,7 @@
   "snapshots": {
     "2026-11-10": {
       "date": "2026-11-10",
-      "generatedAt": "2026-11-10T16:12:08.259Z",
+      "generatedAt": "2026-11-10T16:20:15.733Z",
       "device": "设备-q5gen",
       "accounts": [
         {
@@ -421,14 +421,14 @@
           "name": "幽竹",
           "level": 76,
           "job": "冰法",
-          "gemsLeft": 0,
-          "gained": 0,
+          "gemsLeft": 4533,
+          "gained": 4533,
           "gemsSold": 0,
           "soldValue": 0,
           "laborCost": 10,
           "profit": -10,
           "chaosCost": 0,
-          "recordCount": 1,
+          "recordCount": 2,
           "blank": false
         },
         {
@@ -501,14 +501,14 @@
           "name": "雷霆之怒",
           "level": 74,
           "job": "冰法",
-          "gemsLeft": 0,
-          "gained": 0,
+          "gemsLeft": 5189,
+          "gained": 5189,
           "gemsSold": 0,
           "soldValue": 0,
           "laborCost": 10,
           "profit": -10,
           "chaosCost": 0,
-          "recordCount": 1,
+          "recordCount": 2,
           "blank": false
         },
         {
@@ -517,14 +517,14 @@
           "name": "Mj",
           "level": 76,
           "job": "冰法",
-          "gemsLeft": 0,
-          "gained": 0,
+          "gemsLeft": 4669,
+          "gained": 4669,
           "gemsSold": 0,
           "soldValue": 0,
           "laborCost": 10,
           "profit": -10,
           "chaosCost": 0,
-          "recordCount": 1,
+          "recordCount": 2,
           "blank": false
         },
         {
@@ -645,14 +645,14 @@
           "name": "今天不太白",
           "level": 73,
           "job": "冰法",
-          "gemsLeft": 0,
-          "gained": 0,
+          "gemsLeft": 5056,
+          "gained": 5056,
           "gemsSold": 0,
           "soldValue": 0,
           "laborCost": 10,
           "profit": -10,
           "chaosCost": 0,
-          "recordCount": 1,
+          "recordCount": 2,
           "blank": false
         },
         {
@@ -706,14 +706,14 @@
       ],
       "total": {
         "roles": 26,
-        "gemsLeft": 290062,
-        "gained": 33893,
+        "gemsLeft": 309509,
+        "gained": 53340,
         "gemsSold": 0,
         "soldValue": 0,
         "laborCost": 190,
         "profit": -190,
         "chaosCost": 12000,
-        "recordCount": 34
+        "recordCount": 38
       }
     }
   },
@@ -1507,6 +1507,31 @@
           "pct": 200,
           "level": 76,
           "bl": 1
+        },
+        {
+          "date": "2026-11-11",
+          "time": "00:14:12",
+          "real": 1,
+          "gemsLeft": 4533,
+          "gl": 1,
+          "dsrc": "dun",
+          "daySold": 0,
+          "dayValue": 0,
+          "dayLabor": 0,
+          "chaosCost": 0,
+          "transfer": 0,
+          "xf": 1,
+          "dunGain": null,
+          "dg": 0,
+          "mkt": null,
+          "craft": null,
+          "xferTo": "",
+          "mapTier": "",
+          "wealth": 6,
+          "tier": 2,
+          "pct": 200,
+          "level": 76,
+          "bl": 0
         }
       ],
       "flags": {
@@ -1775,19 +1800,24 @@
           "real": 1,
           "gemsLeft": 4807,
           "gl": 1,
+          "dsrc": "dun",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
-          "xferTo": "",
           "xf": 1,
+          "dunGain": null,
+          "dg": 0,
+          "mkt": null,
+          "craft": null,
+          "xferTo": "",
           "mapTier": "",
-          "dsrc": "dun",
           "wealth": 5,
           "tier": 2,
           "pct": 200,
-          "level": 76
+          "level": 76,
+          "bl": 0
         }
       ],
       "flags": {
@@ -1853,6 +1883,31 @@
           "pct": 200,
           "level": 74,
           "bl": 1
+        },
+        {
+          "date": "2026-11-11",
+          "time": "00:15:09",
+          "real": 1,
+          "gemsLeft": 5189,
+          "gl": 1,
+          "dsrc": "dun",
+          "daySold": 0,
+          "dayValue": 0,
+          "dayLabor": 0,
+          "chaosCost": 0,
+          "transfer": 0,
+          "xf": 1,
+          "dunGain": null,
+          "dg": 0,
+          "mkt": null,
+          "craft": null,
+          "xferTo": "",
+          "mapTier": "",
+          "wealth": 6,
+          "tier": 2,
+          "pct": 200,
+          "level": 74,
+          "bl": 0
         }
       ],
       "flags": {
@@ -1914,6 +1969,31 @@
           "pct": 200,
           "level": 76,
           "bl": 1
+        },
+        {
+          "date": "2026-11-11",
+          "time": "00:18:00",
+          "real": 1,
+          "gemsLeft": 4669,
+          "gl": 1,
+          "dsrc": "dun",
+          "daySold": 0,
+          "dayValue": 0,
+          "dayLabor": 0,
+          "chaosCost": 0,
+          "transfer": 0,
+          "xf": 1,
+          "dunGain": null,
+          "dg": 0,
+          "mkt": null,
+          "craft": null,
+          "xferTo": "",
+          "mapTier": "",
+          "wealth": 6,
+          "tier": 2,
+          "pct": 200,
+          "level": 76,
+          "bl": 0
         }
       ],
       "flags": {
@@ -2420,6 +2500,26 @@
           "pct": 218,
           "level": 73,
           "bl": 1
+        },
+        {
+          "date": "2026-11-11",
+          "time": "00:20:15",
+          "real": 1,
+          "gemsLeft": 5056,
+          "gl": 1,
+          "daySold": 0,
+          "dayValue": 0,
+          "dayLabor": 0,
+          "chaosCost": 0,
+          "transfer": 0,
+          "xferTo": "",
+          "xf": 1,
+          "mapTier": "",
+          "dsrc": "dun",
+          "wealth": 21,
+          "tier": 3,
+          "pct": 218,
+          "level": 73
         }
       ],
       "flags": {
