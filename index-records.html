@@ -2130,32 +2130,39 @@ function closureSegments(c){
      现有 26 个账号的初始存量全是 0，所以这条分支对存量数据零影响。 */
   const initL = Number(c.initLeft) || 0;
   const hasInit = initL > 0;
+  /* `gl` 的语义只有**新口径记录**才有意义 ——
+     设备端（手机那边）会把老记录统一补成 gl:0、mkt:null、craft:null 等等，
+     那是「把缺失字段填成默认值」的副作用，**不代表「这次沿用了旧余额」**。
+     所以先看 xf：xf===1 才是页面自己写的记录，gl 才可信。 */
+  const glOf = function(r){
+    if(Number(r.xf) !== 1) return null;      /* 老记录 → gl 不可信，按 legacy 处理 */
+    return (r.gl === 1) ? 1 : (r.gl == null ? null : Number(r.gl));
+  };
   /* 锚点 = 能提供「可信余额快照」的记录：
-       gl === 1   → 本次实填了剩余晶石（实测）
-       gl === null → 2026-11-11 之前的历史记录：当时每条都报余额，
-                     用「余额相对上一条变了」判定它是不是一次新盘点
+       gl === 1（新口径记录）→ 本次实填了剩余晶石（实测），一定是锚点
+       gl === 0（新口径记录）→ 明确沿用上一次的余额，不是实测，不当锚点
+       gl 不可信（老记录）→ 用「余额相对上一条变了」判定它是不是一次新盘点
                      （没变 = 沿用上一条的值，不是新快照）
-       gl === 0   → 明确沿用上一次的余额，不是实测，不当锚点
      第一条记录默认不作锚点 —— 它代表的是「开始记账时手里有多少」，
      是后面所有区间的期初余额，把它当锚点会把初始存量算成产出。
      例外：填了「初始存量」时，它才是真实的期初余额，第一条记录就是第一个盘点点。 */
   const anchors = [];
   recs.forEach(function(r, i){
-    const gl = (r.gl === 1) ? 1 : (r.gl == null ? null : Number(r.gl));
+    const gl = glOf(r);
     if(i === 0){
       /* 填了「初始存量」且这条是**实测**（gl===1）→ 它就是第一个盘点点，
          第一天的产出也算得出来。
-         历史记录（gl===null）不行：老记录的余额到底是实测还是沿用无从判断，
+         历史记录不行：老记录的余额到底是实测还是沿用无从判断，
          而且老记录可能还带着「手填异界产出」，一旦让闭合值顶掉它就会丢数。
          → 老记录的第一条永远只作「存量基准」。 */
       if(hasInit && gl === 1) anchors.push(i);
       return;
     }
-    if(gl === 1) { anchors.push(i); return; }
-    if(gl === null){
-      const prev = Number(recs[i-1].gemsLeft) || 0;
-      if((Number(r.gemsLeft) || 0) !== prev) anchors.push(i);
-    }
+    if(gl === 1){ anchors.push(i); return; }
+    /* gl === 0（新口径·沿用）或 gl 不可信（老记录）：
+       都靠「余额变没变」回退判定。 */
+    const prev = Number(recs[i-1].gemsLeft) || 0;
+    if((Number(r.gemsLeft) || 0) !== prev) anchors.push(i);
   });
   if(!anchors.length) return out;
   /* 第一条记录是不是「第一个盘点点」—— 是的话期初余额用「初始存量」，
@@ -2201,7 +2208,7 @@ function closureSegments(c){
           晚些时候实测余额 5000 → 产出 = 5000 − 1000 + 300 = 4300。 */
     let baseInOut = false;
     if(k === 0 && !firstIsAnchor){
-      const gl0 = (recs[0].gl === 1) ? 1 : (recs[0].gl == null ? null : Number(recs[0].gl));
+      const gl0 = glOf(recs[0]);
       if(gl0 === 0){
         baseInOut = true;
         const p0 = recParts(recs[0], c);
