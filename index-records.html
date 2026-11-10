@@ -289,6 +289,12 @@
   .sm.c-srcrow .v.src-dun{color:#8fe3f2}
   .sm.c-srcrow .v.src-mkt{color:#b9c8ee}
   .sm.c-srcrow .v.src-xfer{color:#f8a8cd}
+  /* 待核对支出行（2026-11-12）：橙色警示 —— 账目有缺口，需要人工核对 */
+  .sm.c-unrec{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:6px 12px;border-radius:9px;
+    background:rgba(255,159,107,0.06);border:1px solid rgba(255,159,107,0.22)}
+  .sm.c-unrec .k{font-size:11.5px;color:#ffb27a;font-weight:700}
+  .sm.c-unrec .v{font-size:13px;font-weight:800;color:#ff9f6b;font-variant-numeric:tabular-nums}
   .sm.c-srcrow .xfer-note{font-size:11px;color:var(--mute);margin-left:auto;
     white-space:nowrap;align-self:center}
   .lr-item{display:inline-flex;align-items:center;gap:5px;cursor:pointer;
@@ -2220,6 +2226,17 @@ function dungeonGainEffective(r, c){
   return { v: null, src: '' };
 }
 
+/* 一条记录所属区间的「未记录支出」（2026-11-12）
+   —— 残差为负时的那部分（余额减少了但没有对应的流水记录）。
+   返回 { amt, kind }：amt = 金额；kind = 'craft'（判定为打造消耗）| 'other'（需人工核对）。
+   这部分**不是收入**，绝不能进异界/市集桶。 */
+function unrecordedOutOf(r, c){
+  const g = closureAttribution(c).get(r);
+  if(!g) return { amt:0, kind:'' };
+  const amt = Number(g.unrec) || 0;
+  return { amt:amt, kind:g.unrecKind || '' };
+}
+
 /* 一条记录的「市集/转入」桶残差（标了 mkt 的区间的净增）
    —— 这部分不是异界产出，做档位分析时不能混进去。 */
 function marketGainEffective(r, c){
@@ -2515,8 +2532,38 @@ function closureSegments(c){
     /* 残差 v = 区间净增 + 流出 − 转入
        = 异界产出 + 集市收入（+ 未记录的系统流入，如任务奖励/邮件补偿）
        「集市收入」不再手填，所以整段残差按**锚点的来源标记**整体归到一个桶：
-         dsrc='dun' → 归异界桶；dsrc='mkt' → 归「市集/转入」桶。 */
-    const v = (end - start) - xferInSum + outSum;
+         dsrc='dun' → 归异界桶；dsrc='mkt' → 归「市集/转入」桶。
+
+       ★ 负残差 = 未记录的支出（2026-11-12 用户更正）
+         残差为负说明：这一段余额净减少（或净增远小于已记录的流出），
+         即**有一笔支出没被记录**。
+         判据（用户口径）：该段**没有秘境消耗、也没有转出**时，
+         这笔未被记录的支出就是「打造装备消耗的晶石」——
+         因为打造消耗的录入框早就撤了，用户没法手填，只能靠余额反推。
+
+         处理：负残差**不再进收入桶**（市集/异界桶只收非负的产出），
+         而是单独累计到 `unrecorded`（未记录支出），再归入「装备打造」。
+         归因条件由用户规则决定：
+           该段无秘境消耗 且 无转出 → 判定为打造消耗（craft）
+           否则（秘境/转出混在里面）→ 归「其他未记录支出」，需要人工核对。
+         这样「市集收入」永远不会出现负数，「晶石净值」也不会被污染。 */
+    const vRaw = (end - start) - xferInSum + outSum;
+    /* 该段内的「秘境消耗」与「转出」合计 —— 用来判断负残差能否归因到打造 */
+    let segChaos = 0, segXferOut = 0;
+    rs.forEach(function(r){
+      segChaos += Number(r.chaosCost) || 0;
+      segXferOut += recParts(r, c).xfer;
+    });
+    if(baseInOut){
+      segChaos += Number(recs[0].chaosCost) || 0;
+      segXferOut += recParts(recs[0], c).xfer;
+    }
+    const craftAttributable = (vRaw < 0 && segChaos === 0 && segXferOut === 0);
+    /* v = 收入侧的非负部分（负数一律归 0，负数部分走 unrecorded）
+       unrec = 未记录支出（正数）；unrecKind = 'craft' | 'other' */
+    const v = vRaw > 0 ? vRaw : 0;
+    const unrec = vRaw < 0 ? -vRaw : 0;
+    const unrecKind = unrec > 0 ? (craftAttributable ? 'craft' : 'other') : '';
 
     /* 可算性检查 */
     let why = '';
@@ -2528,9 +2575,12 @@ function closureSegments(c){
       else if(gap < 0) why = '盘点顺序错乱（结算日倒序）';
     }
 
-    out.push({ rec:recs[to], v:v, known:!why, why:why, start:start, end:end,
+    out.push({ rec:recs[to], v:v, raw:vRaw, known:!why, why:why, start:start, end:end,
                out:outSum, inflow:xferInSum, count:rs.length + (baseInOut?1:0), date:date,
-               from:from, to:to, src:src, legacy:srcLegacy });
+               from:from, to:to, src:src, legacy:srcLegacy,
+               /* 未记录支出（残差为负时）：金额 + 归因 */
+               unrec:unrec, unrecKind:unrecKind,
+               segChaos:segChaos, segXferOut:segXferOut });
     if(date) prevDate = date;
   });
 
@@ -2655,6 +2705,10 @@ function totals(c){
               /* 装备打造累计（历史记录里的 craft 字段；2026-11-11 起录入框已撤，
                  但存量记录仍有值 —— 卡面把它显性化，统计区才完整） */
               craftCost:0,
+              /* 未记录支出（2026-11-12）：残差为负的那部分 = 余额减少了却没记流水。
+                 多数可归因到「打造消耗」（打造录入框已撤，只能靠余额反推）；
+                 归因不了的（区间里混了秘境/转出）单列，需要人工核对。 */
+              craftInferred:0, unrecordedOther:0,
               dungeonGain:0, hasDun:false, dunManual:false,
               dunFromClosure:false, dunLegacy:false,
               /* 市集收入：dsrc=mkt 段的净增残差（**已扣转入**，与转移天然不重叠） */
@@ -2682,13 +2736,24 @@ function totals(c){
     }
     /* 市集收入桶：标了 mkt 的区间的净增残差 ——
        不算异界产出，单独归集。闭合残差已把「转入」扣掉，
-       所以这个桶里**不含**转移收入，两者天然不重叠。 */
+       所以这个桶里**不含**转移收入，两者天然不重叠。
+       ★ 负残差已在上游拆走（v 只收非负部分），这个桶永远不会出现负数。 */
     const mg = marketGainEffective(r, c);
     if(mg.v != null){
       t.marketGain += mg.v;
       t.hasMkt = true;
     }
+    /* 未记录支出（残差为负）：不进任何收入桶。
+       kind='craft' → 判定为打造消耗（区间内无秘境、无转出）；
+       kind='other' → 区间里混了秘境/转出，无法归因，单列待核对。 */
+    const uo = unrecordedOutOf(r, c);
+    if(uo.amt > 0){
+      if(uo.kind === 'craft') t.craftInferred += uo.amt;
+      else t.unrecordedOther += uo.amt;
+    }
   });
+  /* 「装备打造」格 = 已记录的 craft + 推断出来的打造消耗 */
+  t.craftTotal = t.craftCost + t.craftInferred;
   /* 转移收支：累计收到的（实收，已扣 5% 手续费）/ 累计转出的（全额离开本号） */
   t.xferIn  = transferInTotal(c);
   t.hasXferIn = t.xferIn > 0;
@@ -2749,23 +2814,61 @@ function dayGainMap(c){
        注意：主号（陌尘）流入小号的转入量在「转移明细」里单列扣减，
        这里管的是「从本号转出去」的量，两边不要混。 */
     const xfer  = p.xfer;
-    const diff  = (cur - prev) + sold + chaos + xfer;    /* 不 clamp —— 留给日级统一处理 */
+    /* 打造消耗（craft）也要加回 —— 少了这一项，「累计获取」会比闭合法口径少算，
+       两个数字对不上（2026-11-12 修正）。闭合法 outSum 里含 craft，这里必须同源。 */
+    const craft = (r.craft == null || r.craft === '') ? 0 : (Number(r.craft) || 0);
+    const diff  = (cur - prev) + sold + chaos + craft + xfer;    /* 不 clamp —— 留给日级统一处理 */
     if(d){
       let g = map[d];
-      if(!g) g = map[d] = { date:d, raw:0, gain:0, sold:0, chaos:0, xfer:0,
+      if(!g) g = map[d] = { date:d, raw:0, gain:0, sold:0, chaos:0, craft:0, xfer:0,
                              firstIdx:i, lastIdx:i, count:0 };
       g.raw  += diff;
       g.sold += sold;
       g.chaos+= chaos;
+      g.craft+= craft;
       g.xfer += xfer;
       g.lastIdx = i;
       g.count++;
     }
     prev = cur;
   });
+  /* 日级 clamp（2026-11-12 修正）
+     ----------------------------------------------
+     旧逻辑：gain = max(0, raw) —— 负的那天整段丢成 0。
+     问题：raw 混着「产出」和「未记录支出」两种东西。
+       一段里既有异界产出（+200）又有打造消耗（−300）时，
+       raw = −100 被 clamp 成 0 → 产出的 200 也一起丢了，
+       于是「累计获取」和闭合法口径对不上（实测差 14198）。
+     现在：负残差有了明确归属（判定为打造消耗，见 closureSegments），
+       所以日级不再丢弃负数，而是**扣掉未记录支出**：
+         gain = raw + 该日未记录支出 = 该日的毛产出
+     clamp 的原意（防止漏记流水导致虚增）依然保留 ——
+     负数且没有未记录支出时，gain 仍为 0。
+     未记录支出来自闭合法分段（按结算日归集），与闭合法同源。 */
+  const unrecByDate = unrecordedByDate(c);
   Object.keys(map).forEach(function(d){
     const g = map[d];
-    g.gain = g.raw > 0 ? g.raw : 0;      /* 日级唯一一次 clamp */
+    const unrec = Number(unrecByDate[d]) || 0;
+    g.unrec = unrec;
+    /* 毛产出 = raw + 未记录支出（把支出从净额里摘出去，剩下纯产出） */
+    const gross = g.raw + unrec;
+    g.gain = gross > 0 ? gross : 0;      /* 日级唯一一次 clamp（作用于毛产出） */
+  });
+  return map;
+}
+
+/* 各结算日的「未记录支出」合计（2026-11-12）
+   —— 闭合法分段里残差为负的部分，按该段的结算日归集。
+   来源：闭合法（closureSegments），与闭合法口径同源。 */
+function unrecordedByDate(c){
+  const map = {};
+  closureSegments(c).forEach(function(sg){
+    if(!sg.known) return;
+    const u = Number(sg.unrec) || 0;
+    if(u <= 0) return;
+    const d = sg.date;
+    if(!d) return;
+    map[d] = (map[d] || 0) + u;
   });
   return map;
 }
@@ -2868,6 +2971,7 @@ function summarize(list){
     a.soldValue += t.soldValue; a.laborCost += t.laborCost;
     a.chaosCost += t.chaosCost; a.gained += gained(c);
     a.craftCost += t.craftCost;
+    a.craftInferred += t.craftInferred; a.unrecordedOther += t.unrecordedOther;
     a.profit += (t.soldValue - t.laborCost);
     /* 异界产出（纯净口径）：只累加记了的；hasDun 表示"至少有角色记过" */
     if(t.hasDun){
@@ -2883,6 +2987,7 @@ function summarize(list){
     return a;
   }, { roles:list.length, gemsLeft:0, gained:0, gemsSold:0,
        soldValue:0, laborCost:0, profit:0, chaosCost:0, craftCost:0,
+       craftInferred:0, unrecordedOther:0,
        dungeonGain:0, hasDun:false, dunManual:false,
        dunFromClosure:false, dunLegacy:false,
        marketGain:0, hasMkt:false,
@@ -3979,7 +4084,10 @@ function renderSummary(sum, animate){
         + '（闭合反推 = 由「剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入」解收支方程算出来，再按录入时点的来源标记分桶）'
         + (sum.hasMkt ? ('；另有市集收入 ' + intNum(sum.marketGain) + ' 未计入本数') : '') },
     { cls:'c-left',  slot:'s-data',  ico:'gem',   key:'gemsLeft',   k:'剩余晶石总量',     v:intNum(sum.gemsLeft) },
-    { cls:'c-gain',  slot:'s-data',  ico:'gain',  key:'gained',     k:'累计获取(含集市)',   v:num(sum.gained) },
+    { cls:'c-gain',  slot:'s-data',  ico:'gain',  key:'gained',     k:'累计产出(异界+市集)', v:num(sum.gained),
+      tip:'产出侧合计 = 异界产出 + 市集收入（已扣内部转移）。'
+        + '2026-11-12 起与闭合法口径完全一致（负残差不再被丢弃，改计入装备打造）。'
+        + '这是产出不是净赚 —— 净赚还要减掉装备打造与秘境消耗' },
     { cls:'c-sold',  slot:'s-data',  ico:'box',   key:'gemsSold',   k:'出售晶石总量',     v:intNum(sum.gemsSold) },
     { cls:'c-money', slot:'s-data',  ico:'money', key:'soldValue',  k:'总收入',           v:money(sum.soldValue) },
     { cls:'c-labor', slot:'s-data',  ico:'tool',  key:'laborCost',  k:'总支出（人工支出）', v:money(sum.laborCost) },
@@ -4011,6 +4119,17 @@ function renderSummary(sum, animate){
       + '<span class="xfer-note">异界 + 市集 = 真实总产出；转移只是站内搬砖，不算收入</span>'
       + '</div>'
     : '';
+  /* 「待核对支出」提示行（2026-11-12）：
+     残差为负 = 余额少了但没记流水。可归因到打造消耗的已计入「装备打造」；
+     归因不了的（区间内混了秘境/转出）单列在这里提示，需要人工核对。 */
+  const unrecRow = (sum.unrecordedOther > 0)
+    ? '<div class="sm c-unrec" style="grid-column:1/-1">'
+      + '<span class="k">' + ico('tool') + '待核对支出</span>'
+      + '<span class="v" title="这些区间里余额减少了却没有对应的流水记录，且区间内混了秘境消耗或转出，无法判定是打造消耗 —— 需要人工核对这几笔记录">'
+      + intNum(sum.unrecordedOther) + '</span>'
+      + '<span class="xfer-note">区间内混了秘境/转出，无法归因到打造消耗，请核对这几笔记录</span>'
+      + '</div>'
+    : '';
   const extra = tTotal
     ? '<div class="sm c-transfer" style="grid-column:1/-1">'
       + '<span class="k">' + ico('gain') + '内部转移（号↔号，已从累计获取中扣除）</span>'
@@ -4025,7 +4144,7 @@ function renderSummary(sum, animate){
       + '<span class="v" data-sum="' + i.key + '"'
       + (i.tip ? ' title="' + i.tip + '"' : '') + '>' + i.v + '</span>'
       + '</div>';
-  }).join('') + srcRow + extra + '<div class="sm s-exp" aria-hidden="true"></div>';
+  }).join('') + srcRow + unrecRow + extra + '<div class="sm s-exp" aria-hidden="true"></div>';
   /* 负值标红：已获取、净利润、秘境消耗都可能为负 */
   [['gained','neg'],['profit','neg'],['chaosCost','neg']].forEach(function(pair){
     const el = document.querySelector('[data-sum="'+pair[0]+'"]');
@@ -4071,15 +4190,25 @@ function refreshNumbers(i){
     setV(row,'xferOut', intNum(t.xferOut), 'hit');
     const xoutEl = row.querySelector('[data-v="xferOut"]');
     if(xoutEl) xoutEl.title = '本号转给别的号的晶石（全额离开本号）。与「转移收入」成对看，就是这个号的净调拨量';
-    /* 晶石净值 = 异界产出 + 市集收入（v12 新增） */
+    /* 晶石净值 = 异界产出 + 市集收入（用户指定口径：产出侧合计） */
     setV(row,'gemsNet',
       intNum((t.hasDun ? t.dungeonGain : 0) + (t.hasMkt ? t.marketGain : 0)), 'hit');
     const netEl = row.querySelector('[data-v="gemsNet"]');
     if(netEl) netEl.title = '异界产出 ' + (t.hasDun ? intNum(t.dungeonGain) : '未记录')
       + ' + 市集收入 ' + (t.hasMkt ? intNum(t.marketGain) : '未记录')
-      + ' = 本号这段时间真正净赚的晶石。不含站内转移（搬砖不是收入），不含人工费用（那是钱不是晶石）';
-    /* 装备打造累计（历史 craft 字段） */
-    setV(row,'craftCost', intNum(t.craftCost), 'hit');
+      + ' = 产出侧合计（不含站内转移 —— 转移是搬砖不是收入）。'
+      + '注意这是产出不是净赚：再减去「装备打造 ' + intNum(t.craftTotal)
+      + '」和「秘境消耗 ' + intNum(t.chaosCost) + '」才是真正净赚的晶石';
+    /* 装备打造 = 已记录 craft + 推断的打造消耗（负残差） */
+    setV(row,'craftCost', intNum(t.craftTotal), 'hit');
+    const craftEl = row.querySelector('[data-v="craftCost"]');
+    if(craftEl) craftEl.title = '打造装备、购买物品等消耗掉的晶石。'
+      + '包含两部分：① 已记录的 craft 字段累计 ' + intNum(t.craftCost)
+      + '；② 由负残差推断的打造消耗 ' + intNum(t.craftInferred)
+      + '（余额减少了却没有对应流水记录，且该区间没有秘境消耗也没有转出 → 判定为打造消耗）。'
+      + (t.unrecordedOther > 0
+          ? ' 另有 ' + intNum(t.unrecordedOther) + ' 无法归因的支出（区间内混了秘境/转出），需人工核对。'
+          : '');
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
@@ -4205,13 +4334,24 @@ function detailHTML(i){
        （做档位→产出分析只认异界桶），但残差数值写进 title，别把信息丢掉。 */
     const dgE = dungeonGainEffective(r, c);
     const mgE = marketGainEffective(r, c);
+    /* 未记录支出（残差为负）：已从收入桶拆走，单独归因 */
+    const uo = unrecordedOutOf(r, c);
+    const unrecNote = (uo.amt > 0)
+      ? '。这一段有 ' + intNum(uo.amt) + ' 晶石「余额少了但没记流水」——'
+        + (uo.kind === 'craft'
+            ? '该区间没有秘境消耗也没有转出，判定为打造消耗，已计入卡面「装备打造」'
+            : '该区间混了秘境/转出，无法归因到打造，需要人工核对')
+      : '';
     const dgCell = (dgE.v == null)
       ? '<td class="n dun none" title="'
-        + (mgE.v != null
-            ? '本次归因到市集收入（残差 ' + intNum(mgE.v) + '，已扣转入），不计入异界产出'
-            : (closureWhyOf(r, c)
-                ? '闭合不可算：' + closureWhyOf(r, c)
-                : '这条记录无法反推异界产出'))
+        + (uo.amt > 0
+            ? '本段不是产出，而是未记录支出 ' + intNum(uo.amt) + '（'
+              + (uo.kind === 'craft' ? '判定为打造消耗' : '无法归因，需人工核对') + '）'
+            : (mgE.v != null
+                ? '本次归因到市集收入（残差 ' + intNum(mgE.v) + '，已扣转入），不计入异界产出'
+                : (closureWhyOf(r, c)
+                    ? '闭合不可算：' + closureWhyOf(r, c)
+                    : '这条记录无法反推异界产出')))
         + '">—</td>'
       : '<td class="n dun' + z(dgE.v) + (dgE.v < 0 ? ' neg' : '') + '" title="'
         + (dgE.src === 'manual'
@@ -4220,9 +4360,7 @@ function detailHTML(i){
                 ? '纯净口径：由「剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入」解收支方程反推。'
                   + '本条是 2026-11-11 之前的历史记录，没有来源标记，按异界推定'
                 : '纯净口径：由「剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入」解收支方程反推得出（本次来源标记：异界）'))
-        + (dgE.v < 0
-            ? '。负数 = 这段余额净减少：花掉的比记下来的多（打造/买东西这类没记的支出），或余额口径有出入'
-            : '')
+        + unrecNote
         + '">' + intNum(dgE.v)
         + (dgE.src === 'closure' ? '<i class="est" title="由收支闭合方程反推，非手工填写">闭</i>' : '')
         + (dgE.src === 'legacy' ? '<i class="est" title="历史记录无来源标记，按异界推定">推</i>' : '')
@@ -4602,8 +4740,11 @@ function cardHTML(c, i, disp, gc){
   +       '不是异界产出，不参与「档位 → 产出」分析，但也不该被丢掉。转入已被扣掉，所以这一格不含转移收入">'
   +       (t.hasMkt ? intNum(t.marketGain) : '未记录') + '</span></div>'
   +     '<div class="st src net"><div class="k">晶石净值</div><span class="v net" data-v="gemsNet" '
-  +       'title="异界产出 + 市集收入 = 本号这段时间真正净赚的晶石。'
-  +       '不含站内转移（转移是搬砖不是收入），也不含人工费用（那是钱不是晶石）">'
+  +       'title="异界产出 ' + intNum(t.hasDun ? t.dungeonGain : 0)
+  +       ' + 市集收入 ' + intNum(t.hasMkt ? t.marketGain : 0)
+  +       ' = 产出侧合计（不含站内转移 —— 转移是搬砖不是收入）。'
+  +       '注意这是产出不是净赚：再减去「装备打造 ' + intNum(t.craftTotal)
+  +       '」和「秘境消耗 ' + intNum(t.chaosCost) + '」才是真正净赚的晶石">'
   +       intNum(netGems) + '</span></div>'
   +   '</div>'
   /* ---- 累计统计区 3 列 × 2 行（v12）----
@@ -4612,8 +4753,14 @@ function cardHTML(c, i, disp, gc){
    * 新增「装备打造」= 历史记录里 craft 字段的累计（录入框已撤，但存量数据仍有）。 */
   +   '<div class="stats3">'
   +     '<div class="st bg-pur"><div class="k">装备打造</div><span class="v vcraft" data-v="craftCost" '
-  +       'title="打造装备、购买物品等消耗掉的晶石（历史记录里的 craft 字段累计）">'
-  +       intNum(t.craftCost) + '</span></div>'
+  +       'title="打造装备、购买物品等消耗掉的晶石。'
+  +       '包含两部分：① 已记录的 craft 字段累计 ' + intNum(t.craftCost)
+  +       '；② 由负残差推断的打造消耗 ' + intNum(t.craftInferred)
+  +       '（余额减少了却没有对应流水记录，且该区间没有秘境消耗也没有转出 → 判定为打造消耗）。'
+  +       (t.unrecordedOther > 0
+              ? ' 另有 ' + intNum(t.unrecordedOther) + ' 无法归因的支出（区间内混了秘境/转出），需人工核对。'
+              : '') + '">'
+  +       intNum(t.craftTotal) + '</span></div>'
   +     '<div class="st bg-red"><div class="k">秘境消耗</div><span class="v vchaos" data-v="chaosCost" '
   +       'title="进秘境花掉的晶石累计">'
   +       intNum(t.chaosCost) + '</span></div>'
