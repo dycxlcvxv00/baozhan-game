@@ -528,7 +528,7 @@
   table.dt td.n.gold{color:var(--gold)} table.dt td.n.plain{color:var(--txt)}
   table.dt td.n.xfer{color:#c77bff}         /* 转移晶石：转给陌尘，不计收入 */
   table.dt td.n.dun{color:#4fc3d9}           /* 异界产出：纯净产出口径 */
-  /* 来源角标：「推」= 场次反推，「闭」= 收支闭合方程反推 —— 都不是手填，得标出来 */
+  /* 来源角标：「闭」= 收支闭合方程反推 —— 不是手填，得标出来 */
   table.dt td.n i.est{font-style:normal;font-size:10px;font-weight:700;
     color:var(--mute);margin-left:3px;padding:0 3px;border:1px solid var(--mute);
     border-radius:3px;opacity:.75}
@@ -971,6 +971,38 @@
   /* 闭合三件套下方的说明：一行讲清「留空 vs 填 0」的差别 */
   .closhint{margin:5px 10px 0;padding:0 2px;font-size:10.5px;line-height:1.55;color:var(--mute)}
   .closhint b{color:#9fb0d8;font-weight:600}
+
+  /* ---- 转移目标选择（2026-11-11）----
+     「转移晶石」格里的目标号按钮：显示当前选中的目标，点开弹窗换人。 */
+  .ir .xferpick{margin-top:4px;width:100%;display:flex;align-items:center;justify-content:center;gap:4px;
+    background:#f778ba1a;border:1px solid #f778ba55;color:#f8a8cd;border-radius:5px;
+    font-size:10.5px;padding:3px 0;cursor:pointer;line-height:1.4}
+  .ir .xferpick:hover{background:#f778ba2e;border-color:#f778ba88}
+  .ir .xferpick b{font-weight:600}
+  .ir .xferpick .arw{opacity:.6;font-size:9px}
+  .ir .xferpick.none{color:var(--mute);border-color:#333c50;background:#0f1420}
+
+  /* 「转移收入」自动带出的只读行：粉色虚线框 + 来源标注 */
+  .ir.xferinrow{margin:5px 10px 0;padding:4px 8px;display:flex;align-items:center;gap:8px;
+    background:#f778ba14;border:1px dashed #f778ba66;border-radius:7px;text-align:left}
+  .ir.xferinrow .k{font-size:10px;color:#f778ba;white-space:nowrap;letter-spacing:0}
+  .ir.xferinrow .v{font-size:12px;color:#f8a8cd;font-variant-numeric:tabular-nums;
+    font-weight:600;flex:1;text-align:right}
+  .ir.xferinrow .src{font-size:9.5px;color:#f8a8cd99;white-space:nowrap}
+  .ir.xferinrow.none{background:#0f1420;border-color:#222b3d;border-style:dashed}
+  .ir.xferinrow.none .k{color:var(--mute)}
+  .ir.xferinrow.none .v{color:var(--mute);font-weight:600}
+
+  /* 弹窗：转移目标号列表 */
+  .xfer-list{display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto;margin-top:8px}
+  .xfer-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:6px;
+    background:#0f1420;border:1px solid #222b3d;cursor:pointer;text-align:left;width:100%}
+  .xfer-item:hover{border-color:#3a4560}
+  .xfer-item.sel{background:#7f60e018;border-color:#7f60e066}
+  .xfer-item .dot{width:6px;height:6px;border-radius:50%;background:#3fb950;flex:none}
+  .xfer-item .nm{flex:1;font-size:12px;color:var(--txt,#e6edf3)}
+  .xfer-item .meta{font-size:9.5px;color:var(--mute)}
+  .xfer-item .ok{color:#7ee2a8;font-size:12px}
   /* 「异界产出」手填行现在退居其次（手填最准，但代练报不出时靠闭合反推） */
   /* 「今日打图场次」行：琥珀色。代练唯一需要多报的量（游戏内可见、数得出来）。
      它是「异界产出」的替代输入来源 —— 场次 × 单场基准掉落 × 档位加成% = 异界产出 */
@@ -1145,15 +1177,6 @@
       <div class="err">T级请填数字（如 13、14、15）</div>
       <div class="fhint">该角色当前能刷的最低图档位，保存后以彩色 T 级标签显示在「宠物」后面；留空不显示。</div>
     </div>
-    <div class="field">
-      <label for="fMapTier">常刷地图阶级</label>
-      <input id="fMapTier" type="text" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="如 14（可留空，填数字 13/14/15）" />
-      <div class="err">地图阶级请填数字（如 13、14、15）</div>
-      <div class="fhint">这个角色日常刷的<b>异界图</b>是几级（如 14）。填了它，
-        报「今日打图场次」时就能按「场次 × 单场基准掉落 × 档位加成%」反推出纯净的异界产出；
-        留空则只能手填异界产出。基准表：T11→86.3、T12→89.6、T13→98.7、T14→105.0、T15→113.9（100%档位下的单场掉落）。</div>
-    </div>
-
     <div class="modal-foot">
       <button class="mbtn danger" type="button" id="mdDel" hidden
               title="删除该角色卡片，其所有明细一并删除">删除角色</button>
@@ -1179,6 +1202,17 @@
   </div>
 </div>
 
+<!-- ========== 弹窗：转移目标号选择（2026-11-11） ========== -->
+<div class="mask" id="xferMask">
+  <div class="modal panel xfer-modal" role="dialog" aria-modal="true" aria-labelledby="xferTitle">
+    <h2 id="xferTitle"><span class="bar"></span>转给哪个号？</h2>
+    <div class="hint" id="xferHint">选定后：本号记「转移晶石」，目标号自动出现「转移收入」，两边自动配平。</div>
+    <div class="xfer-list" id="xferList"></div>
+    <div class="btns" style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button class="mbtn" type="button" id="xferCancel">取消</button>
+    </div>
+  </div>
+</div>
 <!-- ========== 弹窗：设置（代练人名册） ========== -->
 <!-- ========== 弹窗：财富值档位对照表 ========== -->
 <div class="mask" id="tierMask">
@@ -1254,6 +1288,12 @@
  *   initLeft  初始存量：开始记流水之前手里已有的晶石，用作首条记录的起算基准
  *   records[] 明细 [{date, time, gemsLeft, daySold, dayValue, dayLabor, chaosCost}]
  * ============================================================ */
+/* 全局数据版本号（2026-11-11）：闭合反推与「累计获取扣减」现在跨账号依赖别号的
+   转移记录 —— 任何账号的记录一变，所有缓存都要重算。
+   缓存签名带上它，就不用手动猜「谁变了」。 */
+let _dataVer = 0;
+function bumpDataVer(){ _dataVer++; invalidateTransferPlan(); }
+
 let ACCOUNTS = [
   { id:'a1', account:'', name:'', level:'', job:'', broker:'',
   gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
@@ -1459,7 +1499,6 @@ const MAIN_CHAR_NAME = '陌尘';
  * 这样「本次出售」只表示真正卖钱，「转移晶石」只表示转给陌尘，两件事互不干扰。 */
 function isTransferOut(c, r){
   if(!c || !r) return false;
-  if(String(c.name || '').replace(/\s+/g,'') === MAIN_CHAR_NAME) return false;  /* 主号自己不算 */
   return transferAmountOf(r, c) > 0;
 }
 /* 把一条记录拆成「真实卖出 / 转给陌尘 / 收入」三部分
@@ -1472,8 +1511,15 @@ function recParts(r, c){
   const soldRaw = Number(r.daySold)  || 0;
   const valRaw  = Number(r.dayValue) || 0;
   const xferRaw = Number(r.transfer) || 0;
-  /* 主号（陌尘）是接收方：它的晶石来自小号转入，不会「转出」给陌尘自己。
-     所以主号身上不套用任何转移判定，卖出/收入按实际填的算。 */
+  /* ★ 显式「转移晶石」字段优先，对主号/小号一视同仁（2026-11-11）。
+     新模型里转移是「任意号 → 任意其他号」，主号也能转给小号，
+     所以主号不再有「只接收不转出」的特殊判定。
+     —— 只要显式填了 transfer，转出量就是 transfer（全额离开本号）。 */
+  if(xferRaw > 0){
+    return { sold:soldRaw, xfer:xferRaw, value:valRaw };
+  }
+  /* 主号（陌尘）没填「转移晶石」时：不套用旧的隐式转移判定
+     （主号历史上 daySold>0 就是真卖钱，不能被当成转移）。 */
   if(isMainChar(c)){
     return { sold:soldRaw, xfer:0, value:valRaw };
   }
@@ -1503,7 +1549,127 @@ function transferAmountOf(r, c){
   if(!r) return 0;
   return recParts(r, c).xfer;
 }
-/* 全量扫描：按结算日汇总「转入主号的晶石」 { '2026-10-21': 17868, ... } */
+/* ============================================================
+ * 转移目标选择器（UI 层，2026-11-11）
+ * ------------------------------------------------------------
+ * 每个卡片的「转给 ▾」按钮记住自己选的目标号（存在 _xferPick 里，
+ * 按卡片下标索引）。落库时写进记录的 xferTo 字段。
+ * 没选过 → 默认主号（陌尘），与历史行为一致。
+ * ============================================================ */
+const _xferPick = {};               /* { cardIndex: targetAccountId } */
+
+/* 当前卡片选中的目标号 id
+   —— 默认规则（2026-11-11）：
+      · 非主号 → 默认转给主号（与历史行为一致）
+      · 主号自己 → 默认转给第一个别的号（不能转给自己） */
+function xferPickId(i){
+  if(_xferPick[i]) return _xferPick[i];
+  const c = ACCOUNTS[i];
+  const main = ACCOUNTS.find(function(x){ return isMainChar(x); });
+  const mainId = main ? main.id : '';
+  if(c && mainId && c.id === mainId){
+    const other = ACCOUNTS.find(function(x){ return x.id !== c.id; });
+    return other ? other.id : '';
+  }
+  return mainId;
+}
+/* 当前卡片选中的目标号显示名 */
+function xferPickName(i, c){
+  const id = xferPickId(i);
+  const t = ACCOUNTS.find(function(x){ return x.id === id; });
+  if(!t) return '未选择';
+  if(c && t.id === c.id) return '自己';
+  return t.name || t.account || '未命名';
+}
+/* 刷新所有卡片上的「转移收入」自动行
+   —— 别的号录入「转移晶石」后，本号的这一行必须立刻变，
+      否则用户看不到「自动出现转移收入」的效果。 */
+function refreshXferInRows(){
+  (document.querySelectorAll('.row') || []).forEach(function(row){
+    const i = Number(row.getAttribute('data-i'));
+    const c = ACCOUNTS[i];
+    if(!c) return;
+    const old = row.querySelector('.xferinrow');
+    if(!old) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = xferInRowHTML(c, i);
+    const fresh = tmp.firstElementChild;
+    if(fresh) old.replaceWith(fresh);
+  });
+}
+
+/* 「转移收入」自动带出行：本号**今天**收到的转入（已扣 5% 手续费）
+   —— 按「今天」这个结算日统计，与闭合反推的时间窗口口径一致。
+   注意：这里的「今天」是统计口径上的结算日（08:00 为界）。 */
+function xferInRowHTML(c, i){
+  const d = today();
+  const amt = transferInOfAcct(c.id, d);
+  const srcs = transferInSources(c.id, d);
+  if(!srcs.length){
+    return '<div class="ir xferinrow none"><div class="k">转移收入</div>'
+      + '<div class="v">0</div><div class="src">今天还没有号转进来</div></div>';
+  }
+  const names = srcs.map(function(x){ return esc(x.fromName); }).join('、');
+  return '<div class="ir xferinrow"><div class="k">转移收入</div>'
+    + '<div class="v">' + intNum(amt) + '</div>'
+    + '<div class="src" title="' + names + '">← ' + names + '（已扣5%手续费）</div></div>';
+}
+
+/* ============================================================
+ * 转移目标与手续费（2026-11-11）
+ * ------------------------------------------------------------
+ * 新模型：转移不再是「小号 → 陌尘」这一条固定路径，而是
+ *   「任意号 → 任意其他号」，录入时在弹窗里选目标。
+ *
+ * 5% 手续费（用户 2026-11-11 明确）：
+ *   A 转出 100 → B 实际收到 95。
+ *   A 侧：余额 -100（转出 100）
+ *   B 侧：余额 +95（转入 95）
+ *   差额 5 = 手续费，两侧各自按「实际发生的」记账，
+ *   余额方程在 A、B 两边都能各自闭合，不需要人为对账。
+ *
+ * 记录字段：
+ *   transfer    转出量（本号减少的量，含手续费）
+ *   xferTo      目标账号 id（'' = 未选目标；旧数据缺失 → 默认陌尘）
+ *   转入量      **实收**（已扣手续费）—— 不落库、不手填，
+ *                由 transferInOfAcct() / xferEventsTo() 从别的号的记录自动收拢
+ * ============================================================ */
+const XFER_FEE_RATE = 0.05;      /* 转移手续费 5% */
+/* 转出 100 时对方实收多少 */
+function xferNetOf(amount){
+  const n = Number(amount) || 0;
+  return Math.round(n * (1 - XFER_FEE_RATE));
+}
+/* 这条记录是否适用 5% 手续费？
+   —— 只有**新口径**记录（写入了 xferTo）才扣手续费。
+      历史记录（2026-11-11 之前）没有 xferTo 字段，它们是「小号 → 陌尘」的
+      老转移，当时并没有手续费概念（实测历史转入都是全额到账）。
+      混算会把历史主号收入凭空少掉 5%，属于静默改写历史 —— 不能干。 */
+function xferFeeApplies(r){
+  return !!(r && r.xferTo);
+}
+/* 这条记录对方实收多少（按新老口径分别处理）
+   注意转出量要按「账号」取（recParts 里有旧口径兼容逻辑），
+   所以这里要传账号 c。 */
+function xferNetOfRec(r, c){
+  const amt = c ? transferAmountOf(r, c) : (Number(r && r.transfer) || 0);
+  if(amt <= 0) return 0;
+  return xferFeeApplies(r) ? xferNetOf(amt) : amt;
+}
+/* 本条记录转给谁（账号 id）；没指定则按历史默认 → 陌尘 */
+function xferTargetOf(c, r){
+  if(r && r.xferTo) return r.xferTo;
+  /* 老数据只有「小号 → 陌尘」的隐含规则 */
+  const main = ACCOUNTS.find(function(x){ return isMainChar(x); });
+  return main ? main.id : '';
+}
+/* 本条记录「转出」的净流出量（转出方记账用：含手续费，全额离开本号） */
+function xferOutOf(c, r){
+  if(!c || !r) return 0;
+  return Number(r.transfer) || 0;
+}
+
+/* 全量扫描：按结算日汇总「转入的晶石」（任意号→任意号） { '2026-10-21': 17868, ... } */
 function transferInByDate(){
   const map = {};
   (ACCOUNTS || []).forEach(function(c){
@@ -1511,48 +1677,151 @@ function transferInByDate(){
       if(!isTransferOut(c, r)) return;
       const d = settleDateOf(r);
       if(!d) return;
-      map[d] = (map[d] || 0) + transferAmountOf(r, c);
+      map[d] = (map[d] || 0) + xferNetOfRec(r, c);
     });
   });
   return map;
 }
-/* 某结算日转入主号的晶石总额 */
+
+/* 全量扫描：按「账号 id + 结算日」汇总转入量
+ *   { 'a1|2026-10-21': 17000, ... }
+ * 用于：目标号的「转移收入」自动带出 + 闭合反推的流入项。
+ * 新口径：转入量 = 转出量 × 95%（5% 手续费）；历史口径（无 xferTo）全额到账 */
+function transferInByAcctDate(){
+  const map = {};
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      const amt = transferAmountOf(r, c);
+      if(amt <= 0) return;
+      const to = xferTargetOf(c, r);
+      if(!to) return;
+      const d = settleDateOf(r);
+      if(!d) return;
+      const k = to + '|' + d;
+      map[k] = (map[k] || 0) + xferNetOfRec(r, c);
+    });
+  });
+  return map;
+}
+/* 某账号按结算日的转入明细 { '2026-10-21': 17000, ... } */
+function transferInByAcct(acctId){
+  const map = {};
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      const amt = transferAmountOf(r, c);
+      if(amt <= 0) return;
+      if(xferTargetOf(c, r) !== acctId) return;
+      const d = settleDateOf(r);
+      if(!d) return;
+      map[d] = (map[d] || 0) + xferNetOfRec(r, c);
+    });
+  });
+  return map;
+}
+/* 某账号某结算日收到的转入总额（实收，已扣手续费） */
+function transferInOfAcct(acctId, date, map){
+  const m = map || transferInByAcctDate();
+  return Number(m[acctId + '|' + date]) || 0;
+}
+/* ============================================================
+ * 转移事件（按物理时间排序）—— 闭合反推的流入项靠它定位
+ * ------------------------------------------------------------
+ * 为什么不能只按「结算日」对齐：
+ *   A 在 11-11 23:00 转账（结算日 11-11），B 在 11-12 09:00 才录余额
+ *   （结算日 11-12）。按日期对齐的话，转入会算到 11-11，
+ *   而 B 的余额变化发生在 11-12 —— 差了一天，方程就不闭合了。
+ *   用**物理时间窗口**（「上次盘点 → 本次盘点」之间发生的转入）就稳了：
+ *   谁的余额在这段区间里涨的，转入就记在这段区间里。
+ * ============================================================ */
+/* 记录的真实时刻（毫秒时间戳）；real 记录用 date+time 原始值 */
+function recTimeMs(r){
+  const d = String(r && r.date || '');
+  const t = String(r && r.time || '00:00:00');
+  if(!d) return 0;
+  const p = Date.parse(d + 'T' + (t.length >= 8 ? t : t + '00'));
+  return isFinite(p) ? p : 0;
+}
+/* 转给某账号的全部转移事件 [{ ts, amt, fromId }]，按时间升序 */
+function xferEventsTo(acctId){
+  const out = [];
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      const amt = transferAmountOf(r, c);
+      if(amt <= 0) return;
+      if(xferTargetOf(c, r) !== acctId) return;
+      out.push({ ts:recTimeMs(r), amt:xferNetOfRec(r, c), fromId:c.id,
+                 date:settleDateOf(r) });
+    });
+  });
+  out.sort(function(a, b){ return a.ts - b.ts; });
+  return out;
+}
+/* 落在 (t0, t1] 时间窗口内、转给 acctId 的转入总额；t0=0 表示不限起点 */
+function xferInWindow(acctId, t0, t1, events){
+  const list = events || xferEventsTo(acctId);
+  let s = 0;
+  list.forEach(function(e){
+    if(e.ts > t0 && e.ts <= t1) s += e.amt;
+  });
+  return s;
+}
+/* 某账号某结算日的转入来源明细 [{fromId, fromName, amt}]，用于 UI 标注「← 小号甲」 */
+function transferInSources(acctId, date){
+  const out = [];
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      const amt = transferAmountOf(r, c);
+      if(amt <= 0) return;
+      if(xferTargetOf(c, r) !== acctId) return;
+      if(settleDateOf(r) !== date) return;
+      out.push({ fromId:c.id, fromName:c.name || c.account || '未命名', amt:xferNetOfRec(r, c) });
+    });
+  });
+  return out;
+}
+/* 某结算日「全站」转入的晶石总额（任意号→任意号，实收净额） */
 function transferInOf(date, map){
   const m = map || transferInByDate();
   return Number(m[date]) || 0;
 }
-/* 主号当日「获取」中要扣掉的内部转移额。不设下限：
+/* 某账号当日「获取」中要扣掉的内部转移额（收到的转入）。不设下限：
    扣完可以为负（表示当天净流出多于转入，如当天消耗大于转入）。
-   仅对主号生效，其他角色返回 0。
-   注意：跨日结转 —— 某日有转入但主号当天没录入时，转入额顺延到
-   主号下一次有记录的结算日扣除，绝不因为「当天没记录」就漏掉。 */
-function mainCharDeduct(c, date){
-  if(!isMainChar(c)) return 0;        /* 只对主号扣，其他角色分文不扣 */
+   2026-11-11 起对**任意账号**生效 —— 转移不再只是「小号→陌尘」，
+   谁收到转入，谁的「累计获取」就得扣掉这笔（那是别人的产出，不是自己的）。
+   注意：跨日结转 —— 某日有转入但本号当天没录入时，转入额顺延到
+   本号下一次有记录的结算日扣除，绝不因为「当天没记录」就漏掉。 */
+function acctDeduct(c, date){
+  if(!c) return 0;
   const p = transferPlan(c);
   const v = p[date];
   return v ? v.use : 0;
 }
+/* 兼容旧名（主号专用语义已泛化） */
+function mainCharDeduct(c, date){ return acctDeduct(c, date); }
 
 /* ============================================================
  * 内部转移扣减计划（按结算日预计算一次，dayTotals / 明细逐条共用）
  *   pool = 截至该日累计待扣的转入额
  *   use  = 该日实际可扣额 = min(pool, 该日原始获取)，剩余顺延到后续日期
  * 不设下限：若某日原始获取为 0（余额没涨/ 被消耗掉），use = 0，
- * 转入额留在池子里等下一天，不会被"漏算成陌尘的收入"。
+ * 转入额留在池子里等下一天，不会被"漏算成本号自己的收入"。
  * ========================================================== */
 let _transferPlanCache = null;
 function invalidateTransferPlan(){ _transferPlanCache = null; }
 function transferPlan(c){
-  if(!c || !isMainChar(c)) return {};   /* 只有主号需要扣减计划 */
-  if(_transferPlanCache && _transferPlanCache.forC === c) return _transferPlanCache.map;
+  if(!c) return {};
+  /* 缓存带版本号 —— 扣减计划依赖「转给本号」的记录（来自别号） */
+  if(_transferPlanCache && _transferPlanCache.forC === c
+     && _transferPlanCache.ver === _dataVer) return _transferPlanCache.map;
   /* 该角色各结算日的原始获取（扣减前）—— 与 gainedDeltas / dayTotals 同为日级口径 */
   const raw = {};
   const dm = dayGainMap(c);
   Object.keys(dm).forEach(function(d){ raw[d] = dm[d].gain; });
+  /* 本号收到的转入（按结算日）—— 只算「转给本号」的 */
+  const tmap = transferInByAcct(c.id);
   /* 日期轴= 有原始获取的日子 ∪ 有转入的日子 */
-  const days = Object.keys(raw).concat(Object.keys(transferInByDate()))
+  const days = Object.keys(raw).concat(Object.keys(tmap))
     .filter((v, i, a) => a.indexOf(v) === i).sort();
-  const tmap = transferInByDate();
   const map = {};
   let pool = 0;
   days.forEach(function(d){
@@ -1563,7 +1832,7 @@ function transferPlan(c){
     pool -= use;
     map[d] = { tin:tin, raw:r, use:use, poolOut:pool };
   });
-  _transferPlanCache = { forC:c, map:map };
+  _transferPlanCache = { forC:c, map:map, ver:_dataVer };
   return map;
 }
 
@@ -1626,104 +1895,28 @@ function dungeonGainOf(r){
 }
 
 /* ============================================================
- * 场次法：从「今天打了几张图」反推异界产出（2026-11-10 新增）
+ * 场次法（2026-11-11 撤下）
  * ------------------------------------------------------------
- * 为什么需要这条路：
- *   代练只报「剩余晶石」，报不出「异界产出」—— 也不该让他报。
- *   余额方程 期末 = 期初 + 异界产出 + 集市净增 − 秘境消耗 − 转移
- *   有 5 个未知量、只有 1 个观测，异界产出在数学上不可分离。
- *   而且「累计获取」口径本身是坏的：它把「秘境消耗」加了回来，
- *   而余额快照根本没反映这笔扣减 —— 实测虚高约 7 倍（见手册 §3.9）。
- *
- * 但「异界产出」有个天然观测点：**每打完一张图掉了多少晶石**。
- *   单场掉落 = 单场基准(地图阶级) × 档位加成% / 100
- *   日异界产出 = 每日场次 × 单场掉落
- *
- * 「场次」是代练一定数得出来的（游戏内可见），比让他区分
- * 「哪些是异界、哪些是集市」可行得多 —— 后者他根本报不出来。
- *
- * 基准表来自经验台账 435 条有效打图记录的实测标定
- * （scripts/dungeon_output_model.py，回代误差 0%）。
+ * 原来这条路是「今日打图场次 × 单场基准掉落(地图阶级) × 档位加成%」。
+ * 现在撤下的原因：
+ *   1) 闭合反推已经能自动算出异界产出（解收支方程，不是模型估的），
+ *      场次法从「唯一出路」降级成「精度更差的备份」，留着只会让人误用。
+ *   2) 它要求额外记「常刷地图阶级 + 今日场次」，录入负担大；
+ *      实测标定的基准表也只覆盖 T11~T15，阶级一变就估不准。
+ *   3) 历史 751 条记录里 rg=1（有效场次）为 0 条 —— 撤下不丢任何历史数据。
+ * 代码与字段（runs / rg / DUN_BASE / 账号级 mapTier 输入）一并移除。
  * ============================================================ */
 
-/* 单场基准掉落表：key = 地图阶级（数字，不含 'T' 前缀），value = 100% 档位下的单场掉落（晶石）
- * 实测标定（XP 台账 435 条有效打图记录，回代误差 0%）：
- *   T11→86.3  T12→89.6  T13→98.7  T14→105.0  T15→113.9
- * 说明：台账里同一阶级有两种写法（'T14' / '14'），已归一 —— 怪等一致，是同一个东西。 */
-const DUN_BASE = {
-  '11': 86.3, '12': 89.6, '13': 98.7, '14': 105.0, '15': 113.9, '16': 112.2
-};
-
-/* 归一地图阶级标签：'T14' 与 '14' → '14' */
-function dungeonNormTier(t){
-  t = String(t == null ? '' : t).trim();
-  if(/^T\d+$/i.test(t)) return t.slice(1);
-  return t;
-}
-
-/* 该角色的地图阶级（取记录里的地图阶级标记；没有则按等级推算）
- * —— 用于查基准表。账号级 minTier/maxTier 也可作为兜底。 */
-function dungeonMapTier(c){
-  const recs = (c && c.records) || [];
-  /* 优先用最近一条带 tier 标记的记录 */
-  for(let i = recs.length - 1; i >= 0; i--){
-    const t = recs[i] && recs[i].mapTier;
-    if(t) return String(t);
-  }
-  /* 其次用账号的 maxTier / minTier */
-  if(c && c.maxTier) return String(c.maxTier);
-  if(c && c.minTier) return String(c.minTier);
-  return '';
-}
-
-/* 查单场基准掉落；查不到返回 null（不猜）
- * 先把标签归一（'T14' → '14'）再查表 —— 表的 key 只有数字形式。 */
-function dungeonBaseOf(c){
-  const t = dungeonNormTier(dungeonMapTier(c));
-  if(!t) return null;
-  if(Object.prototype.hasOwnProperty.call(DUN_BASE, t)) return DUN_BASE[t];
-  return null;
-}
-
-/* 档位加成%（取该记录的档位快照；没有就用账号当前档位） */
-function dungeonPctOf(r, c){
-  if(r && r.pct != null && r.pct !== '') return Number(r.pct) / 100;
-  const t = (r && r.tier) || wealthTierOf(wealth(c));
-  return (WEALTH_TIERS[(t || 1) - 1] || [0, 100])[1] / 100;
-}
-
-/* 单场掉落（该档位下的期望值） */
-function dungeonPerRun(c, r){
-  const base = dungeonBaseOf(c);
-  if(base == null) return null;
-  return base * dungeonPctOf(r, c);
-}
-
-/* 由「场次」反推的异界产出。返回 null 表示推不出来（缺场次或缺基准）。 */
-function dungeonGainFromRuns(c, r){
-  if(!r) return null;
-  /* 只有真正记了场次（runs 有值）才参与推算。
-     注意：场次 = 0 是「今天确实一张没打」的合法值 → 异界产出 0；
-     未记场次（老数据 runs 缺失）→ null，表示"没记录"，绝不混同于 0。 */
-  if(r.runs === null || r.runs === undefined || r.runs === '') return null;
-  const runs = Number(r.runs) || 0;
-  const per = dungeonPerRun(c, r);
-  if(per == null) return null;
-  return Math.round(runs * per);
-}
-
 /* 一条记录的有效异界产出：
- *   优先用手填值（dg=1）；没有则用场次法推算。
- *   两者都没有 → null（表示「未记录」，绝不当作 0）。
- * 返回 { v, src }：src = 'manual' | 'runs' */
+ *   现在只有一个来源 —— 闭合反推（解收支方程算出来的）。
+ *   算不出来 → null（表示「不可算」，绝不当作 0）。
+ *   （历史遗留的 dg=1 手填值仍被识别 —— 万一有老记录带手填值，别浪费掉。）
+ * 返回 { v, src }：src = 'manual'（历史手填）| 'closure'（闭合反推） */
 function dungeonGainEffective(r, c){
-  const m = dungeonGainOf(r);
-  if(m != null) return { v: m, src: 'manual' };
-  /* 闭合反推：优先于场次法 —— 它是收支方程解出来的，不是模型估的 */
   const cl = closureGainOf(r, c);
   if(cl != null) return { v: cl, src: 'closure' };
-  const x = dungeonGainFromRuns(c, r);
-  if(x != null) return { v: x, src: 'runs' };
+  const m = dungeonGainOf(r);
+  if(m != null) return { v: m, src: 'manual' };
   return { v: null, src: '' };
 }
 
@@ -1752,14 +1945,22 @@ function dungeonEffectiveByDay(c){
  * 混合 = 同一个角色两种来源都有（此时以手填为准，场次只用于缺失的那些天）。 */
 function dungeonSourceLabel(t){
   if(!t || !t.hasDun) return '';
-  if(t.dunManual && (t.dunFromRuns || t.dunFromClosure)) return '手填+推算';
+  if(t.dunManual && t.dunFromClosure) return '手填+闭合';
   if(t.dunManual) return '手填';
-  if(t.dunFromClosure && t.dunFromRuns) return '闭合+场次';
+
   if(t.dunFromClosure) return '闭合反推';
-  if(t.dunFromRuns) return '场次推算';
+
   return '';
 }
 
+/* ============================================================
+ * 全局数据版本号（2026-11-11）
+ * ------------------------------------------------------------
+ * 为什么需要它：闭合反推与「累计获取扣减」现在**跨账号**依赖别号的数据
+ *   —— 本号的转移收入来自「别的号转给本号」的记录。
+ *   所以任何账号的记录一变，所有账号的闭合法结果与扣减计划都得重算。
+ *   缓存签名里带上这个版本号，就不用手动去猜「谁变了」。
+ * ============================================================ */
 /* ============================================================
  * 闭合反推（2026-11-10）：用「收支闭合」唯一确定异界产出
  * ------------------------------------------------------------
@@ -1773,7 +1974,9 @@ function dungeonSourceLabel(t){
  * 也就是说：只要把「非异界的进出」都记齐，异界产出就**不需要手填**，
  * 它是方程里剩下的唯一未知数 —— 这是「代练只报得出余额」的唯一出路。
  *
- * 为什么需要三个「填了才算」的标记位（mkt / craft / xferIn）：
+ * 为什么需要「填了才算」的标记位（mkt / craft）：
+ *   —— 转移收入是**自动带出**的（由别的号的转移记录收拢），不手填，
+ *      所以只有集市收入、打造消耗两个渠道需要人填。
  *   0 与「没填」含义完全不同。没填 = 这个渠道未知（方程不闭合），
  *   填 0 = 这个渠道确实没有发生（方程闭合）。所以用 null 表示未填。
  *
@@ -1784,9 +1987,11 @@ function dungeonSourceLabel(t){
  *      方程必然不闭合 —— 这种日子会被标为「不可算」，不会给出假数。
  * ============================================================ */
 
-/* 这条记录的三个闭合渠道是否都填了（null = 未填，不当 0） */
+/* 这条记录的闭合渠道是否都填了（null = 未填，不当 0）
+   —— 2026-11-11：只需「集市收入 + 打造消耗」两项手填。
+      「转移收入」由别的号的「转移晶石」自动推导，不再手填。 */
 function closureKnown(r){
-  return !!(r && r.mkt != null && r.craft != null && r.xferIn != null);
+  return !!(r && r.mkt != null && r.craft != null);
 }
 
 /* ------------------------------------------------------------
@@ -1806,7 +2011,7 @@ function closureKnown(r){
  *     区间异界产出 = (end − start) − Σ流入 + Σ流出
  *
  * 可算条件（四条都要满足，否则只给「不可算」的原因，绝不给假数）：
- *   ① 区间内每条记录的三渠道（mkt / craft / xferIn）都填了
+ *   ① 区间内每条记录的两渠道（mkt / craft）都填了
  *      —— 少填一条，方程里就多一个未知量
  *   ② 起点余额可信：首区间的起点用 initLeft（初始存量）
  *   ③ 一个区间只能覆盖**一个结算日** —— 跨天的区间无法把产出拆到每一天，
@@ -1846,6 +2051,8 @@ function closureSegments(c){
   recs.forEach(function(r, i){ if(Number(r.gl) === 1) anchors.push(i); });
   if(!anchors.length) return out;
 
+  /* 转给本号的转移事件（按物理时间排序）—— 整条计算只扫一次 */
+  const evs = xferEventsTo(c.id);
   let prevDate = '';       /* 上一个区间的结算日（连续性检查用） */
   anchors.forEach(function(j, k){
     /* 首区间的起点 = 第一个实测锚点本身（不是 0）：
@@ -1864,30 +2071,41 @@ function closureSegments(c){
                  : (from > 0 ? (Number(recs[from - 1].gemsLeft) || 0)
                             : (Number(c.initLeft) || 0));
 
-    let outSum = 0, inSum = 0, unknown = 0;
+    let outSum = 0, mktSum = 0, unknown = 0;
     rs.forEach(function(r){
       const p = recParts(r, c);
-      /* 流出：秘境消耗 + 打造消耗 + 真卖出 + 转给陌尘的转移 */
+      /* 流出：秘境消耗 + 打造消耗 + 真卖出 + 转给别的号的转移（转出全额） */
       outSum += (Number(r.chaosCost) || 0)
               + (r.craft != null ? (Number(r.craft) || 0) : 0)
               + p.sold + p.xfer;
-      /* 流入：集市收入 + 转入本号的晶石 */
-      inSum += (r.mkt != null ? (Number(r.mkt) || 0) : 0)
-             + (r.xferIn != null ? (Number(r.xferIn) || 0) : 0);
+      /* 流入（手填部分）：集市收入 */
+      mktSum += (r.mkt != null ? (Number(r.mkt) || 0) : 0);
       if(!closureKnown(r)) unknown++;
     });
-    const v = (end - start) - inSum + outSum;
-
-    /* 区间覆盖的结算日（去重排序） */
+    /* 区间所属结算日 */
     const ds = [];
     rs.forEach(function(r){ const d = settleDateOf(r); if(d && ds.indexOf(d) < 0) ds.push(d); });
     ds.sort();
     const date = settleDateOf(recs[to]) || '';
+    /* 流入（自动部分）：转移收入 —— 由别的号的「转移晶石」自动推导（已扣 5% 手续费）。
+       用**物理时间窗口**归属，而不是结算日：
+         窗口 = (上一次盘点时刻, 本次盘点时刻]
+       因为余额是在盘点那一刻拍的快照 —— 转入必须落在窗口内才算这次盘点的流入。
+       转出方在 T 时刻记录转账，目标方在 T' 时刻记录余额：
+         T ≤ T' → 转入已包含在这次余额里 → 计入本区间（正确）
+         T > T' → 转账还没发生 → 不该计入（用时间窗口自然排除）
+       按结算日对齐做不到这一点（23:00 转、次日 09:00 录就会错配一天）。 */
+    const t1 = recTimeMs(recs[to]);
+    const t0 = (i >= 0) ? recTimeMs(recs[i])
+             : (from > 0 ? recTimeMs(recs[from - 1]) : 0);
+    const xferInSum = xferInWindow(c.id, t0, t1, evs);
+    const inSum = mktSum + xferInSum;
+    const v = (end - start) - inSum + outSum;
 
     /* 可算性检查 */
     let why = '';
     if(unknown > 0){
-      why = '有 ' + unknown + ' 条记录没填「集市收入 / 打造消耗 / 转移收入」';
+      why = '有 ' + unknown + ' 条记录没填「集市收入 / 打造消耗」';
     }else if(i < 0){
       /* 首区间：期初余额来自「区间之前最后一条的余额」；
          若区间就是从第一条记录开始，那只能靠初始存量 initLeft */
@@ -1949,7 +2167,8 @@ function closureMap(c){
  * （这样每条锚点行都能显示自己那一笔，且各条之和 === 卡片累计值） */
 function closureAttribution(c){
   const recs = (c && c.records) || [];
-  const sig = recs.length + '|' + (recs.length ? (recs[recs.length-1].date || '') + ' '
+  /* 签名要带上全局版本号 —— 闭合结果依赖**别号**的转移记录 */
+  const sig = _dataVer + '|' + recs.length + '|' + (recs.length ? (recs[recs.length-1].date || '') + ' '
     + (recs[recs.length-1].time || '') + '#' + (recs[recs.length-1].gemsLeft || 0) : '');
   const ck = _closureCache.get(c);
   if(ck && ck.sig === sig) return ck.map;
@@ -2010,8 +2229,8 @@ function totals(c){
   const t = { gemsLeft:0, gemsSold:Number(c.gemsSold)||0,
               soldValue:Number(c.soldValue)||0, laborCost:0,
               chaosCost:Number(c.chaosCost)||0, transfer:0,
-              dungeonGain:0, hasDun:false, dunManual:false, dunFromRuns:false,
-              dunFromClosure:false, dunRuns:0 };
+              dungeonGain:0, hasDun:false, dunManual:false,
+              dunFromClosure:false };
   (c.records||[]).forEach(function(r){
     const p = recParts(r, c);
     /* 「已出售晶石」只算真正卖钱的那部分；转出的晶石单列到 transfer，
@@ -2029,10 +2248,7 @@ function totals(c){
       t.hasDun = true;
       if(dg.src === 'manual') t.dunManual = true;
       else if(dg.src === 'closure') t.dunFromClosure = true;
-      else t.dunFromRuns = true;
     }
-    /* 场次合计（用于展示投入量，也是异界产出的自变量） */
-    if(Number(r.rg) === 1) t.dunRuns += Number(r.runs) || 0;
   });
   /* 人工费（新口径）：按「角色×天」派生，不再读 dayLabor 累加 */
   t.laborCost = laborTotal(c);
@@ -2137,14 +2353,15 @@ function gainedDeltas(c){
     const g = dm[d];
     out[g.lastIdx] = g.gain;
   });
-  /* 主号：扣掉内部转入（卖出>0、收入=0 的那些笔）。
-     用transferPlan 的「实际可扣额」，含跨日结转，且扣在当天最后一条上，
-     保证单条不为负、跨条求和 === dayTotals 的口径。 */
-  if(isMainChar(c)){
+  /* 扣掉内部转入（收到的转移）。
+     用 transferPlan 的「实际可扣额」，含跨日结转，且扣在当天最后一条上，
+     保证单条不为负、跨条求和 === dayTotals 的口径。
+     2026-11-11：转移是任意号→任意号，所以对所有账号生效（没收到转入的号 plan 为空）。 */
+  {
     const plan = transferPlan(c);
     Object.keys(plan).forEach(function(d){
       const g = dm[d];
-      if(!g) return;                    /* 当天主号无记录 → 由后续日期结转扣除 */
+      if(!g) return;                    /* 当天本号无记录 → 由后续日期结转扣除 */
       const u = plan[d].use;
       if(u) out[g.lastIdx] = Math.max(0, out[g.lastIdx] - u);
     });
@@ -2173,12 +2390,12 @@ function recDeltas(c){
   });
   return out;
 }
-/* 明细表逐条展示用的增量：逐条真实 diff + 主号内部转入的日级扣减
+/* 明细表逐条展示用的增量：逐条真实 diff + 内部转入的日级扣减
    （扣减记在该结算日的最后一条，与 gainedDeltas / dayTotals 同一口径） */
 function detailDeltas(c){
   const asc = recsAsc(c);
   const out = recDeltas(c);
-  if(!asc.length || !isMainChar(c)) return out;
+  if(!asc.length) return out;
   const plan = transferPlan(c);
   const dm = dayGainMap(c);
   Object.keys(plan).forEach(function(d){
@@ -2212,15 +2429,13 @@ function summarize(list){
     if(t.hasDun){
       a.dungeonGain += t.dungeonGain; a.hasDun = true;
       if(t.dunManual) a.dunManual = true;
-      if(t.dunFromRuns) a.dunFromRuns = true;
       if(t.dunFromClosure) a.dunFromClosure = true;
     }
-    a.dunRuns += t.dunRuns;
     return a;
   }, { roles:list.length, gemsLeft:0, gained:0, gemsSold:0,
        soldValue:0, laborCost:0, profit:0, chaosCost:0,
-       dungeonGain:0, hasDun:false, dunManual:false, dunFromRuns:false,
-       dunFromClosure:false, dunRuns:0 });
+       dungeonGain:0, hasDun:false, dunManual:false,
+       dunFromClosure:false });
 }
 /* 已废弃：保留仅为兼容旧引用，实际使用 netProfit() */
 function roleIncome(c){ return netProfit(c); }
@@ -2269,7 +2484,7 @@ function dayTotals(c, dayRecs){
   const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
               laborCost:0, profit:0, chaosCost:0, transfer:0, recordCount:0,
               dungeonGain:0, hasDun:false, otherGain:0,
-              dunManual:false, dunFromRuns:false, dunFromClosure:false, dunRuns:0 };
+              dunManual:false, dunFromClosure:false };
   if(!dayRecs || !dayRecs.length) return t;
   const day = settleDateOf(dayRecs[0]);
   /* 人工费（新口径）：按天计一次（勾选了代练的当天），不按录入条数累加 */
@@ -2289,18 +2504,18 @@ function dayTotals(c, dayRecs){
       t.hasDun = true;
       if(dg.src === 'manual') t.dunManual = true;
       else if(dg.src === 'closure') t.dunFromClosure = true;
-      else t.dunFromRuns = true;
     }
   });
   /* 「获取」= 日级归集值（与 gainedDeltas / transferPlan 同源同口径） */
   const dm = dayGainMap(c);
   t.gained = dm[day] ? dm[day].gain : 0;
-  /* 主号：扣掉当天从小号转入的晶石（daySold>0 且 收入=0 的那些笔）。
+  /* 扣掉当天收到的内部转入（别人转给本号的晶石）。
      **不设下限** —— 转入的晶石当天即使被秘境消耗/花掉，也照样扣净，
-     否则这笔钱会在陌尘这边重复计入「获取」。 */
-  const tDeduct = mainCharDeduct(c, day);
+     否则这笔晶石会在本号这边重复计入「获取」。
+     2026-11-11：转移是任意号→任意号，所以对所有账号生效。 */
+  const tDeduct = acctDeduct(c, day);
   t.rawGained = t.gained;          /* 扣减前的原始获取（供校验/展示用） */
-  t.transferIn = Number(transferInByDate()[day]) || 0;
+  t.transferIn = transferInOfAcct(c.id, day);
   if(tDeduct) t.gained -= tDeduct;
   /* 当天最后一条的剩余 = 当天收工时的存量 */
   t.gemsLeft = Number(dayRecs[dayRecs.length - 1].gemsLeft) || 0;
@@ -2565,7 +2780,7 @@ function saveLocal(){
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                  maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
-                 /* 常刷地图阶级：查单场基准掉落表用 */
+                 /* 历史遗留字段（场次法用，2026-11-11 已撤下）—— 仅为透传不丢历史数据 */
                  mapTier: (c.mapTier == null || c.mapTier === '') ? '' : String(c.mapTier),
                records:c.records || [], flags:c.flags || {},
                laborDays:c.laborDays || [],
@@ -2626,20 +2841,20 @@ function loadLocal(){
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0,
                  transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
-                 /* 异界产出：dg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
+                 /* 异界产出（历史手填值，保留兼容）：dg=1 才是有效值；
+                    缺失一律存 null，绝不静默当 0。新记录不再写这个字段 ——
+                    异界产出改由「闭合反推」自动算出。 */
                  dunGain:(Number(r.dg)===1) ? (Number(r.dunGain)||0) : null,
                  dg:Number(r.dg)||0,
-                 /* 场次：rg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
-                 runs:(Number(r.rg)===1) ? (Number(r.runs)||0) : null,
-                 rg:Number(r.rg)||0,
-                 /* 闭合三渠道（2026-11-11）：集市收入 / 打造消耗 / 转移收入。
+                 /* 闭合双渠道（2026-11-11）：集市收入 / 打造消耗。
                     null = 未填（该渠道未知 → 收支方程不闭合，不能反推异界产出）
                     0   = 确实没发生（方程闭合）
-                    —— 这三个字段是「闭合反推」能成立的前提。 */
+                    「转移收入」不落库 —— 它由别的号的「转移晶石 + xferTo」自动推导。 */
                  mkt:(r.mkt == null || r.mkt === '') ? null : Number(r.mkt)||0,
                  craft:(r.craft == null || r.craft === '') ? null : Number(r.craft)||0,
-                 xferIn:(r.xferIn == null || r.xferIn === '') ? null : Number(r.xferIn)||0,
-                 /* 记录时的地图阶级（查单场基准掉落用） */
+                 /* 转移目标账号 id（'转给 ▾' 弹窗选的）：空 = 老数据（默认主号） */
+                 xferTo:(r.xferTo == null || r.xferTo === '') ? '' : String(r.xferTo),
+                 /* 记录时的地图阶级（历史字段，保留兼容） */
                  mapTier:(r.mapTier == null || r.mapTier === '') ? '' : String(r.mapTier),
                  wealth:r.wealth != null ? Number(r.wealth) : null,
                  tier:r.tier != null ? Number(r.tier) : null,
@@ -2654,6 +2869,7 @@ function loadLocal(){
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
+  bumpDataVer();
   /* 历史兼容迁移（一次性）：老数据用「每条 dayLabor 累加」记人工费，
      这里把"历史上 dayLabor>0 的那些天"并入 laborDays（按当天单价标准化，见 laborRate），
      保留"哪些天用了代练"的信息；之后以 laborDays 为准。 */
@@ -2731,7 +2947,7 @@ function serialize(){
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                  maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
-                 /* 常刷地图阶级：查单场基准掉落表用 */
+                 /* 历史遗留字段（场次法用，2026-11-11 已撤下）—— 仅为透传不丢历史数据 */
                  mapTier: (c.mapTier == null || c.mapTier === '') ? '' : String(c.mapTier),
                records:c.records || [], flags:c.flags || {},
                laborDays:c.laborDays || [],
@@ -2888,20 +3104,20 @@ function adopt(data){
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0,
                  transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
-                 /* 异界产出：dg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
+                 /* 异界产出（历史手填值，保留兼容）：dg=1 才是有效值；
+                    缺失一律存 null，绝不静默当 0。新记录不再写这个字段 ——
+                    异界产出改由「闭合反推」自动算出。 */
                  dunGain:(Number(r.dg)===1) ? (Number(r.dunGain)||0) : null,
                  dg:Number(r.dg)||0,
-                 /* 场次：rg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
-                 runs:(Number(r.rg)===1) ? (Number(r.runs)||0) : null,
-                 rg:Number(r.rg)||0,
-                 /* 闭合三渠道（2026-11-11）：集市收入 / 打造消耗 / 转移收入。
+                 /* 闭合双渠道（2026-11-11）：集市收入 / 打造消耗。
                     null = 未填（该渠道未知 → 收支方程不闭合，不能反推异界产出）
                     0   = 确实没发生（方程闭合）
-                    —— 这三个字段是「闭合反推」能成立的前提。 */
+                    「转移收入」不落库 —— 它由别的号的「转移晶石 + xferTo」自动推导。 */
                  mkt:(r.mkt == null || r.mkt === '') ? null : Number(r.mkt)||0,
                  craft:(r.craft == null || r.craft === '') ? null : Number(r.craft)||0,
-                 xferIn:(r.xferIn == null || r.xferIn === '') ? null : Number(r.xferIn)||0,
-                 /* 记录时的地图阶级（查单场基准掉落用） */
+                 /* 转移目标账号 id（'转给 ▾' 弹窗选的）：空 = 老数据（默认主号） */
+                 xferTo:(r.xferTo == null || r.xferTo === '') ? '' : String(r.xferTo),
+                 /* 记录时的地图阶级（历史字段，保留兼容） */
                  mapTier:(r.mapTier == null || r.mapTier === '') ? '' : String(r.mapTier),
                  /* 档位快照随记录透传 —— 丢了它，账号升档后整段历史会被错挂 */
                  wealth:r.wealth != null ? Number(r.wealth) : null,
@@ -2915,6 +3131,7 @@ function adopt(data){
       flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
     };
   });
+  bumpDataVer();
   SNAPSHOTS = (data.snapshots && typeof data.snapshots === 'object' && !Array.isArray(data.snapshots))
             ? data.snapshots : {};
   healRealMarks();               /* 古老云端数据可能缺 real → 就地自愈 */
@@ -3220,7 +3437,7 @@ function renderSummary(sum, animate){
     { cls:'c-roles', slot:'s-roles', ico:'roles', key:'roles',      k:'角色数量',         v:num(sum.roles) },
     { cls:'c-dun',   slot:'s-data',  ico:'gem',   key:'dungeonGain', k:'异界产出总量(纯口径)', v:sum.hasDun ? intNum(sum.dungeonGain) : '未记录',
       tip:'纯净口径：只含打异界掉落的晶石。来源：' + (dungeonSourceLabel(sum) || '未记录')
-        + '（手填 = 抄游戏画面；场次推算 = 场次 × 单场基准掉落 × 档位加成%）。累计打图 ' + intNum(sum.dunRuns) + ' 场' },
+        + '（闭合反推 = 由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程算出来）' },
     { cls:'c-left',  slot:'s-data',  ico:'gem',   key:'gemsLeft',   k:'剩余晶石总量',     v:intNum(sum.gemsLeft) },
     { cls:'c-gain',  slot:'s-data',  ico:'gain',  key:'gained',     k:'累计获取(含集市)',   v:num(sum.gained) },
     { cls:'c-sold',  slot:'s-data',  ico:'box',   key:'gemsSold',   k:'出售晶石总量',     v:intNum(sum.gemsSold) },
@@ -3229,20 +3446,23 @@ function renderSummary(sum, animate){
     { cls:'c-net',   slot:'s-data',  ico:'trend', key:'profit',     k:'净利润（总）',     v:money(sum.profit) },
     { cls:'c-chaos', slot:'s-data',  ico:'chaos', key:'chaosCost',  k:'秘境消耗晶石总量', v:intNum(sum.chaosCost) }
   ];
-  /* 「内部转移」提示行：说明累计获取里已扣掉多少「小号转给陌尘」的晶石。
-     不占数据列（用s-exp 空位叠在下一行），避免打乱现有 7 列对齐。
-     含「待结转」——已转入但主号当天/后续还没录入，暂挂着等主号有获取时扣除。 */
+  /* 「内部转移」提示行：说明累计获取里已扣掉多少「号↔号之间转移」的晶石。
+     不占数据列（用 s-exp 空位叠在下一行），避免打乱现有 7 列对齐。
+     含「待结转」——已转入但接收号当天/后续还没录入，暂挂着等它有获取时扣除。 */
   const tmap = transferInByDate();
   const tDays = Object.keys(tmap);
   const tTotal = tDays.reduce(function(a, k){ return a + tmap[k]; }, 0);
-  const mainC = (ACCOUNTS || []).filter(isMainChar)[0];
-  const mPlan = mainC ? transferPlan(mainC) : {};
-  const tUsed = Object.keys(mPlan).reduce(function(a, k){ return a + mPlan[k].use; }, 0);
+  /* 已扣减额 = 所有账号的 transferPlan.use 之和 */
+  let tUsed = 0;
+  (ACCOUNTS || []).forEach(function(c){
+    const pl = transferPlan(c);
+    Object.keys(pl).forEach(function(k){ tUsed += pl[k].use; });
+  });
   const tPend = Math.max(0, tTotal - tUsed);
   const extra = tTotal
     ? '<div class="sm c-transfer" style="grid-column:1/-1">'
-      + '<span class="k">' + ico('gain') + '内部转移（小号→陌尘，已从累计获取中扣除）</span>'
-      + '<span class="v" data-sum="transferIn" title="小号转给陌尘的晶石合计（显式「转移晶石」输入框，或旧口径「卖出>0、收入=0」），不计为任何人的收入">' + intNum(tTotal) + '</span>'
+      + '<span class="k">' + ico('gain') + '内部转移（号↔号，已从累计获取中扣除）</span>'
+      + '<span class="v" data-sum="transferIn" title="内部转移晶石合计（接收方实收，已扣 5% 手续费；历史记录无手续费）。不计为任何人的收入">' + intNum(tTotal) + '</span>'
       + '<span class="xfer-note">已扣 ' + intNum(tUsed)
       + (tPend ? ' · 待结转 ' + intNum(tPend) : ' · 已全部扣除')
       + '</span></div>'
@@ -3280,17 +3500,14 @@ function refreshNumbers(i){
     setV(row,'gained', g, 'hit');
     /* 累计异界产出：没记过就显示「未记录」（不是 0）——
        0 和"没记"含义完全不同，混起来会让档位分析把未记录当成没产出。
-       来源标注：手填（抄游戏画面）还是场次推算（场次 × 单场基准 × 档位加成%）。 */
+       来源标注：手填（抄游戏画面）还是闭合反推（解收支方程算出来）。 */
     const dunSrc = dungeonSourceLabel(t);
-    const dunIsEst = (dunSrc === '场次推算' || dunSrc === '闭合+场次' || dunSrc === '闭合反推');
+    const dunIsEst = (dunSrc === '闭合反推' || dunSrc === '手填+闭合');
     setV(row,'dungeonGain',
       t.hasDun ? (intNum(t.dungeonGain) + (dunIsEst ? '（推算）' : '')) : '未记录', 'hit');
     const dunEl = row.querySelector('[data-v="dungeonGain"]');
     if(dunEl) dunEl.title = '来源：' + (dunSrc || '未记录')
-      + '　｜　手填 = 直接抄游戏画面上的异界产出'
-      + '；闭合反推 = 由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程算出来'
-      + '；场次推算 = 今日打图场次 × 单场基准掉落(地图阶级) × 档位加成%'
-      + '　｜　累计打图 ' + intNum(t.dunRuns) + ' 场';
+      + '　｜　闭合反推 = 由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程算出来';
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
@@ -3396,32 +3613,29 @@ function detailHTML(i){
     /* 凌晨标记：00:00~07:59 的录入按结算日归属前一天，给个视觉提示 */
     const weeHour = parseInt(String(r.time || '').split(':')[0], 10);
     const wee = (weeHour >= 0 && weeHour < 8) ? '<i class="wee">凌晨</i>' : '';
-    /* 内部转移标记：这笔晶石转给陌尘，不是真卖钱 */
+    /* 内部转移标记：这笔晶石转给别的号，不是真卖钱 */
     const xferAmt = p.xfer;
     const xfer  = xferAmt > 0;
-    const xferTag = xfer ? '<i class="xfer" title="内部转移：晶石转给陌尘，不计收入">→陌尘</i>' : '';
-    /* 「异界产出」= 有效异界产出：手填值优先，没有则用场次法反推。
-       来源不同的，title 里标清楚（手填 / 场次推算）。 */
+    const xferToName = (function(){
+      const tid = xferTargetOf(c, r);
+      const t = (ACCOUNTS || []).find(function(x){ return x.id === tid; });
+      return t ? (t.name || t.account || '未命名') : '未指定';
+    })();
+    const xferTag = xfer ? '<i class="xfer" title="内部转移：晶石转给「' + esc(xferToName) + '」，不计收入">→' + esc(xferToName) + '</i>' : '';
+    /* 「异界产出」= 有效异界产出：现在只有闭合反推一个来源。
+       算不出来就把原因写在 title 里，不给假数。 */
     const dgE = dungeonGainEffective(r, c);
-    const runsN = (Number(r.rg) === 1) ? (Number(r.runs) || 0) : null;
-    const runsCell = (runsN == null)
-      ? '<td class="n none" title="没填「今日打图场次」">—</td>'
-      : '<td class="n' + z(runsN) + '" title="今天打了几张异界图（代练数得出来的量）">'
-        + intNum(runsN) + '</td>';
     const dgCell = (dgE.v == null)
       ? '<td class="n dun none" title="'
         + (closureWhyOf(r, c)
             ? '闭合不可算：' + closureWhyOf(r, c)
-            : '这条记录既没填「异界产出」，也没有场次可反推')
+            : '这条记录无法反推异界产出')
         + '">—</td>'
       : '<td class="n dun' + z(dgE.v) + '" title="'
         + (dgE.src === 'manual'
-            ? '纯净口径：本次打异界掉落的晶石（手工填写）'
-            : dgE.src === 'closure'
-              ? '纯净口径：由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程反推得出'
-              : '纯净口径：由「场次 × 单场基准掉落 × 档位加成%」反推得出')
+            ? '纯净口径：本次打异界掉落的晶石（历史手填值）'
+            : '纯净口径：由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程反推得出')
         + '">' + intNum(dgE.v)
-        + (dgE.src === 'runs' ? '<i class="est" title="由场次反推，非手工填写">推</i>' : '')
         + (dgE.src === 'closure' ? '<i class="est" title="由收支闭合方程反推，非手工填写">闭</i>' : '')
         + '</td>';
     return '<tr>'
@@ -3441,7 +3655,7 @@ function detailHTML(i){
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
-  }).join('') : '<tr><td colspan="14"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
+  }).join('') : '<tr><td colspan="13"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
 
   /* 合计行：把「逐条之和」与「日级归集值」的差额摆出来。
      日级口径下，某天若整体净增为负（典型情况：当天卖出/消耗没记全），
@@ -3453,27 +3667,20 @@ function detailHTML(i){
     const daySum = Object.keys(dm).reduce(function(a, d){ return a + dm[d].gain; }, 0);
     const rowSum = deltas.reduce(function(a, b){ return a + b; }, 0);
     const gap = daySum - rowSum;
-    /* 异界产出合计：有效值（手填优先，场次法兜底）；只累加真正有的 */
+    /* 异界产出合计：有效值（闭合反推）；只累加真正有的 */
     const dunSum = recs.reduce(function(a, r){
       const e = dungeonGainEffective(r, c);
       return a + (e.v == null ? 0 : e.v);
     }, 0);
     const dunHas = recs.some(function(r){ return dungeonGainEffective(r, c).v != null; });
-    /* 场次合计 */
-    const runsSum = recs.reduce(function(a, r){
-      return a + (Number(r.rg) === 1 ? (Number(r.runs) || 0) : 0);
-    }, 0);
-    const runsHas = recs.some(function(r){ return Number(r.rg) === 1; });
     if(!recs.length) return '';
     return '<tr class="sumrow">'
       + '<td colspan="4" class="sumlab">合计 · 日级口径 ' + num(daySum) + '</td>'
       + '<td class="n' + (rowSum ? ' inc' : ' zero') + '" title="各条真实增量之和">'
         + num(rowSum) + '</td>'
-      + '<td class="n dun' + (dunHas ? '' : ' none') + '" title="有效异界产出之和（纯净口径：手填 + 闭合反推 + 场次反推）">'
+      + '<td class="n dun' + (dunHas ? '' : ' none') + '" title="有效异界产出之和（纯净口径：闭合反推）">'
         + (dunHas ? intNum(dunSum) : '—') + '</td>'
-      + '<td class="n' + (runsHas ? '' : ' none') + '" title="打图场次之和（异界产出的自变量）">'
-        + (runsHas ? intNum(runsSum) : '—') + '</td>'
-      + '<td colspan="6" class="sumgap' + (gap ? ' warn' : '') + '" title="'
+      + '<td colspan="7" class="sumgap' + (gap ? ' warn' : '') + '" title="'
         + (gap ? ('有 ' + num(gap) + ' 晶石差額：某些日子当天净增为负（多半是卖出或秘境消耗没记全），'
                  + '日级口径记 0，不计入真实产出')
                : '逐条之和与日级口径一致')
@@ -3495,8 +3702,7 @@ function detailHTML(i){
     +   '<col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
     + '<thead><tr>'
     +   '<th>日期</th><th>时间</th><th>档位</th><th>剩余晶石</th><th>本次获取晶石</th>'
-    +   '<th title="纯净口径：打异界实际掉落的晶石（手填，或由场次反推）。做「档位 → 产出」分析用这一列，不要用「本次获取晶石」">异界产出</th>'
-    +   '<th title="今天打了几张异界图。代练报不出异界产出，但一定数得出场次 —— 场次 × 单场基准掉落 × 档位加成% = 真实异界产出">打图场次</th>'
+    +   '<th title="纯净口径：打异界实际掉落的晶石（由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程反推）。做「档位 → 产出」分析用这一列，不要用「本次获取晶石」">异界产出</th>'
     +   '<th>秘境消耗</th>'
     +   '<th>已出售晶石</th><th>转移晶石</th><th>收入</th><th>人工费用</th><th>净利润</th><th></th>'
     + '</tr></thead>'
@@ -3784,9 +3990,9 @@ function cardHTML(c, i, disp, gc){
   /* 「累计异界产出」= 纯净的「打异界掉落的晶石」，2026-11-10 新增。
      做「档位 → 每日产出」分析必须用这个数，不能用下面那个混合口径。 */
   +       '<div class="st"><div class="k">累计异界产出</div><span class="v dun" data-v="dungeonGain" '
-  +         'title="纯净口径：只含打异界掉落的晶石。来源：手填 / 闭合反推（由剩余晶石 + 集市收入 + 打造消耗 + 转移收入解方程算出）/ 场次推算。'
+  +         'title="纯净口径：只含打异界掉落的晶石。来源：手填 / 闭合反推（由剩余晶石 + 集市收入 + 打造消耗 + 转移收入解方程算出）。'
   +         '做「财富值档位 → 每日产出」分析请用这个数">'
-  +         (t.hasDun ? (intNum(t.dungeonGain) + (dungeonSourceLabel(t) === '场次推算' || dungeonSourceLabel(t) === '闭合反推' || dungeonSourceLabel(t) === '闭合+场次' ? '（推算）' : '')) : '未记录') + '</span></div>'
+  +         (t.hasDun ? (intNum(t.dungeonGain) + (dungeonSourceLabel(t) === '闭合反推' || dungeonSourceLabel(t) === '手填+闭合' ? '（推算）' : '')) : '未记录') + '</span></div>'
   +       '<div class="st"><div class="k">累计获取(含集市)</div><span class="v plain" data-v="gained" '
   +         'title="混合口径：每个结算日取「末条剩余 − 首条之前余额 + 当日卖出 + 当日秘境消耗」，'
   +         '当天净增为负记 0。这个数里混着集市买入、任务奖励等非异界来源（实测约占 62%），'
@@ -3803,49 +4009,42 @@ function cardHTML(c, i, disp, gc){
     +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
     +     '</div>'
     +   '</div>'
-  /* 录入区（2026-11-09 改造）：两行两格
-     第一行 = 本次出售 | 本次收入
-     第二行 = 秘境消耗 | 转移晶石（小号专用；主号是接收方，无转移框 → 秘境消耗跨两格）
-     「剩余晶石」是盘点值，单独占一整行
-     「异界产出」= 本次打异界掉落的晶石（2026-11-10 新增），单独占一整行
-     —— 为什么要这个字段：
-        原来的「已获取」是用「剩余晶石的差额」倒推的，而余额变化里混着
-        集市买入、任务奖励等其他来源（实测约占 62%），拿它做「档位→产出」
-        分析会把集市收益算成异界产出，结论直接失真。
-        单独记一个「异界产出」，得到的才是干净的单档产出。 */
+  /* 录入区（2026-11-11 改造）：四行两格 + 剩余晶石独占一行
+     第一行 = 出售晶石 | 现金收入
+     第二行 = 秘境消耗 | 打造消耗
+     第三行 = 集市收入 | 转移晶石（带「转给哪个号」选择器）
+     第四行 = 剩余晶石（整行）
+
+     「异界产出」手填框与「今日打图场次」已移除（2026-11-11）：
+       - 异界产出改由「闭合反推」自动算出（余额方程解出来的，不是猜的）
+       - 场次推算需要「常刷地图阶级」+ 基准表，实测标定误差仍偏大，先撤下
+     剩下要手填的只有「集市收入 / 打造消耗」两个渠道 —— 转移收入由系统自动带出。 */
   +   '<div class="inputrow">'
-  +     '<div class="ir"><div class="k">本次出售</div>' + numInput('gemsSold','本次出售') + '</div>'
-  +     '<div class="ir"><div class="k">本次收入</div>' + numInput('soldValue','本次收入') + '</div>'
-  +     '<div class="ir' + (isMainChar(c) ? ' span2' : '') + '"><div class="k">秘境消耗</div>'
-  +       numInput('chaosCost','0') + '</div>'
-  /* 「转移晶石」只对小号有意义（转给陌尘）；主号是接收方，不显示这个框 */
-  +     (isMainChar(c) ? '' : '<div class="ir xferrow"><div class="k">转移晶石</div>'
-  +                       numInput('transfer','转给陌尘的晶石') + '</div>')
-  +   '</div>'
-  +   '<div class="ir dunrow"><div class="k">异界产出</div>'
-  +     numInput('dunGain','打异界掉落的晶石') + '</div>'
-  +   '<div class="ir runsrow"><div class="k">今日打图场次</div>'
-  +     numInput('dunRuns','今天打了几张图') + '</div>'
-  /* 「闭合三件套」行：集市收入 / 打造消耗 / 转移收入
-     —— 这三项 + 剩余晶石（+ 秘境消耗 + 本次出售 + 转移晶石）把余额方程的未知量
-        收缩到只剩「异界产出」一个，于是异界产出可以被**自动反推**出来，
-        不需要代练报、也不需要手填。
-     语义（关键）：留空 = 这个渠道未知（方程不闭合，不给数）；
-                   填 0 = 确实没发生（方程闭合）。
-     所以这三个框是「每天都填一下」的成本，换来异界产出自动化。 */
-  +   '<div class="ir closrow">'
-  +     '<div class="cg market"><div class="k">集市收入</div>'
-  +       numInput('mkt','在集市卖/买的晶石') + '</div>'
-  +     '<div class="cg craft"><div class="k">打造消耗</div>'
+  +     '<div class="ir sell"><div class="k">出售晶石</div>'
+  +       numInput('gemsSold','卖掉的晶石') + '</div>'
+  +     '<div class="ir cash"><div class="k">现金收入</div>'
+  +       numInput('soldValue','卖晶石收到的钱') + '</div>'
+  +     '<div class="ir chaos"><div class="k">秘境消耗</div>'
+  +       numInput('chaosCost','进秘境花掉的晶石') + '</div>'
+  +     '<div class="ir craft"><div class="k">打造消耗</div>'
   +       numInput('craft','打造花掉的晶石') + '</div>'
-  +     '<div class="cg xferin"><div class="k">转移收入</div>'
-  +       numInput('xferIn','转入本号的晶石') + '</div>'
+  +     '<div class="ir market"><div class="k">集市收入</div>'
+  +       numInput('mkt','在集市得到的晶石') + '</div>'
+  /* 「转移晶石」+ 目标号选择器：点「转给 ▾」弹窗选目标。
+     选定后目标号会自动出现对应的「转移收入」（已扣 5% 手续费），
+     两边不用各填一遍，也不会填错方向。 */
+  +     '<div class="ir xferrow"><div class="k">转移晶石</div>'
+  +       numInput('transfer','转给别的号的晶石')
+  +       '<button class="xferpick" type="button" data-xferpick="' + i + '">'
+  +         '转给 <b>' + esc(xferPickName(i, c)) + '</b> <span class="arw">▾</span></button>'
+  +     '</div>'
   +   '</div>'
-  +   '<div class="closhint">这三项 + 剩余晶石 = 收支闭合，异界产出可自动反推：'
-  +     '<b>留空 = 这个渠道未知（不闭合，不给数）</b>，<b>填 0 = 确实没发生（闭合）</b>。'
-  +     '代练只报「剩余晶石」即可，其余三项由你补。</div>'
-  +   '<div class="ir gemsrow"><div class="k">剩余晶石</div>' + numInput('gemsLeft','现有多少填多少') + '</div>'
-    +   '<div class="vc-foot">'
+  /* 「转移收入」= 本号当天**收到的**转入，自动带出（不可手填）。
+     数字来自其它号已录入的「转移晶石」，已扣 5% 手续费。 */
+  +   xferInRowHTML(c, i)
+  +   '<div class="ir gemsrow"><div class="k">剩余晶石</div>'
+  +     numInput('gemsLeft','现有多少填多少') + '</div>'
+  +   '<div class="vc-foot">'
     +     '<button class="btn-detail" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
     +       '<span class="t">详细</span><span class="arw">▼</span></button>'
     +     '<button class="btn-edit" type="button" data-edit="' + i + '" title="修改信息 / 删除该角色">修改</button>'
@@ -3879,7 +4078,7 @@ function daySummarize(date){
   const acc = { roles:0, records:0, gained:0, gemsSold:0,
                 soldValue:0, laborCost:0, profit:0, chaosCost:0,
                 dungeonGain:0, hasDun:false, otherGain:0,
-              dunManual:false, dunFromRuns:false, dunFromClosure:false, dunRuns:0 };
+              dunManual:false, dunFromClosure:false };
   ACCOUNTS.forEach(function(c){
     const dayRecs = groupRecordsByDate(c)[date];
     if(!dayRecs || !dayRecs.length) return;
@@ -3896,14 +4095,12 @@ function daySummarize(date){
     if(t.hasDun){
       acc.dungeonGain += t.dungeonGain; acc.hasDun = true;
       if(t.dunManual) acc.dunManual = true;
-      if(t.dunFromRuns) acc.dunFromRuns = true;
       if(t.dunFromClosure) acc.dunFromClosure = true;
     }
-    acc.dunRuns += t.dunRuns;
     acc.otherGain += t.otherGain;
   });
-  /* 内部转入主号、当天从主号获取里扣掉的量（用于当天面板的「转移」）。
-     刻意放在循环外：陌尘当天没录入时也要照常显示当天转移量 ——
+  /* 当天的内部转移总量（任意号→任意号，接收方实收净额）。
+     刻意放在循环外：接收号当天没录入时也要照常显示当天转移量 ——
      放在循环内会被「该角色当天无记录 → return」吞掉。 */
   acc.transferIn = Number(transferInOf(date)) || 0;
   return acc;
@@ -3926,9 +4123,9 @@ function daySectHTML(d, isToday){
   const s = daySummarize(d);
   const items = [
     { cls:'c-roles', ico:'roles', k:'录入角色',         v:num(s.roles),       raw:s.roles },
-    { cls:'c-dun',   ico:'gem',   k:'当日异界产出',     v:s.hasDun ? (intNum(s.dungeonGain) + (dungeonSourceLabel(s) === '场次推算' ? '（推算）' : '')) : '未记录', raw:s.hasDun ? s.dungeonGain : 0,
+    { cls:'c-dun',   ico:'gem',   k:'当日异界产出',     v:s.hasDun ? intNum(s.dungeonGain) : '未记录', raw:s.hasDun ? s.dungeonGain : 0,
       tip:'纯净口径：当天所有角色异界产出之和。来源：' + (dungeonSourceLabel(s) || '未记录')
-        + '（手填 = 抄游戏画面；闭合反推 = 由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程算出来；场次推算 = 场次 × 单场基准掉落 × 档位加成%）。当天打图 ' + intNum(s.dunRuns) + ' 场' },
+        + '（闭合反推 = 由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程算出来）' },
     { cls:'c-gain',  ico:'gain',  k:'当日累计获取(含集市)', v:num(s.gained),  raw:s.gained },
     { cls:'c-sold',  ico:'box',   k:'当日出售晶石',     v:intNum(s.gemsSold), raw:s.gemsSold },
     { cls:'c-money', ico:'money', k:'当日收入',         v:money(s.soldValue), raw:s.soldValue },
@@ -3947,16 +4144,15 @@ function daySectHTML(d, isToday){
   /* 标题行摘要：角色数 · 异界产出 · 累计获取 · 收入 · 支出 · 转移
      「异界产出」放最前 —— 它是唯一能直接用于「档位 → 每日产出」分析的纯净口径；
      「累计获取」是混合口径（含集市等），放在后面作对照。
-     转移 = 当天小号「卖出>0、收入=0」转给陌尘的晶石量（已从陌尘当日获取中扣除，不计收入）。
+     转移 = 当天号↔号之间转移的晶石量（接收方实收，已从接收号当日获取中扣除，不计收入）。
      恒显示（含 0），避免有/无转移时标题长度跳动；0 时走 .zero 弱化。 */
   const sXfer = Number(s.transferIn) || 0;
-  const dunTxt = s.hasDun ? ('<b class="dunv"' + (dungeonSourceLabel(s) === '场次推算'
-                    ? ' title="由「今日打图场次 × 单场基准掉落 × 档位加成%」反推，非手工填写"' : '') + '>'
+  const dunTxt = s.hasDun ? ('<b class="dunv" title="由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程反推得出">'
                     + intNum(s.dungeonGain) + '</b>')
                           : ('<b class="dunv none">未记录</b>');
   const sumLabel = s.roles + ' 个角色 · 异界产出 ' + dunTxt
     + ' · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b> · 支出 <b>' + money(s.laborCost) + '</b>'
-    + ' · 转移 <b class="xf' + (sXfer ? '' : ' zero') + '" title="小号转给陌尘的晶石（卖出>0 且收入=0），已从陌尘当日获取中扣除、不计为收入">'
+    + ' · 转移 <b class="xf' + (sXfer ? '' : ' zero') + '" title="当天号↔号之间转移的晶石（接收方实收，已扣 5% 手续费），已从接收号当日获取中扣除、不计为收入">'
     + intNum(sXfer) + '</b>';
   /* 代练勾选行：列出当天有记录的角色，勾选=该角色当天用了代练（laborRate(d) 元），不勾=自己打的免单 */
   const lr = ACCOUNTS.map(function(c, i){ return { c:c, i:i }; })
@@ -3970,11 +4166,11 @@ function daySectHTML(d, isToday){
   const laborRow = lr
     ? ('<div class="labor-row"><span class="lr-label">代练（' + laborRate(d) + '/天）：</span>' + lr + '</div>')
     : '';
-  /* 内部转移提示：当天有小号把晶石转给陌尘，这部分已从陌尘的「当日累计获取」里扣掉 */
+  /* 内部转移提示：当天有号把晶石转给了别的号，这部分已从接收号的「当日累计获取」里扣掉 */
   const xferRow = s.transferIn
-    ? ('<div class="labor-row xfer-row"><span class="lr-label">内部转入陌尘：</span>'
+    ? ('<div class="labor-row xfer-row"><span class="lr-label">内部转移：</span>'
        + '<b>' + intNum(s.transferIn) + '</b>'
-       + '<span class="xfer-hint">（小号「转移晶石」填写的量，已从陌尘当日获取中扣除，不计为收入）</span></div>')
+       + '<span class="xfer-hint">（接收方实收，已扣 5% 手续费；已从接收号当日获取中扣除，不计为收入）</span></div>')
     : '';
   return '<section class="panel daysect" data-day="' + d + '">'
     + '<button class="dayHead" type="button" title="点击折叠 / 展开">'
@@ -4151,10 +4347,14 @@ function flashSaved(){
 }
 
 /* 收集单张卡片录入框里的值
-   —— 语义区别 ——
-   「当前剩余晶石」是时点值：填了就以填的为准，留空表示本次不改动，
+   —— 语义区别（2026-11-11 新口径）——
+   「剩余晶石」是时点值：填了就以填的为准，留空表示本次不改动，
                     沿用当前最新剩余，绝不写成 0。
-   其余 4 项是流水：填多少记多少（留空按 0）
+   流水项（出售晶石 / 现金收入 / 秘境消耗 / 转移晶石）：填多少记多少（留空按 0）。
+   闭合渠道（集市收入 / 打造消耗）：必须区分「没填」与「填 0」
+                    留空 = 该渠道未知（方程不闭合 → 不给异界产出）
+                    填 0 = 确实没发生（方程闭合）
+   「转移收入」不再手填 —— 由别的号的「转移晶石」自动带出。
    返回 null 表示该卡片没有任何待提交内容。 */
 function collectRow(i){
   const row = document.querySelector('.row[data-i="' + i + '"]');
@@ -4162,43 +4362,21 @@ function collectRow(i){
   const ins = row.querySelectorAll('.input');
   const v = {};
   let anyFilled = false, leftFilled = false, filledCount = 0;
-  let dunFilled = false, dunVal = 0;
-  let runsFilled = false, runsVal = 0;
-  const chanSet = { mkt:false, craft:false, xferIn:false };
+  const chanSet = { mkt:false, craft:false };
   Array.prototype.forEach.call(ins, function(el){
     const raw = el.value == null ? '' : String(el.value).trim();
     const n = parseFloat(raw);
     const ok = isFinite(n) && raw !== '';
     /* 余额是「时点值」：0 也是合法状态（晶石花光了），填 0 同样算有效录入；
-       其余 4 项是流水：0 与留空等价，不触发提交。
-       —— 修复：此前余额填 0 会被当成"没填"，整次提交被拒、按钮也不亮 */
+       其余流水项：0 与留空等价，不触发提交。 */
     if(ok && (n !== 0 || el.dataset.f === 'gemsLeft')){ anyFilled = true; filledCount++; }
     if(el.dataset.f === 'gemsLeft' && ok) leftFilled = true;
-    /* 「异界产出」单独判定：填 0 也是有效信息（今天打了异界但没掉落），
-       所以不看数值是否为 0，只看有没有真的填。
-       为什么要单独处理：它是"产出"而不是"流水"，0 有明确含义，
-       若按流水口径「0 = 留空」，就无法区分"没打异界"和"打了没掉"。 */
-    if(el.dataset.f === 'dunGain'){
-      if(ok){ dunFilled = true; dunVal = n; anyFilled = true; filledCount++; }
-      v.dunGain = 0;
-      return;
-    }
-    /* 「今日打图场次」：填 0 也是有效信息（今天一张图没打），
-       和「异界产出」同样按「产出类」处理 —— 0 有明确含义
-       （今天没打图 → 异界产出 0），不能与「没填」混为一谈。 */
-    if(el.dataset.f === 'dunRuns'){
-      if(ok){ runsFilled = true; runsVal = n; anyFilled = true; filledCount++; }
-      v.dunRuns = 0;
-      return;
-    }
-    /* 「闭合三件套」：集市收入 / 打造消耗 / 转移收入
-       —— 这三项决定余额方程能不能闭合，必须区分「没填」与「填 0」：
-          留空 = 该渠道未知（null）→ 方程不闭合 → 不给异界产出
-          填 0 = 确实没发生        → 方程闭合
-       所以：raw 为空 → v[f] = null；raw 有内容（哪怕是 0）→ v[f] = n。
-       触发提交方面：这三项单独填 0 不算「有内容」（避免点一下就产生空记录），
+    /* 「闭合双渠道」：集市收入 / 打造消耗
+       —— 决定余额方程能不能闭合，必须区分「没填」与「填 0」。
+       raw 为空 → v[f] = null；raw 有内容（哪怕是 0）→ v[f] = n。
+       触发提交方面：单独填 0 不算「有内容」（避免点一下就产生空记录），
        但会记下 chanSet 标记，随余额一起录入时正确落成 0。 */
-    if(el.dataset.f === 'mkt' || el.dataset.f === 'craft' || el.dataset.f === 'xferIn'){
+    if(el.dataset.f === 'mkt' || el.dataset.f === 'craft'){
       if(ok){
         v[el.dataset.f] = n;
         chanSet[el.dataset.f] = true;
@@ -4212,8 +4390,6 @@ function collectRow(i){
   });
   if(!anyFilled) return null;
   return { ins:ins, v:v, leftFilled:leftFilled, filledCount:filledCount,
-           dunFilled:dunFilled, dunVal:dunVal,
-           runsFilled:runsFilled, runsVal:runsVal,
            chanSet:chanSet };
 }
 
@@ -4241,40 +4417,33 @@ function pushRec(i, got){
     dayValue:  got.v.soldValue || 0,
     dayLabor:  got.v.laborCost || 0,
     chaosCost: got.v.chaosCost || 0,
-    /* 转移晶石（2026-11-10 新增）：独立字段，不借用 daySold。
-       「本次出售」只表示真卖钱，「转移晶石」只表示转给陌尘 —— 两件事互不干扰。
+    /* 转移晶石（2026-11-10 新增，2026-11-11 升级为任意→任意）：
+       独立字段，不借用 daySold。「出售晶石」只表示真卖钱，
+       「转移晶石」只表示转给别的号 —— 两件事互不干扰。
+       xferTo = 目标账号 id（'转给 ▾' 弹窗里选的），缺省 = 主号。
        xf=1 标记「新口径记录」：解析时不再靠「收入=0」反推是不是转移。 */
     transfer:  got.v.transfer  || 0,
+    /* 目标账号 id（'转给 ▾' 弹窗选的）。
+       只在真的填了「转移晶石」时才写 —— 没转就没目标，
+       免得把「卖出>0、收入=0」的旧习惯记录误标成新口径转移。 */
+    xferTo:    (got.v.transfer || 0) > 0 ? xferPickId(i) : '',
     xf:        1,
-    /* 异界产出（2026-11-10 新增）：打异界实际掉落的晶石，纯口径。
-       dg=1 表示这条记录带有效的异界产出数据（哪怕是 0）；
-       没有 dg=1 的记录（历史旧记录）= 异界产出未知，不能当成 0 用。
-       —— 为什么必须独立记：
-          「剩余晶石的差额」里混着集市买入、任务奖励等来源，
-          实测约占总增量的 62%，直接拿它做「档位→产出」分析会严重失真。 */
-    dunGain:   got.dunFilled ? (got.dunVal || 0) : null,
-    dg:        got.dunFilled ? 1 : 0,
-    /* 今日打图场次（2026-11-10 新增）：代练唯一需要多报的数。
-       代练报不出「异界产出」，但一定数得出「今天打了几张图」——
-       场次 × 单场基准(地图阶级) × 档位加成% = 该日真实异界产出。
-       rg=1 表示这条带有效的场次数据（哪怕是 0）。 */
-    runs:      got.runsFilled ? (got.runsVal || 0) : null,
-    rg:        got.runsFilled ? 1 : 0,
-    /* 地图阶级快照：用于查单场基准掉落表（档位变化时基准不变，但记录下来更稳） */
+    /* 地图阶级快照（保留字段）：现在异界产出走闭合反推，不靠地图推算，
+       但历史上算过的档位/阶级仍留在记录里，方便回溯核对。 */
     mapTier:   (ACCOUNTS[i].mapTier || ''),
-    /* 闭合三渠道（2026-11-11）：集市收入 / 打造消耗 / 转移收入。
+    /* 闭合双渠道（2026-11-11）：集市收入 / 打造消耗。
        null = 未填（渠道未知 → 收支方程不闭合，异界产出不可反推）
        0   = 确实没发生（方程闭合）
-       —— 有这三项 + 剩余晶石，异界产出就是余额方程里剩下的唯一未知数。 */
+       「转移收入」不再手填 —— 由别的号的「转移晶石」自动推导。 */
     mkt:      got.chanSet.mkt    ? (got.v.mkt    || 0) : null,
     craft:    got.chanSet.craft  ? (got.v.craft  || 0) : null,
-    xferIn:   got.chanSet.xferIn ? (got.v.xferIn || 0) : null,
     wealth:    wv,
     tier:      tier,
     pct:       WEALTH_TIERS[tier - 1][1],
     level:     ACCOUNTS[i].level == null ? '' : ACCOUNTS[i].level
   };
   ACCOUNTS[i].records.push(rec);
+  bumpDataVer();                    /* 别的号可能转给本号 → 全局缓存都要重算 */
   Array.prototype.forEach.call(got.ins, function(el){ el.value = ''; });
   return rec;
 }
@@ -4283,6 +4452,8 @@ function pushRec(i, got){
 function afterCommit(i){
   markDirty(i, false);
   refreshNumbers(i);
+  /* 别的号转进来 → 那些号的「转移收入」自动行要跟着变 */
+  refreshXferInRows();
   /* 录入后立刻更新名字的「当日已录入」绿色，不用等刷新页面 */
   const nm = document.querySelector('.row[data-i="' + i + '"] .nm');
   if(nm) nm.classList.toggle('today', recordedToday(ACCOUNTS[i]));
@@ -4710,8 +4881,6 @@ function openModal(mode, idx){
   fMinTier.value = c ? (c.minTier != null && c.minTier !== '' ? String(c.minTier) : '') : '';
   /* 最高T级：回填独立数值 */
   fMaxTier.value = c ? (c.maxTier != null && c.maxTier !== '' ? String(c.maxTier) : '') : '';
-  /* 常刷地图阶级：查单场基准掉落表用 */
-  fMapTier.value = c ? (c.mapTier != null && c.mapTier !== '' ? String(c.mapTier) : '') : '';
   /* 代练人：从名册下拉选择；若名册为空（旧数据）则用卡片现有值临时补一项 */
   const opts = brokerSorted();
   const curB = normalizeBroker(c ? c.broker : '');
@@ -4727,7 +4896,7 @@ function openModal(mode, idx){
   }
   fBroker.innerHTML = html;
   fBroker.value = curB;
-  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fMapTier, fBroker].forEach(function(el){
+  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fBroker].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
@@ -4752,7 +4921,6 @@ function modalOk(){
   const oRaw    = fOrder.value.trim();
   const tRaw    = fMinTier.value.trim();
   const mxRaw   = fMaxTier.value.trim();
-  const mtRaw   = fMapTier.value.trim();
 
   /* 账号必填 */
   let bad = false;
@@ -4782,10 +4950,6 @@ function modalOk(){
   if(mxRaw !== '' && !/^\d{1,2}$/.test(mxRaw)){
     fMaxTier.classList.add('bad'); fMaxTier.closest('.field').classList.add('bad'); bad = true;
   } else { fMaxTier.classList.remove('bad'); fMaxTier.closest('.field').classList.remove('bad'); }
-  /* 常刷地图阶级：数字（可留空）；只接受数字形式，'T14' 会在保存时归一 */
-  if(mtRaw !== '' && !/^\d{1,2}$/.test(mtRaw)){
-    fMapTier.classList.add('bad'); fMapTier.closest('.field').classList.add('bad'); bad = true;
-  } else { fMapTier.classList.remove('bad'); fMapTier.closest('.field').classList.remove('bad'); }
   if(bad){
     (fAccount.classList.contains('bad') ? fAccount
       : fLevel.classList.contains('bad') ? fLevel
@@ -4793,7 +4957,6 @@ function modalOk(){
       : fInitLeft.classList.contains('bad') ? fInitLeft
       : fOrder.classList.contains('bad') ? fOrder
       : fMaxTier.classList.contains('bad') ? fMaxTier
-      : fMapTier.classList.contains('bad') ? fMapTier
       : fMinTier).focus();
     return;
   }
@@ -4809,8 +4972,6 @@ function modalOk(){
   const minTierVal = (tRaw === '') ? '' : Number(tRaw);
   /* 最高T级：同上 */
   const maxTierVal = (mxRaw === '') ? '' : Number(mxRaw);
-  /* 常刷地图阶级：留空 = 未设置（场次法不可用）；存数字形式 */
-  const mapTierVal = (mtRaw === '') ? '' : Number(mtRaw);
   /* 代练人：纯文本，去首尾空格；留空 = 未分组（卡牌归入最后一组） */
   const brokerVal = fBroker.value.trim();
 
@@ -4822,7 +4983,6 @@ function modalOk(){
     c.order = orderVal;
     c.minTier = minTierVal;
     c.maxTier = maxTierVal;
-    c.mapTier = mapTierVal;
     c.broker = brokerVal;
     /* 同步更新已展开明细的标题 */
     const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
@@ -4835,7 +4995,6 @@ function modalOk(){
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
       gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
       wealth: wealthVal, initLeft: initLeftVal, order: orderVal, minTier: minTierVal, maxTier: maxTierVal,
-      mapTier: mapTierVal,
       broker: brokerVal,
       records:[], flags:{}
     });
@@ -4896,7 +5055,7 @@ document.getElementById('mdDel').addEventListener('click', function(){
   toast('已删除该角色');
 });
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
-[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fMapTier, fBroker].forEach(function(el){
+[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fBroker].forEach(function(el){
   el.addEventListener('input', function(){
     el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
   });
@@ -4909,6 +5068,9 @@ document.addEventListener('click', function(e){
   /* 记录按钮：提交本卡片录入（手机端主要入口） */
   const sv = e.target.closest('[data-save]');
   if(sv){ commitEntry(Number(sv.dataset.save)); return; }
+  /* 「转给 ▾」按钮：打开目标号选择弹窗（2026-11-11） */
+  const xp = e.target.closest('[data-xferpick]');
+  if(xp){ openXferPick(Number(xp.dataset.xferpick)); return; }
   /* 展开 / 收起 */
   const tg = e.target.closest('[data-toggle]');
   if(tg){
@@ -4979,6 +5141,7 @@ document.addEventListener('click', function(e){
   if(del){
     const i = Number(del.dataset.del), ri = Number(del.dataset.ri);
     ACCOUNTS[i].records.splice(ri, 1);
+    bumpDataVer();
     refreshNumbers(i);
     document.getElementById('detail-' + i).innerHTML = detailHTML(i);
     syncDetailCols(i);
@@ -5007,6 +5170,7 @@ document.addEventListener('click', function(e){
     if(!n){ toast('本来就没有明细'); return; }
     if(!confirm('确定清空「' + (ACCOUNTS[i].name || ACCOUNTS[i].account || '未命名角色') + '」的 ' + n + ' 条明细？此操作不可撤销。')) return;
     ACCOUNTS[i].records = [];
+    bumpDataVer();
     refreshNumbers(i);
     document.getElementById('detail-' + i).innerHTML = detailHTML(i);
     syncDetailCols(i);
@@ -5020,6 +5184,7 @@ document.addEventListener('click', function(e){
     const i = Number(rm.dataset.rm);
     if(!confirm('确定删除该角色卡片？其所有明细将一并删除。')) return;
     ACCOUNTS.splice(i, 1);
+    bumpDataVer();
     render();
     saveLocal();
     toast('已删除该角色');
@@ -5094,6 +5259,49 @@ function closeTier(){ tierMask.classList.remove('show'); }
 document.getElementById('btnTier').addEventListener('click', openTier);
 document.getElementById('tierClose').addEventListener('click', closeTier);
 tierMask.addEventListener('click', function(e){ if(e.target === tierMask) closeTier(); });
+
+/* ============================================================
+ * 转移目标选择弹窗（2026-11-11）
+ * ============================================================ */
+const xferMask = document.getElementById('xferMask');
+let _xferPickIdx = -1;               /* 正在为哪张卡片选目标 */
+function openXferPick(i){
+  _xferPickIdx = i;
+  const c = ACCOUNTS[i];
+  if(!c) return;
+  const cur = xferPickId(i);
+  const list = document.getElementById('xferList');
+  let html = '';
+  ACCOUNTS.forEach(function(t){
+    if(t.id === c.id) return;                     /* 不能转给自己 */
+    const isMain = isMainChar(t);
+    const sel = (t.id === cur);
+    html += '<button class="xfer-item' + (sel ? ' sel' : '') + '" type="button" '
+      + 'data-xfer-target="' + esc(t.id) + '">'
+      + '<span class="dot" style="background:' + (isMain ? '#7f60e0' : '#3fb950') + '"></span>'
+      + '<span class="nm">' + esc(t.name || t.account || '未命名角色') + '</span>'
+      + '<span class="meta">' + (isMain ? '主号' : (t.level ? 'Lv.' + esc(t.level) : '小号')) + '</span>'
+      + (sel ? '<span class="ok">✓</span>' : '')
+      + '</button>';
+  });
+  if(!html) html = '<div style="font-size:11.5px;color:var(--mute);padding:10px 2px">'
+    + '只有这一个号，没有可转的目标。</div>';
+  list.innerHTML = html;
+  document.getElementById('xferHint').textContent =
+    '本号「' + (c.name || c.account || '未命名') + '」转出后，目标号自动出现对应的「转移收入」（已扣 5% 手续费），两边自动配平。';
+  xferMask.classList.add('show');
+}
+function closeXferPick(){ xferMask.classList.remove('show'); _xferPickIdx = -1; }
+document.getElementById('xferCancel').addEventListener('click', closeXferPick);
+xferMask.addEventListener('click', function(e){ if(e.target === xferMask) closeXferPick(); });
+document.getElementById('xferList').addEventListener('click', function(e){
+  const btn = e.target.closest('[data-xfer-target]');
+  if(!btn) return;
+  _xferPick[_xferPickIdx] = btn.getAttribute('data-xfer-target');
+  closeXferPick();
+  render();                               /* 重画卡片，更新「转给 ▾」与「转移收入」 */
+  saveLocal();
+});
 
 document.getElementById('btnSetting').addEventListener('click', openSetting);
 document.getElementById('setClose').addEventListener('click', closeSetting);
@@ -5202,20 +5410,20 @@ document.getElementById('fileInput').addEventListener('change', function(e){
                      dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                      chaosCost:Number(r.chaosCost)||0,
                      transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
-                 /* 异界产出：dg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
+                 /* 异界产出（历史手填值，保留兼容）：dg=1 才是有效值；
+                    缺失一律存 null，绝不静默当 0。新记录不再写这个字段 ——
+                    异界产出改由「闭合反推」自动算出。 */
                  dunGain:(Number(r.dg)===1) ? (Number(r.dunGain)||0) : null,
                  dg:Number(r.dg)||0,
-                 /* 场次：rg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
-                 runs:(Number(r.rg)===1) ? (Number(r.runs)||0) : null,
-                 rg:Number(r.rg)||0,
-                 /* 闭合三渠道（2026-11-11）：集市收入 / 打造消耗 / 转移收入。
+                 /* 闭合双渠道（2026-11-11）：集市收入 / 打造消耗。
                     null = 未填（该渠道未知 → 收支方程不闭合，不能反推异界产出）
                     0   = 确实没发生（方程闭合）
-                    —— 这三个字段是「闭合反推」能成立的前提。 */
+                    「转移收入」不落库 —— 它由别的号的「转移晶石 + xferTo」自动推导。 */
                  mkt:(r.mkt == null || r.mkt === '') ? null : Number(r.mkt)||0,
                  craft:(r.craft == null || r.craft === '') ? null : Number(r.craft)||0,
-                 xferIn:(r.xferIn == null || r.xferIn === '') ? null : Number(r.xferIn)||0,
-                 /* 记录时的地图阶级（查单场基准掉落用） */
+                 /* 转移目标账号 id（'转给 ▾' 弹窗选的）：空 = 老数据（默认主号） */
+                 xferTo:(r.xferTo == null || r.xferTo === '') ? '' : String(r.xferTo),
+                 /* 记录时的地图阶级（历史字段，保留兼容） */
                  mapTier:(r.mapTier == null || r.mapTier === '') ? '' : String(r.mapTier),
                      wealth:r.wealth != null ? Number(r.wealth) : null,
                      tier:r.tier != null ? Number(r.tier) : null,
@@ -5228,6 +5436,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           flags: (s.flags && typeof s.flags === 'object') ? s.flags : {}
         };
       });
+      bumpDataVer();
       migrateLaborDays();          /* 老备份缺 laborDays → 从历史 dayLabor 重建 */
       BROKERS = readBrokers(data.brokers);   /* 代练人名册（老备份自动反推） */
       alignBrokers();
