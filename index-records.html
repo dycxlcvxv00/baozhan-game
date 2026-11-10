@@ -771,18 +771,11 @@
   .colhead{display:none}
   /* padding-top：每日信息面板与第一行分组色条之间的留白。
 26px 视觉上偏松，压到 12px 让两者成组。 */
-  #cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:30px 12px;padding-top:12px}
-  /* 宽屏逐级加列：每个代练分组一行能排下更多卡牌（卡牌宽度仍维持 ~250-270px，
-     不会因为列数变多被挤扁）。断点与 .wrap 的 max-width 阶梯一一对应：
-       1750+ → 7 列    2048+ → 8 列（21:9 带鱼屏主流档）
-       2600+ → 10 列   3200+ → 12 列 */
-  @media (min-width:1750px){#cards{grid-template-columns:repeat(7,minmax(0,1fr))}}
-  @media (min-width:2048px){#cards{grid-template-columns:repeat(8,minmax(0,1fr))}}
-  @media (min-width:2600px){#cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
-  @media (min-width:3200px){#cards{grid-template-columns:repeat(12,minmax(0,1fr))}}
-  @media (max-width:1500px){#cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
-  @media (max-width:1000px){#cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media (max-width:560px){#cards{grid-template-columns:1fr}}
+  /* 卡片加宽到 ~352px（2026-11-11 v12 版式）→ 列数改为自适应：
+     auto-fill + minmax(320px,1fr) —— 屏幕越宽自动多排一列，
+     每张卡的净宽始终 ≥320px，不会被挤扁；窄屏自动降列。
+     （原来的固定列数断点已随之作废：卡片变宽后 6 列会把统计区挤到 78px 一格。） */
+  #cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:30px 12px;padding-top:12px}
   .row{display:contents}
   .empty-tip{grid-column:1/-1}
 
@@ -826,7 +819,7 @@
   .vcard{position:relative;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
     border:1px solid var(--line,#2a3244);border-radius:12px;
-    display:flex;flex-direction:column;gap:8px;padding-top:26px;
+    display:flex;flex-direction:column;gap:6px;padding:10px 0 0;
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;transition:box-shadow .2s}
   .vcard::before{content:"";position:absolute;inset:0;border-radius:12px;
     border:1px solid color-mix(in srgb, var(--el) 45%, transparent);pointer-events:none}
@@ -1089,6 +1082,145 @@
   .btn-commit.dirty{animation:vcBlink 1s infinite}
   @keyframes vcBlink{50%{box-shadow:0 0 10px #3fb95088;border-color:var(--ok,#3fb950)}}
   /* 详细 = 横向铺满整页的宽幅明细面板 */
+  /* ============================================================
+   * v12 卡牌版式（2026-11-11 定稿，实装）
+   * 目标版式（用户确认的模板）：
+   *   ① 铭牌：名字靠左，等级/职业靠右同一行
+   *   ② 开关行：财富 → 档位 → 背包/市集/宠物 → 代练（靠右，加深）
+   *   ③ 账号横幅
+   *   ④ 剩余晶石宽行：文本靠左、数值居中
+   *   ⑤ 来源区三格：异界产出 / 市集收入 / 晶石净值（= 异界 + 市集）
+   *   ⑥ 统计区 3 列 × 2 行：装备打造/秘境消耗/出售晶石 · 人工费用/现金收入/净利润
+   *   ⑦ 转移收支 2 格铺满整行：转移支出 | 转移收入
+   *   ⑧ 录入区：4 格（无描边 + 语义色标签）+ 剩余晶石整行（标签左/数字中/异界右）
+   *   ⑨ 底部三个实心按钮
+   * 变更要点：删除「累计获取(含市集)」与「转移净额」两格；
+   *   「累计收入」改名「现金收入」；新增「装备打造」累计（craft 字段）；
+   *   「异界产出」不再带（推算）后缀（来源说明移到悬停提示）；
+   *   录入区的「转移收入（自动）」行已撤（2026-11-11 用户要求）。
+   * ============================================================ */
+
+  /* ---- 铭牌：名字左，标签右 ---- */
+  .plate{position:static;transform:none;left:auto;top:auto;
+    min-width:0;white-space:normal;text-align:left;
+    background:none;border:none;border-radius:0;box-shadow:none;
+    margin:0 10px;padding:2px 10px 8px;border-bottom:1px solid #232b39;
+    display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .plate::before,.plate::after{display:none}
+  .plate.fill{background:none;border-bottom-color:#3fb95066}
+  .plate .nm{font-size:17px;font-weight:800;letter-spacing:.2px;line-height:1.3;display:block}
+  .plate .nm.today{color:var(--ok,#3fb950);text-shadow:0 0 8px #3fb95055}
+  .plate .tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+  .tag{border-radius:5px;padding:1px 6px;font-size:10px;background:#252b38;
+    border:1px solid #39445a;color:#c3cddd;line-height:16px}
+  .tag.lv{background:#1a2c3d;border-color:#2f5674;color:#9fd0f0;font-weight:700}
+  .tierbox{border-radius:5px;background:#0f1420cc;padding:0 4px;line-height:16px}
+  .tierbox .tb{font-size:10px;line-height:14px}
+
+  /* ---- 开关行：自然宽度左对齐，代练靠右 ---- */
+  .switches{display:flex;align-items:center;justify-content:flex-start;gap:5px;
+    padding:0 10px;flex-wrap:wrap}
+  .switches .sw{flex:0 0 auto;padding:2px 7px;font-size:10px;border-radius:5px;line-height:1.7}
+  .switches .sw.wtag{color:#8b97a8;border-color:#2b3444;background:#141922;
+    font-weight:700;font-variant-numeric:tabular-nums}
+  .switches .sw.wtag.filled{color:var(--gold,#ffcf6b);border-color:#5a4a24;background:#2a2313}
+  .switches .sw.ttag{font-weight:700;font-variant-numeric:tabular-nums}
+  /* 代练：唯一会产生花钱的开关 —— 靠右 + 加深绿光晕 */
+  .switches .sw.dlb{margin-left:auto;padding:3px 12px;font-size:11px;font-weight:700;
+    border-color:#2f8f5f;background:#14452c;color:#7cf0b4;
+    box-shadow:0 0 8px rgba(94,214,160,.22);white-space:nowrap}
+  .switches .sw.dlb:not(.on){border-color:#2b3444;background:#141922;color:#7f8b9c;
+    font-weight:400;box-shadow:none}
+
+  /* ---- 账号横幅 ---- */
+  .acct-banner{margin:0 10px;padding:5px 8px;border:none;border-radius:5px;
+    font-size:11px;letter-spacing:1px}
+
+  /* ---- 剩余晶石宽行：文本靠左、数值居中 ---- */
+  .gemsbar{position:relative;display:flex;align-items:center;justify-content:center;
+    background:#0e2a1e;border:1px solid #1f5c40;border-radius:7px;
+    padding:5px 10px;margin:0 10px 8px}
+  .gemsbar .k{position:absolute;left:10px;font-size:11px;color:#9fd8bd;font-weight:700}
+  .gemsbar .v{font-size:19px;font-weight:800;color:#6ee7a8;font-variant-numeric:tabular-nums}
+
+  /* ---- 来源区三格（异界 / 市集 / 晶石净值）---- */
+  .srcrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 10px;margin-bottom:8px}
+  .srcrow .st.src{border-radius:7px;padding:5px 4px 6px;text-align:center}
+  .srcrow .st .k{font-size:10.5px;font-weight:700;letter-spacing:0;margin-bottom:1px;white-space:nowrap}
+  .srcrow .st .v{font-size:16px;font-weight:800;line-height:1.3}
+  .st.src.dun{background:#0d1a22;border:1px solid #2b6b7a}
+  .st.src.dun .k{color:#7fb9c9} .st.src.dun .v{color:#8fe3f2}
+  .st.src.mkt{background:#111623;border:1px solid #33406e}
+  .st.src.mkt .k{color:#8494c4} .st.src.mkt .v{color:#a9bdf0}
+  .st.src.net{background:#0d1f18;border:1px solid #1f5f47}
+  .st.src.net .k{color:#63b394} .st.src.net .v{color:#6fd8b4}
+
+  /* ---- 统计区：3 列 × 2 行 ---- */
+  .stats3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px;margin-bottom:6px}
+  .stats3 .st{border-radius:7px;padding:4px 4px 5px;text-align:center;background:#171c26;
+    border:1px solid #232b39;min-width:0}
+  .stats3 .st .k{font-size:10px;font-weight:700;letter-spacing:0;color:#8b97a8;
+    white-space:nowrap;line-height:1.35}
+  .stats3 .st .v{font-size:15px;font-weight:800;line-height:1.25;display:block;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .stats3 .st.bg-pur{border-color:#3b2f57} .stats3 .st.bg-pur .k{color:#9b86c9}
+  .stats3 .st.bg-red{border-color:#4a2e30}
+  .stats3 .st.bg-vio{border-color:#3b2f57}
+  .stats3 .st.bg-gold{border-color:#4a3f24}
+  .stats3 .st.bg-green{border-color:#23483a}
+  .v.vcraft{color:#b48cff}
+  .v.vchaos{color:#ff8f8f}
+  .v.vsold{color:#c77bff}
+  .v.vlabor{color:#ff8f8f}
+  .v.vcash{color:#e8c46a}
+  .v.vprofit{color:#5ed6a0}
+  .v.vprofit.neg{color:#ff6b6b}
+
+  /* ---- 转移收支：2 格铺满整行 ---- */
+  .xfrow{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 10px;margin-bottom:8px}
+  .xfrow .st{border-radius:7px;padding:4px 4px 5px;text-align:center;min-width:0}
+  .xfrow .st .k{font-size:10px;font-weight:700;letter-spacing:0;white-space:nowrap;line-height:1.35}
+  .xfrow .st .v{font-size:15px;font-weight:800;line-height:1.25;display:block;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .xfrow .st.xfout{background:#1c1526;border:1px solid #4a3068}
+  .xfrow .st.xfout .k{color:#a98ad6} .xfrow .st.xfout .v{color:#c77bff}
+  .xfrow .st.xfin{background:#1b141d;border:1px solid #5c3a58}
+  .xfrow .st.xfin .k{color:#c79ab4} .xfrow .st.xfin .v{color:#f8a8cd}
+
+  /* ---- 录入区：无描边统一底色 + 语义色标签 + 虚线下划线 ---- */
+  .inputrow{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 10px;margin-bottom:6px}
+  .ir{background:#0c1119;border:none;border-radius:7px;padding:6px 8px 8px;text-align:center;min-width:0}
+  .ir .k{font-size:10px;font-weight:700;letter-spacing:0;margin-bottom:3px;text-align:center}
+  .ir input{font-weight:400;border-bottom:1px dashed #3d4a5e;padding:1px 1px 4px;margin-top:0}
+  .ir.sell .k{color:#b48cff}
+  .ir.cash .k{color:#e8c46a}
+  .ir.chaos .k{color:#ff8f8f}
+  .ir.xferrow .k{color:#c77bff}
+  .ir.wide{grid-column:1/-1}
+  .gemsrow{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
+  .gemsrow .k{font-size:10px;font-weight:700;color:#93a0b2;text-align:left;margin-bottom:0;
+    white-space:nowrap}
+  .gemsrow input{width:100%;max-width:110px;margin:0 auto;text-align:center}
+  .ir .dgbtn{margin-top:0;border:1px solid #3a4458;background:#181d27;color:#93a0b2;
+    border-radius:6px;padding:4px 12px;font-size:11px}
+  .ir .dgbtn.on{border-color:#2f6b4a;color:#6fd39a;background:#15291f}
+  .ir .xferpick{display:block;text-align:center;width:100%;font-size:10.5px;color:#b3a3d8;
+    border:1px solid #3d2f63;background:#1d1630;border-radius:6px;padding:4px 0;margin-top:5px}
+  .ir .xferpick b{color:#c9a8ff;font-weight:700}
+
+  /* ---- 底部：三个实心按钮 ---- */
+  .vc-foot{display:flex;align-items:stretch;gap:6px;padding:2px 10px 10px}
+  .vc-foot .btn-detail,.vc-foot .btn-edit,.vc-foot .btn-commit{
+    flex:1;justify-content:center;border-radius:7px;padding:7px 0;font-size:12px;
+    width:auto;height:auto;min-width:0}
+  .vc-foot .btn-detail,.vc-foot .btn-edit{background:#1a1f29;border:1px solid #2c3546;
+    color:#a7b3c3}
+  .vc-foot .btn-edit{border-color:#3a3350;color:#b9a6e0}
+  .vc-foot .btn-detail:hover,.vc-foot .btn-edit:hover{color:#e6ebf2;border-color:#4a5468}
+  .vc-foot .btn-commit{margin-left:0;border:1px solid #2f6b4a;background:#173226;
+    color:#6fd39a;font-weight:700;box-shadow:none;border-radius:7px}
+  .vc-foot .btn-commit:hover{border-color:#6fd39a}
+
   .fulldetail{display:none;grid-column:1/-1;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
     border:1px solid color-mix(in srgb, var(--el) 35%, var(--line,#2a3244));
@@ -2520,6 +2652,9 @@ function totals(c){
   const t = { gemsLeft:0, gemsSold:Number(c.gemsSold)||0,
               soldValue:Number(c.soldValue)||0, laborCost:0,
               chaosCost:Number(c.chaosCost)||0, transfer:0,
+              /* 装备打造累计（历史记录里的 craft 字段；2026-11-11 起录入框已撤，
+                 但存量记录仍有值 —— 卡面把它显性化，统计区才完整） */
+              craftCost:0,
               dungeonGain:0, hasDun:false, dunManual:false,
               dunFromClosure:false, dunLegacy:false,
               /* 市集收入：dsrc=mkt 段的净增残差（**已扣转入**，与转移天然不重叠） */
@@ -2534,6 +2669,7 @@ function totals(c){
     t.soldValue += p.value;
     t.chaosCost += Number(r.chaosCost) || 0;
     t.transfer  += p.xfer;
+    t.craftCost += (r.craft == null || r.craft === '') ? 0 : (Number(r.craft) || 0);
     /* 异界产出：只累加「确实记了」的；一条都没记的账号 hasDun=false，
        卡片上要显示「未记录」而不是「0」，免得把"没记"误读成"没有产出"。 */
     const dg = dungeonGainEffective(r, c);
@@ -2731,6 +2867,7 @@ function summarize(list){
     a.gemsLeft += t.gemsLeft; a.gemsSold += t.gemsSold;
     a.soldValue += t.soldValue; a.laborCost += t.laborCost;
     a.chaosCost += t.chaosCost; a.gained += gained(c);
+    a.craftCost += t.craftCost;
     a.profit += (t.soldValue - t.laborCost);
     /* 异界产出（纯净口径）：只累加记了的；hasDun 表示"至少有角色记过" */
     if(t.hasDun){
@@ -2745,7 +2882,7 @@ function summarize(list){
     a.xferIn += t.xferIn; a.xferOut += t.xferOut;
     return a;
   }, { roles:list.length, gemsLeft:0, gained:0, gemsSold:0,
-       soldValue:0, laborCost:0, profit:0, chaosCost:0,
+       soldValue:0, laborCost:0, profit:0, chaosCost:0, craftCost:0,
        dungeonGain:0, hasDun:false, dunManual:false,
        dunFromClosure:false, dunLegacy:false,
        marketGain:0, hasMkt:false,
@@ -3910,16 +4047,11 @@ function refreshNumbers(i){
     const gli = row.querySelector('.input[data-f="gemsLeft"]');
     if(gli && gli.value === '') gli.placeholder = '当前 ' + intNum(t.gemsLeft) + '（可不填）';
     setV(row,'gemsLeft',  intNum(t.gemsLeft), 'hit');
-    /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0；显示为灰色，弱化视觉层级 */
-    const g = gained(c);
-    setV(row,'gained', g, 'hit');
     /* 累计异界产出：没记过就显示「未记录」（不是 0）——
        0 和"没记"含义完全不同，混起来会让档位分析把未记录当成没产出。
        来源标注：手填（抄游戏画面）还是闭合反推（解收支方程算出来）。 */
     const dunSrc = dungeonSourceLabel(t);
-    const dunIsEst = (dunSrc === '闭合反推' || dunSrc === '手填+闭合' || dunSrc === '闭合+历史' || dunSrc === '历史推定');
-    setV(row,'dungeonGain',
-      t.hasDun ? (intNum(t.dungeonGain) + (dunIsEst ? '（推算）' : '')) : '未记录', 'hit');
+    setV(row,'dungeonGain', t.hasDun ? intNum(t.dungeonGain) : '未记录', 'hit');
     const dunEl = row.querySelector('[data-v="dungeonGain"]');
     if(dunEl) dunEl.title = '来源：' + (dunSrc || '未记录')
       + '　｜　闭合反推 = 由「剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入」解收支方程算出来，再按录入时点的「异界」按钮归到异界桶';
@@ -3939,12 +4071,15 @@ function refreshNumbers(i){
     setV(row,'xferOut', intNum(t.xferOut), 'hit');
     const xoutEl = row.querySelector('[data-v="xferOut"]');
     if(xoutEl) xoutEl.title = '本号转给别的号的晶石（全额离开本号）。与「转移收入」成对看，就是这个号的净调拨量';
-    const netX = t.xferIn - t.xferOut;
-    const netEl = row.querySelector('[data-v="xferNet"]');
-    if(netEl) netEl.className = 'v ' + (netX >= 0 ? 'xfin' : 'xfout');
-    setV(row,'xferNet', (netX > 0 ? '+' : '') + intNum(netX), 'hit');
-    if(netEl) netEl.title = '累计收到的转入 − 累计转出的晶石。正数 = 净吸晶石，负数 = 净输出。'
-      + '纯站内调拨，不影响这个号的真实产出';
+    /* 晶石净值 = 异界产出 + 市集收入（v12 新增） */
+    setV(row,'gemsNet',
+      intNum((t.hasDun ? t.dungeonGain : 0) + (t.hasMkt ? t.marketGain : 0)), 'hit');
+    const netEl = row.querySelector('[data-v="gemsNet"]');
+    if(netEl) netEl.title = '异界产出 ' + (t.hasDun ? intNum(t.dungeonGain) : '未记录')
+      + ' + 市集收入 ' + (t.hasMkt ? intNum(t.marketGain) : '未记录')
+      + ' = 本号这段时间真正净赚的晶石。不含站内转移（搬砖不是收入），不含人工费用（那是钱不是晶石）';
+    /* 装备打造累计（历史 craft 字段） */
+    setV(row,'craftCost', intNum(t.craftCost), 'hit');
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
@@ -4230,11 +4365,12 @@ const FEATURES = [
 ];
 /* 卡面开关行的展示顺序（用户指定）：混沌、背包、市集、宠物、切换 */
 const SWITCH_ORDER = [
+  /* 2026-11-11 v12 版式：财富 → 档位 → 背包/市集/宠物（代练单独靠右） */
+  { key:'chaos',   label:'混沌' },
+  { key:'toggle5', label:'切换' },
   { key:'bag',     label:'背包' },
   { key:'market',  label:'市集' },
-  { key:'pet',     label:'宠物' },
-  { key:'chaos',   label:'混沌' },
-  { key:'toggle5', label:'切换' }
+  { key:'pet',     label:'宠物' }
 ];
 /* T 级标签：配色与 tierBadge() 完整复用经验台账 index-xp.html，样式类 .tier 同名移植 */
 const TIER_COLORS = {
@@ -4386,13 +4522,12 @@ function cardHTML(c, i, disp, gc){
   /* 统一卡牌颜色：今天已录入 = 淡绿；未录入 = 灰白（2026-10-11 用户指定） */
   const color = recordedToday(c) ? '#3fb950' : '#9aa4b2';
   const t = totals(c);
-  /* 累计获取晶石：剩余增量 + 卖出 + 消耗，恒 ≥ 0 */
-  const g = gained(c);
   /* 净利润 = 收入 − 人工费用 */
   const p = t.soldValue - t.laborCost;
   const pCls = p > 0 ? ' pos' : (p < 0 ? ' neg' : '');
-  /* 转移净额 = 累计转入 − 累计转出（站内调拨的净方向） */
-  const netXfer = t.xferIn - t.xferOut;
+  /* 晶石净值 = 异界产出 + 市集收入（v12 新增）
+     —— 真正净赚的晶石。不含站内转移（搬砖不是收入），不含人工费用（那是钱）。 */
+  const netGems = (t.hasDun ? t.dungeonGain : 0) + (t.hasMkt ? t.marketGain : 0);
   const feats = SWITCH_ORDER.map(function(f){
     /* 「混沌」开关已按用户要求替换为财富值数值（2026-11-06）：
        只读展示 c.wealth，点击打开「修改」弹窗填写；原 flags.chaos 数据保留不再显示 */
@@ -4400,7 +4535,7 @@ function cardHTML(c, i, disp, gc){
       const wv = wealth(c);
       return '<span class="sw wtag' + (wv > 0 ? ' filled' : '') + '" data-wealth="' + i + '" '
         + 'title="财富值：' + (wv ? intNum(wv) : '未填写') + '（点击直接填写）">'
-        + (wv ? intNum(wv) : '—') + '</span>';
+        + '财富 ' + (wv ? intNum(wv) : '—') + '</span>';
     }
     /* 「切换」开关已按用户要求替换为档位标签（2026-11-06）：
        根据财富值自动计算，只读显示「X档」，悬浮给出区间与产出加成 */
@@ -4413,7 +4548,7 @@ function cardHTML(c, i, disp, gc){
       return '<span class="sw ttag" style="' + st + '" '
         + 'title="财富值 ' + intNum(ti.wv) + ' → ' + ti.tier + ' 档'
         + '（' + ti.min + (ti.max >= 99999 ? '+' : '-' + ti.max) + '，灵魂晶石产出 +' + ti.pct + '%）">'
-        + ti.pct + '%</span>';
+        + ti.tier + '档 ' + ti.pct + '%</span>';
     }
     const on = !!((c.flags || {})[f.key]);
     return '<span class="sw' + (on ? ' on' : '') + '" data-feat="' + i + '" data-key="' + f.key + '" '
@@ -4434,70 +4569,76 @@ function cardHTML(c, i, disp, gc){
     + '<article class="vcard' + (isMainChar(c) ? ' licheng' : '')
     +   (recordedToday(c) ? ' graded' : '')
     + '" style="--el:' + color + ';--gc:' + (gc || '#7d8ea6') + '">'
-    +   '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
-    +     'title="' + dltitle + '">代</span>'
+    /* 铭牌：名字靠左，等级/职业/T级标签靠右同一行（v12 版式） */
     +   '<div class="plate' + (recordedToday(c) ? ' fill' : '') + '">'
     +     '<span class="nm' + (c.name ? '' : ' empty') + (recordedToday(c) ? ' today' : '') + '">'
     +       (c.name ? esc(c.name) : '未命名角色') + '</span>'
+    +     '<span class="tags">'
+    +       (c.level !== '' && c.level != null ? '<span class="tag lv">Lv.' + esc(c.level) + '</span>' : '')
+    +       (c.job ? '<span class="tag">' + esc(c.job) + '</span>' : '')
+    +       tierBoxCard(c)
+    +     '</span>'
     +   '</div>'
-    +   '<div class="tags">'
-    +     (c.level !== '' && c.level != null ? '<span class="tag lv">Lv.' + esc(c.level) + '</span>' : '')
-    +     (c.job ? '<span class="tag">' + esc(c.job) + '</span>' : '')
-    +     tierBoxCard(c)
+    /* 开关行：财富 → 档位 → 背包/市集/宠物 → 代练（靠右） */
+    +   '<div class="switches">' + feats
+    +     '<span class="sw dlb' + (dlon ? ' on' : '') + '" data-dltoday="' + i + '" '
+    +       'title="' + dltitle + '">代练</span>'
     +   '</div>'
   +   '<div class="acct-banner' + (c.account ? '' : ' none') + '">'
   +     (c.account ? esc(c.account) : '未填写账号信息') + '</div>'
-    +   '<div class="switches">' + feats + '</div>'
-    +   '<div class="st wide solo"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
-  /* ---- 统计区（2026-11-11 夜重排）----
-   * 核心变化：把「异界产出 / 市集收入 / 转移收入」三个来源**并列横排**，
-   * 一眼看出钱从哪来。转移是站内搬砖（别的号转来的），不是赚到的钱，
-   * 混进产出会虚增收益 —— 必须单独一格。
-   *
-   * 上排：剩余晶石（宽）→ 存量锚点
-   * 中排：三来源分区（异界 青 / 市集 靛 / 转移 粉），跨满整行
-   * 下排：流水与收支（两列）
-   */
+  /* 剩余晶石宽行：文本靠左、数值居中 */
+    +   '<div class="gemsbar"><div class="k">剩余晶石</div><span class="v ok" data-v="gemsLeft">' + intNum(t.gemsLeft) + '</span></div>'
+  /* ---- 来源区三格（v12）：异界产出 / 市集收入 / 晶石净值 ----
+   * 异界产出 = 纯净的「打异界掉落的晶石」。做「档位 → 每日产出」分析只能用这个数。
+   * 市集收入 = 标了「市集/转入」的区间的净增残差（闭合残差已扣掉转入 → 不含转移）。
+   * 晶石净值 = 异界产出 + 市集收入 = 这个号这段时间真正净赚的晶石（不含站内搬砖）。 */
   +   '<div class="srcrow">'
-  /* 异界产出 = 纯净的「打异界掉落的晶石」。做「档位 → 每日产出」分析只能用这个数。 */
   +     '<div class="st src dun"><div class="k">异界产出</div><span class="v dun" data-v="dungeonGain" '
   +       'title="纯净口径：只含打异界掉落的晶石。来源：手填 / 闭合反推（由剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入解方程算出，并按录入时点的「异界」按钮归到异界桶）。'
   +       '做「财富值档位 → 每日产出」分析请用这个数">'
-  +       (t.hasDun ? (intNum(t.dungeonGain) + (dungeonSourceLabel(t) === '闭合反推' || dungeonSourceLabel(t) === '手填+闭合' || dungeonSourceLabel(t) === '闭合+历史' ? '（推算）' : '')) : '未记录') + '</span></div>'
-  /* 市集收入 = 标了「市集/转入」的区间的净增残差。闭合残差已扣掉转入 → 不含转移。 */
+  +       (t.hasDun ? intNum(t.dungeonGain) : '未记录') + '</span></div>'
   +     '<div class="st src mkt"><div class="k">市集收入</div><span class="v mkt" data-v="marketGain" '
   +       'title="录入时没点「异界」按钮的那几笔，其净增残差归到这里（余额净增 + 秘境消耗 + 卖出 + 转出 − 转入）。'
   +       '不是异界产出，不参与「档位 → 产出」分析，但也不该被丢掉。转入已被扣掉，所以这一格不含转移收入">'
   +       (t.hasMkt ? intNum(t.marketGain) : '未记录') + '</span></div>'
-  /* 转移收入 = 别的号转进来的实收额（已扣 5% 手续费）。站内搬砖，不是赚到的钱。 */
-  +     '<div class="st src xfer"><div class="k">转移收入</div><span class="v xfin" data-v="xferIn" '
-  +       'title="别的号转给本号的晶石（实收，已扣 5% 手续费）。这是站内搬砖，不是赚来的钱，不计入产出，也不计入利润">'
-  +       (t.hasXferIn ? intNum(t.xferIn) : '0') + '</span></div>'
+  +     '<div class="st src net"><div class="k">晶石净值</div><span class="v net" data-v="gemsNet" '
+  +       'title="异界产出 + 市集收入 = 本号这段时间真正净赚的晶石。'
+  +       '不含站内转移（转移是搬砖不是收入），也不含人工费用（那是钱不是晶石）">'
+  +       intNum(netGems) + '</span></div>'
   +   '</div>'
-  +   '<div class="stats">'
-  +     '<div class="col">'
-  +       '<div class="st"><div class="k">累计获取(含市集)</div><span class="v plain" data-v="gained" '
-  +         'title="混合口径：每个结算日取「末条剩余 − 首条之前余额 + 当日卖出 + 当日秘境消耗」，'
-  +         '当天净增为负记 0。这个数里混着集市买入、任务奖励等非异界来源（实测约占 62%），'
-  +         '不要用它算档位产出">'
-  +         g + '</span></div>'
-  +       '<div class="st"><div class="k">累计已出售晶石</div><span class="v purple" data-v="gemsSold" '
-  +         'title="只统计真正卖钱的那部分晶石；转给别的号的量单列在「累计转出」与明细表的「转移晶石」列，不计入此数">'
-  +         intNum(t.gemsSold) + '</span></div>'
-  +       '<div class="st"><div class="k">累计秘境消耗</div><span class="v chaos" data-v="chaosCost">' + intNum(t.chaosCost) + '</span></div>'
-  +       '<div class="st"><div class="k">转移净额</div><span class="v' + (netXfer >= 0 ? ' xfin' : ' xfout') + '" data-v="xferNet" '
-  +         'title="累计收到的转入 − 累计转出的晶石。正数 = 这个号净吸晶石（别的号补给它），'
-  +         '负数 = 净输出（它把晶石调给了别的号）。纯站内调拨，不影响这个号的真实产出">'
-  +         (netXfer > 0 ? '+' : '') + intNum(netXfer) + '</span></div>'
-  +     '</div>'
-    +     '<div class="col">'
-  +       '<div class="st"><div class="k">累计转出晶石</div><span class="v xfout" data-v="xferOut" '
-  +         'title="本号转给别的号的晶石（全额离开本号）。与「转移收入」成对看，就是这个号的净调拨量">'
-  +         intNum(t.xferOut) + '</span></div>'
-  +       '<div class="st"><div class="k">人工费用</div><span class="v redlite" data-v="laborCost">' + money(t.laborCost) + '</span></div>'
-  +       '<div class="st"><div class="k">累计收入</div><span class="v gold" data-v="soldValue">' + money(t.soldValue) + '</span></div>'
-  +       '<div class="st"><div class="k">净利润</div><span class="v' + pCls + '" data-v="profit">' + money(p) + '</span></div>'
-  +     '</div>'
+  /* ---- 累计统计区 3 列 × 2 行（v12）----
+   * 删掉了「累计获取(含市集)」—— 混合口径（实测约 62% 非异界来源），留着必然被误用来算档位产出；
+   * 也删掉了「转移净额」（转移收支单独一行更清楚）。
+   * 新增「装备打造」= 历史记录里 craft 字段的累计（录入框已撤，但存量数据仍有）。 */
+  +   '<div class="stats3">'
+  +     '<div class="st bg-pur"><div class="k">装备打造</div><span class="v vcraft" data-v="craftCost" '
+  +       'title="打造装备、购买物品等消耗掉的晶石（历史记录里的 craft 字段累计）">'
+  +       intNum(t.craftCost) + '</span></div>'
+  +     '<div class="st bg-red"><div class="k">秘境消耗</div><span class="v vchaos" data-v="chaosCost" '
+  +       'title="进秘境花掉的晶石累计">'
+  +       intNum(t.chaosCost) + '</span></div>'
+  +     '<div class="st bg-vio"><div class="k">出售晶石</div><span class="v vsold" data-v="gemsSold" '
+  +       'title="只统计真正卖钱的那部分晶石；转给别的号的量单列在下方「转移支出」">'
+  +       intNum(t.gemsSold) + '</span></div>'
+  +     '<div class="st bg-red"><div class="k">人工费用</div><span class="v vlabor" data-v="laborCost" '
+  +       'title="代练人工费累计（按天计）">'
+  +       money(t.laborCost) + '</span></div>'
+  +     '<div class="st bg-gold"><div class="k">现金收入</div><span class="v vcash" data-v="soldValue" '
+  +       'title="卖晶石收到的钱累计">'
+  +       money(t.soldValue) + '</span></div>'
+  +     '<div class="st bg-green"><div class="k">净利润</div><span class="v vprofit' + pCls + '" data-v="profit" '
+  +       'title="现金收入 − 人工费用">'
+  +       money(p) + '</span></div>'
+  +   '</div>'
+  /* ---- 转移收支 2 格铺满整行（v12）：支出 | 收入 ----
+   * 站内搬砖，不是赚来的钱 —— 与产出严格分开。 */
+  +   '<div class="xfrow">'
+  +     '<div class="st xfout"><div class="k">转移支出</div><span class="v vxfout" data-v="xferOut" '
+  +       'title="本号转给别的号的晶石（全额离开本号）。与右侧「转移收入」成对看，就是这个号的净调拨量">'
+  +       intNum(t.xferOut) + '</span></div>'
+  +     '<div class="st xfin"><div class="k">转移收入</div><span class="v vxfin" data-v="xferIn" '
+  +       'title="别的号转给本号的晶石（实收，已扣 5% 手续费）。站内搬砖，不计入产出，也不计入利润">'
+  +       (t.hasXferIn ? intNum(t.xferIn) : '0') + '</span></div>'
   +   '</div>'
   /* 录入区（2026-11-11 改造）：四行两格 + 剩余晶石独占一行
      第一行 = 出售晶石 | 现金收入
@@ -4526,19 +4667,19 @@ function cardHTML(c, i, disp, gc){
   +         '转给 <b>' + esc(xferPickName(i, c)) + '</b> <span class="arw">▾</span></button>'
   +     '</div>'
   +   '</div>'
-  /* 「转移收入」= 本号当天**收到的**转入，自动带出（不可手填）。
-     数字来自其它号已录入的「转移晶石」，已扣 5% 手续费。 */
-  +   xferInRowHTML(c, i)
-  /* 「剩余晶石」行：右边跟一个「异界」来源按钮（2026-11-11）。
+  /* 「剩余晶石」整行（v12）：标签靠左 · 数字居中 · 「异界」按钮靠右。
      点亮 = 本次收入来自异界；不亮 = 来自市集或转入。
-     按钮状态存在 _dgPick（按卡片下标），刷新页面后仍保留。 */
-  +   '<div class="ir gemsrow"><div class="k">剩余晶石</div>'
+     按钮状态存在 _dgPick（按卡片下标），刷新页面后仍保留。
+     注：录入区原来的「转移收入（自动）」行按 v12 版式撤掉了 ——
+     转移收支已单独一行铺满整行显示（转移支出 | 转移收入），不再重复占录入区的位置。 */
+  +   '<div class="ir wide"><div class="gemsrow">'
+  +     '<div class="k">剩余晶石</div>'
   +     numInput('gemsLeft','现有多少填多少')
   +     '<button class="dgbtn' + (dgPickOn(i) ? ' on' : '') + '" type="button" data-dgbtn="' + i + '"'
   +       ' title="点亮 = 本次收入来自异界；不亮 = 来自市集或转入。状态按这个号保留，录完不会自动关 —— 要记市集/转入就先把它按灭。"'
   +       ' aria-pressed="' + (dgPickOn(i) ? 'true' : 'false') + '">'
   +       '<span class="dot"></span>异界</button>'
-  +   '</div>'
+  +   '</div></div>'
   +   '<div class="vc-foot">'
     +     '<button class="btn-detail" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
     +       '<span class="t">详细</span><span class="arw">▼</span></button>'
