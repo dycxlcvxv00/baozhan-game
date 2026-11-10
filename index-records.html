@@ -528,6 +528,10 @@
   table.dt td.n.gold{color:var(--gold)} table.dt td.n.plain{color:var(--txt)}
   table.dt td.n.xfer{color:#c77bff}         /* 转移晶石：转给陌尘，不计收入 */
   table.dt td.n.dun{color:#4fc3d9}           /* 异界产出：纯净产出口径 */
+  /* 来源角标：「推」= 场次反推，「闭」= 收支闭合方程反推 —— 都不是手填，得标出来 */
+  table.dt td.n i.est{font-style:normal;font-size:10px;font-weight:700;
+    color:var(--mute);margin-left:3px;padding:0 3px;border:1px solid var(--mute);
+    border-radius:3px;opacity:.75}
   table.dt td.n.none{color:var(--mute);font-weight:600}  /* 未填「异界产出」→ 显示 — */
   table.dt td.n.income{color:var(--ok)}
 
@@ -951,6 +955,29 @@
     background:#0d1a22;border-color:#2b6b7a}
   .ir.dunrow .k{color:#4fc3d9;white-space:nowrap;font-size:11px}
   .ir.dunrow input{text-align:right;flex:1;color:#8fe3f2}
+  /* 「闭合三件套」行：集市收入 / 打造消耗 / 转移收入
+     —— 这三项 + 剩余晶石 + 秘境消耗 + 卖出 + 转移转出 = 收支闭合，
+        异界产出可被**唯一反推**出来（不用手填异界产出）。
+     颜色刻意各不相同，防止填错格：
+       集市收入（流入）= 靛蓝   打造消耗（流出）= 琥珀   转移收入（流入）= 粉 */
+  .ir.closrow{margin:5px 10px 0;padding:4px 8px;display:flex;align-items:center;gap:8px;
+    background:#12141f;border-color:#2b3350}
+  .ir.closrow .cg{flex:1;display:flex;align-items:center;gap:4px;min-width:0}
+  .ir.closrow .cg .k{font-size:10px;white-space:nowrap;letter-spacing:0}
+  .ir.closrow .cg input{width:100%;text-align:right;min-width:0}
+  .ir.closrow .cg.market .k{color:#8fa3d8}  .ir.closrow .cg.market input{color:#b9c8ee}
+  .ir.closrow .cg.craft  .k{color:#e0b252}  .ir.closrow .cg.craft  input{color:#f3d38a}
+  .ir.closrow .cg.xferin .k{color:#f778ba}  .ir.closrow .cg.xferin input{color:#f8a8cd}
+  /* 闭合三件套下方的说明：一行讲清「留空 vs 填 0」的差别 */
+  .closhint{margin:5px 10px 0;padding:0 2px;font-size:10.5px;line-height:1.55;color:var(--mute)}
+  .closhint b{color:#9fb0d8;font-weight:600}
+  /* 「异界产出」手填行现在退居其次（手填最准，但代练报不出时靠闭合反推） */
+  /* 「今日打图场次」行：琥珀色。代练唯一需要多报的量（游戏内可见、数得出来）。
+     它是「异界产出」的替代输入来源 —— 场次 × 单场基准掉落 × 档位加成% = 异界产出 */
+  .ir.runsrow{margin:5px 10px 0;display:flex;align-items:center;gap:8px;text-align:left;
+    background:#1a170f;border-color:#6b5a2b}
+  .ir.runsrow .k{color:#e0b252;white-space:nowrap;font-size:11px}
+  .ir.runsrow input{text-align:right;flex:1;color:#f3d38a}
   /* 主号没有「转移晶石」框 → 第二行只剩「秘境消耗」，让它跨满两格，不留空位 */
   .ir.span2{grid-column:1 / -1}
   /* 「转移晶石」输入框：紫色系，与「本次出售」（绿）区分开，避免填错 */
@@ -1117,6 +1144,14 @@
       <input id="fMinTier" type="text" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="如 14（可留空，填数字 13/14/15）" />
       <div class="err">T级请填数字（如 13、14、15）</div>
       <div class="fhint">该角色当前能刷的最低图档位，保存后以彩色 T 级标签显示在「宠物」后面；留空不显示。</div>
+    </div>
+    <div class="field">
+      <label for="fMapTier">常刷地图阶级</label>
+      <input id="fMapTier" type="text" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="如 14（可留空，填数字 13/14/15）" />
+      <div class="err">地图阶级请填数字（如 13、14、15）</div>
+      <div class="fhint">这个角色日常刷的<b>异界图</b>是几级（如 14）。填了它，
+        报「今日打图场次」时就能按「场次 × 单场基准掉落 × 档位加成%」反推出纯净的异界产出；
+        留空则只能手填异界产出。基准表：T11→86.3、T12→89.6、T13→98.7、T14→105.0、T15→113.9（100%档位下的单场掉落）。</div>
     </div>
 
     <div class="modal-foot">
@@ -1590,6 +1625,356 @@ function dungeonGainOf(r){
   return Number(r.dunGain) || 0;
 }
 
+/* ============================================================
+ * 场次法：从「今天打了几张图」反推异界产出（2026-11-10 新增）
+ * ------------------------------------------------------------
+ * 为什么需要这条路：
+ *   代练只报「剩余晶石」，报不出「异界产出」—— 也不该让他报。
+ *   余额方程 期末 = 期初 + 异界产出 + 集市净增 − 秘境消耗 − 转移
+ *   有 5 个未知量、只有 1 个观测，异界产出在数学上不可分离。
+ *   而且「累计获取」口径本身是坏的：它把「秘境消耗」加了回来，
+ *   而余额快照根本没反映这笔扣减 —— 实测虚高约 7 倍（见手册 §3.9）。
+ *
+ * 但「异界产出」有个天然观测点：**每打完一张图掉了多少晶石**。
+ *   单场掉落 = 单场基准(地图阶级) × 档位加成% / 100
+ *   日异界产出 = 每日场次 × 单场掉落
+ *
+ * 「场次」是代练一定数得出来的（游戏内可见），比让他区分
+ * 「哪些是异界、哪些是集市」可行得多 —— 后者他根本报不出来。
+ *
+ * 基准表来自经验台账 435 条有效打图记录的实测标定
+ * （scripts/dungeon_output_model.py，回代误差 0%）。
+ * ============================================================ */
+
+/* 单场基准掉落表：key = 地图阶级（数字，不含 'T' 前缀），value = 100% 档位下的单场掉落（晶石）
+ * 实测标定（XP 台账 435 条有效打图记录，回代误差 0%）：
+ *   T11→86.3  T12→89.6  T13→98.7  T14→105.0  T15→113.9
+ * 说明：台账里同一阶级有两种写法（'T14' / '14'），已归一 —— 怪等一致，是同一个东西。 */
+const DUN_BASE = {
+  '11': 86.3, '12': 89.6, '13': 98.7, '14': 105.0, '15': 113.9, '16': 112.2
+};
+
+/* 归一地图阶级标签：'T14' 与 '14' → '14' */
+function dungeonNormTier(t){
+  t = String(t == null ? '' : t).trim();
+  if(/^T\d+$/i.test(t)) return t.slice(1);
+  return t;
+}
+
+/* 该角色的地图阶级（取记录里的地图阶级标记；没有则按等级推算）
+ * —— 用于查基准表。账号级 minTier/maxTier 也可作为兜底。 */
+function dungeonMapTier(c){
+  const recs = (c && c.records) || [];
+  /* 优先用最近一条带 tier 标记的记录 */
+  for(let i = recs.length - 1; i >= 0; i--){
+    const t = recs[i] && recs[i].mapTier;
+    if(t) return String(t);
+  }
+  /* 其次用账号的 maxTier / minTier */
+  if(c && c.maxTier) return String(c.maxTier);
+  if(c && c.minTier) return String(c.minTier);
+  return '';
+}
+
+/* 查单场基准掉落；查不到返回 null（不猜）
+ * 先把标签归一（'T14' → '14'）再查表 —— 表的 key 只有数字形式。 */
+function dungeonBaseOf(c){
+  const t = dungeonNormTier(dungeonMapTier(c));
+  if(!t) return null;
+  if(Object.prototype.hasOwnProperty.call(DUN_BASE, t)) return DUN_BASE[t];
+  return null;
+}
+
+/* 档位加成%（取该记录的档位快照；没有就用账号当前档位） */
+function dungeonPctOf(r, c){
+  if(r && r.pct != null && r.pct !== '') return Number(r.pct) / 100;
+  const t = (r && r.tier) || wealthTierOf(wealth(c));
+  return (WEALTH_TIERS[(t || 1) - 1] || [0, 100])[1] / 100;
+}
+
+/* 单场掉落（该档位下的期望值） */
+function dungeonPerRun(c, r){
+  const base = dungeonBaseOf(c);
+  if(base == null) return null;
+  return base * dungeonPctOf(r, c);
+}
+
+/* 由「场次」反推的异界产出。返回 null 表示推不出来（缺场次或缺基准）。 */
+function dungeonGainFromRuns(c, r){
+  if(!r) return null;
+  /* 只有真正记了场次（runs 有值）才参与推算。
+     注意：场次 = 0 是「今天确实一张没打」的合法值 → 异界产出 0；
+     未记场次（老数据 runs 缺失）→ null，表示"没记录"，绝不混同于 0。 */
+  if(r.runs === null || r.runs === undefined || r.runs === '') return null;
+  const runs = Number(r.runs) || 0;
+  const per = dungeonPerRun(c, r);
+  if(per == null) return null;
+  return Math.round(runs * per);
+}
+
+/* 一条记录的有效异界产出：
+ *   优先用手填值（dg=1）；没有则用场次法推算。
+ *   两者都没有 → null（表示「未记录」，绝不当作 0）。
+ * 返回 { v, src }：src = 'manual' | 'runs' */
+function dungeonGainEffective(r, c){
+  const m = dungeonGainOf(r);
+  if(m != null) return { v: m, src: 'manual' };
+  /* 闭合反推：优先于场次法 —— 它是收支方程解出来的，不是模型估的 */
+  const cl = closureGainOf(r, c);
+  if(cl != null) return { v: cl, src: 'closure' };
+  const x = dungeonGainFromRuns(c, r);
+  if(x != null) return { v: x, src: 'runs' };
+  return { v: null, src: '' };
+}
+
+/* 某角色的日级异界产出归集 { date: { v, src } } */
+function dungeonEffectiveByDay(c){
+  const map = {};
+  (c.records || []).forEach(function(r){
+    const e = dungeonGainEffective(r, c);
+    if(e.v == null) return;
+    const d = settleDateOf(r);
+    if(!d) return;
+    if(!map[d]) map[d] = { v: 0, src: e.src };
+    map[d].v += e.v;
+    /* 来源优先级：manual > closure > runs
+       —— 只要当天有一条是手填的，整天标 manual；
+          没有手填但有闭合反推的，整天标 closure（闭合比场次准）。 */
+    if(e.src === 'manual') map[d].src = 'manual';
+    else if(e.src === 'closure' && map[d].src !== 'manual') map[d].src = 'closure';
+  });
+  return map;
+}
+
+/* 数据来源标签：让看的人一眼知道「累计异界产出」是手填的、还是场次法反推的。
+ * 手填 = 直接抄游戏画面上「异界产出」的数字（最准）；
+ * 场次推算 = 代练只报了「今天打了几张图」，用 场次 × 单场基准掉落 × 档位加成% 反推；
+ * 混合 = 同一个角色两种来源都有（此时以手填为准，场次只用于缺失的那些天）。 */
+function dungeonSourceLabel(t){
+  if(!t || !t.hasDun) return '';
+  if(t.dunManual && (t.dunFromRuns || t.dunFromClosure)) return '手填+推算';
+  if(t.dunManual) return '手填';
+  if(t.dunFromClosure && t.dunFromRuns) return '闭合+场次';
+  if(t.dunFromClosure) return '闭合反推';
+  if(t.dunFromRuns) return '场次推算';
+  return '';
+}
+
+/* ============================================================
+ * 闭合反推（2026-11-10）：用「收支闭合」唯一确定异界产出
+ * ------------------------------------------------------------
+ * 余额方程（同一账号、相邻两次盘点之间）：
+ *     期末余额 = 期初余额 + 异界产出 + 集市收入 + 转移收入
+ *                        − 秘境消耗 − 打造消耗 − 卖出 − 转移转出
+ * 反解：
+ *     异界产出 = (期末余额 − 期初余额) + 秘境消耗 + 打造消耗 + 卖出 + 转移转出
+ *                        − 集市收入 − 转移收入
+ *
+ * 也就是说：只要把「非异界的进出」都记齐，异界产出就**不需要手填**，
+ * 它是方程里剩下的唯一未知数 —— 这是「代练只报得出余额」的唯一出路。
+ *
+ * 为什么需要三个「填了才算」的标记位（mkt / craft / xferIn）：
+ *   0 与「没填」含义完全不同。没填 = 这个渠道未知（方程不闭合），
+ *   填 0 = 这个渠道确实没有发生（方程闭合）。所以用 null 表示未填。
+ *
+ * 已知局限（必须诚实说明）：
+ *   1) 未记录的**流入**（任务奖励、邮件补偿、系统返还）会被算进「异界产出」。
+ *      闭合法保证「总量」对，但纯不纯取决于渠道填得全不全。
+ *   2) 期间若漏录了某个结算日（昨天录了、后天录了），余额跨了多天，
+ *      方程必然不闭合 —— 这种日子会被标为「不可算」，不会给出假数。
+ * ============================================================ */
+
+/* 这条记录的三个闭合渠道是否都填了（null = 未填，不当 0） */
+function closureKnown(r){
+  return !!(r && r.mkt != null && r.craft != null && r.xferIn != null);
+}
+
+/* ------------------------------------------------------------
+ * 盘点区间口径（2026-11-11 定稿）
+ * ------------------------------------------------------------
+ * 「区间」= 相邻两次**实测余额盘点**之间的全部记录。
+ * 为什么必须按区间、且必须以实测值为锚：
+ *   一条记录若没实填「剩余晶石」，它的 gemsLeft 是沿用值（= 上一次的实测值），
+ *   拿它当期末余额会凭空造出一段假的余额变化。
+ *   只有 gl=1（本次实填）的记录才是可信的盘点锚点。
+ *
+ * 区间方程（i = 上一锚点，j = 本锚点，区间记录 = i+1 .. j）：
+ *   end − start = Σ(区间内的 异界产出)
+ *                + Σ(区间内的 流入：集市收入 + 转移收入)
+ *                − Σ(区间内的 流出：秘境消耗 + 打造消耗 + 真卖出 + 转移转出)
+ *   反解：
+ *     区间异界产出 = (end − start) − Σ流入 + Σ流出
+ *
+ * 可算条件（四条都要满足，否则只给「不可算」的原因，绝不给假数）：
+ *   ① 区间内每条记录的三渠道（mkt / craft / xferIn）都填了
+ *      —— 少填一条，方程里就多一个未知量
+ *   ② 起点余额可信：首区间的起点用 initLeft（初始存量）
+ *   ③ 一个区间只能覆盖**一个结算日** —— 跨天的区间无法把产出拆到每一天，
+ *      那几天没记录的流水也会被算进这一段
+ *   ④ 相邻区间的结算日必须**连续**（断天 → 余额差跨了多天，方程不闭合）
+ *
+ * 已知局限（必须诚实说明）：
+ *   未记录的**流入**（任务奖励、邮件补偿、系统返还）会被算进「异界产出」。
+ *   闭合法保证「总量」对，纯不纯取决于渠道填得全不全。
+ * ============================================================ */
+
+/* 日期 +1 天（UTC，避开时区问题） */
+function nextDay(d){
+  const y = Number(d.slice(0,4)), mo = Number(d.slice(5,7)), dd = Number(d.slice(8,10));
+  const t = Date.UTC(y, mo-1, dd) + 86400000;
+  const nd = new Date(t);
+  return nd.getUTCFullYear() + '-' + String(nd.getUTCMonth()+1).padStart(2,'0')
+       + '-' + String(nd.getUTCDate()).padStart(2,'0');
+}
+/* 两个结算日之间差几天（b 比 a 晚时为正） */
+function daysBetween(a, b){
+  const pa = Date.UTC(Number(a.slice(0,4)), Number(a.slice(5,7))-1, Number(a.slice(8,10)));
+  const pb = Date.UTC(Number(b.slice(0,4)), Number(b.slice(5,7))-1, Number(b.slice(8,10)));
+  return Math.round((pb - pa) / 86400000);
+}
+
+/* 盘点区间列表
+ * 每项：{ rec, v, known, why, start, end, out, inflow, count, date }
+ *   rec  = 本区间的锚点记录（闭合法的产出挂在这条上）
+ *   date = 锚点所属结算日 */
+function closureSegments(c){
+  const recs = recsAsc(c);
+  const out = [];
+  if(!recs.length) return out;
+  /* 锚点：gl=1（本次实填了剩余晶石）的记录 */
+  const anchors = [];
+  recs.forEach(function(r, i){ if(Number(r.gl) === 1) anchors.push(i); });
+  if(!anchors.length) return out;
+
+  let prevDate = '';       /* 上一个区间的结算日（连续性检查用） */
+  anchors.forEach(function(j, k){
+    /* 首区间的起点 = 第一个实测锚点本身（不是 0）：
+       锚点之前的老记录没有三渠道、没有实测标记，无法参与闭合，
+       它们只提供「期初余额」这一项。 */
+    const i = (k === 0) ? -1 : anchors[k-1];
+    const from = (k === 0) ? j : i + 1;
+    const to = j;
+    const rs = recs.slice(from, to + 1);
+    const end   = Number(recs[to].gemsLeft) || 0;
+    /* 期初余额：
+       - 非首区间 → 上一锚点的实测值
+       - 首区间且区间之前还有记录 → 取那最后一条的余额（老数据的盘点值）
+       - 首区间且区间就是从第一条记录开始 → 取初始存量 initLeft */
+    const start = (i >= 0) ? (Number(recs[i].gemsLeft) || 0)
+                 : (from > 0 ? (Number(recs[from - 1].gemsLeft) || 0)
+                            : (Number(c.initLeft) || 0));
+
+    let outSum = 0, inSum = 0, unknown = 0;
+    rs.forEach(function(r){
+      const p = recParts(r, c);
+      /* 流出：秘境消耗 + 打造消耗 + 真卖出 + 转给陌尘的转移 */
+      outSum += (Number(r.chaosCost) || 0)
+              + (r.craft != null ? (Number(r.craft) || 0) : 0)
+              + p.sold + p.xfer;
+      /* 流入：集市收入 + 转入本号的晶石 */
+      inSum += (r.mkt != null ? (Number(r.mkt) || 0) : 0)
+             + (r.xferIn != null ? (Number(r.xferIn) || 0) : 0);
+      if(!closureKnown(r)) unknown++;
+    });
+    const v = (end - start) - inSum + outSum;
+
+    /* 区间覆盖的结算日（去重排序） */
+    const ds = [];
+    rs.forEach(function(r){ const d = settleDateOf(r); if(d && ds.indexOf(d) < 0) ds.push(d); });
+    ds.sort();
+    const date = settleDateOf(recs[to]) || '';
+
+    /* 可算性检查 */
+    let why = '';
+    if(unknown > 0){
+      why = '有 ' + unknown + ' 条记录没填「集市收入 / 打造消耗 / 转移收入」';
+    }else if(i < 0){
+      /* 首区间：期初余额来自「区间之前最后一条的余额」；
+         若区间就是从第一条记录开始，那只能靠初始存量 initLeft */
+      if(from === 0 && !(Number(c.initLeft) > 0))
+        why = '最早的一条记录，初始存量没填（期初余额不可信）';
+    }else if(ds.length > 1){
+      why = '这个盘点区间跨了 ' + ds.length + ' 个结算日（产出没法拆到每一天）';
+    }else if(prevDate && date){
+      const gap = daysBetween(prevDate, date);
+      if(gap > 1) why = '与上次盘点之间断了 ' + (gap - 1) + ' 天（余额跨了多天，方程不闭合）';
+      else if(gap < 0) why = '盘点顺序错乱（结算日倒序）';
+    }
+
+    out.push({ rec:recs[to], v:v, known:!why, why:why, start:start, end:end,
+               out:outSum, inflow:inSum, count:rs.length, date:date,
+               from:from, to:to });
+    if(date) prevDate = date;
+  });
+
+  /* 尾巴：最后一个锚点之后还有记录 → 那些交易没有对应的实测余额，
+     产出无从得知 → 明确标为不可算（不能默默丢掉） */
+  const lastA = anchors[anchors.length - 1];
+  if(lastA < recs.length - 1){
+    const tail = recs.slice(lastA + 1);
+    const d = settleDateOf(tail[tail.length - 1]) || '';
+    if(d){
+      const g = out.find(function(x){ return x.date === d; });
+      const why = '这天之后没有再实测剩余晶石，余额没封口';
+      if(g && g.known){ g.known = false; g.why = why; }
+      else out.push({ rec:tail[tail.length-1], v:0, known:false, why:why,
+                      start:0, end:0, out:0, inflow:0, count:tail.length, date:d,
+                      from:lastA+1, to:recs.length-1 });
+    }
+  }
+  return out;
+}
+
+/* 一天一个账号的闭合结果：{ date -> {v, known, why, start, end, out, inflow, count} }
+ * 同一天可能有多个盘点区间 → 求和；任一区间不可算 → 整天不可算。 */
+function closureMap(c){
+  const map = {};
+  closureSegments(c).forEach(function(sg){
+    const d = sg.date;
+    if(!d) return;
+    if(!map[d]) map[d] = { v:0, known:true, why:'', start:sg.start, end:sg.end,
+                           out:0, inflow:0, count:0, date:d };
+    const g = map[d];
+    g.v += sg.v;
+    g.out += sg.out;
+    g.inflow += sg.inflow;
+    g.count += sg.count;
+    g.end = sg.end;
+    if(!sg.known){ g.known = false; g.why = sg.why; }
+  });
+  return map;
+}
+
+/* 闭合值归属到「该区间的锚点记录」
+ * （这样每条锚点行都能显示自己那一笔，且各条之和 === 卡片累计值） */
+function closureAttribution(c){
+  const recs = (c && c.records) || [];
+  const sig = recs.length + '|' + (recs.length ? (recs[recs.length-1].date || '') + ' '
+    + (recs[recs.length-1].time || '') + '#' + (recs[recs.length-1].gemsLeft || 0) : '');
+  const ck = _closureCache.get(c);
+  if(ck && ck.sig === sig) return ck.map;
+  const map = new Map();
+  closureSegments(c).forEach(function(sg){ if(sg.rec) map.set(sg.rec, sg); });
+  _closureCache.set(c, {sig:sig, map:map});
+  return map;
+}
+
+const _closureCache = new WeakMap();
+
+/* 某条记录的闭合异界产出（不可算 → null） */
+function closureGainOf(r, c){
+  const g = closureAttribution(c).get(r);
+  if(!g || !g.known) return null;
+  return Math.round(g.v);
+}
+
+/* 某条记录闭合不可算的原因（可算 → ''） */
+function closureWhyOf(r, c){
+  const g = closureAttribution(c).get(r);
+  if(!g) return '';
+  return g.known ? '' : (g.why || '不可算');
+}
+
 /* 该角色是否有任何一条带异界产出的记录 */
 function hasDungeonGain(c){
   return (c.records || []).some(function(r){ return Number(r.dg) === 1; });
@@ -1625,7 +2010,8 @@ function totals(c){
   const t = { gemsLeft:0, gemsSold:Number(c.gemsSold)||0,
               soldValue:Number(c.soldValue)||0, laborCost:0,
               chaosCost:Number(c.chaosCost)||0, transfer:0,
-              dungeonGain:0, hasDun:false };
+              dungeonGain:0, hasDun:false, dunManual:false, dunFromRuns:false,
+              dunFromClosure:false, dunRuns:0 };
   (c.records||[]).forEach(function(r){
     const p = recParts(r, c);
     /* 「已出售晶石」只算真正卖钱的那部分；转出的晶石单列到 transfer，
@@ -1635,9 +2021,18 @@ function totals(c){
     t.chaosCost += Number(r.chaosCost) || 0;
     t.transfer  += p.xfer;
     /* 异界产出：只累加「确实记了」的；一条都没记的账号 hasDun=false，
-       卡片上要显示「未记录」而不是「0」，免得把"没记"误读成"没有产出"。 */
-    const dg = dungeonGainOf(r);
-    if(dg != null){ t.dungeonGain += dg; t.hasDun = true; }
+       卡片上要显示「未记录」而不是「0」，免得把"没记"误读成"没有产出"。
+       取值来源：手填值优先，没有则用「场次 × 单场基准 × 档位加成%」反推。 */
+    const dg = dungeonGainEffective(r, c);
+    if(dg.v != null){
+      t.dungeonGain += dg.v;
+      t.hasDun = true;
+      if(dg.src === 'manual') t.dunManual = true;
+      else if(dg.src === 'closure') t.dunFromClosure = true;
+      else t.dunFromRuns = true;
+    }
+    /* 场次合计（用于展示投入量，也是异界产出的自变量） */
+    if(Number(r.rg) === 1) t.dunRuns += Number(r.runs) || 0;
   });
   /* 人工费（新口径）：按「角色×天」派生，不再读 dayLabor 累加 */
   t.laborCost = laborTotal(c);
@@ -1814,11 +2209,18 @@ function summarize(list){
     a.chaosCost += t.chaosCost; a.gained += gained(c);
     a.profit += (t.soldValue - t.laborCost);
     /* 异界产出（纯净口径）：只累加记了的；hasDun 表示"至少有角色记过" */
-    if(t.hasDun){ a.dungeonGain += t.dungeonGain; a.hasDun = true; }
+    if(t.hasDun){
+      a.dungeonGain += t.dungeonGain; a.hasDun = true;
+      if(t.dunManual) a.dunManual = true;
+      if(t.dunFromRuns) a.dunFromRuns = true;
+      if(t.dunFromClosure) a.dunFromClosure = true;
+    }
+    a.dunRuns += t.dunRuns;
     return a;
   }, { roles:list.length, gemsLeft:0, gained:0, gemsSold:0,
        soldValue:0, laborCost:0, profit:0, chaosCost:0,
-       dungeonGain:0, hasDun:false });
+       dungeonGain:0, hasDun:false, dunManual:false, dunFromRuns:false,
+       dunFromClosure:false, dunRuns:0 });
 }
 /* 已废弃：保留仅为兼容旧引用，实际使用 netProfit() */
 function roleIncome(c){ return netProfit(c); }
@@ -1866,7 +2268,8 @@ function groupRecordsByDate(c){
 function dayTotals(c, dayRecs){
   const t = { gemsLeft:0, gained:0, gemsSold:0, soldValue:0,
               laborCost:0, profit:0, chaosCost:0, transfer:0, recordCount:0,
-              dungeonGain:0, hasDun:false, otherGain:0 };
+              dungeonGain:0, hasDun:false, otherGain:0,
+              dunManual:false, dunFromRuns:false, dunFromClosure:false, dunRuns:0 };
   if(!dayRecs || !dayRecs.length) return t;
   const day = settleDateOf(dayRecs[0]);
   /* 人工费（新口径）：按天计一次（勾选了代练的当天），不按录入条数累加 */
@@ -1878,8 +2281,16 @@ function dayTotals(c, dayRecs){
     t.chaosCost += Number(r.chaosCost) || 0;
     t.transfer  += p.xfer;
     t.recordCount++;
-    const dg = dungeonGainOf(r);
-    if(dg != null){ t.dungeonGain += dg; t.hasDun = true; }
+    /* 异界产出：手填优先，没有则用场次法反推。
+       两者都没有 → hasDun 保持 false（显示「未记录」，不当 0）。 */
+    const dg = dungeonGainEffective(r, c);
+    if(dg.v != null){
+      t.dungeonGain += dg.v;
+      t.hasDun = true;
+      if(dg.src === 'manual') t.dunManual = true;
+      else if(dg.src === 'closure') t.dunFromClosure = true;
+      else t.dunFromRuns = true;
+    }
   });
   /* 「获取」= 日级归集值（与 gainedDeltas / transferPlan 同源同口径） */
   const dm = dayGainMap(c);
@@ -2154,6 +2565,8 @@ function saveLocal(){
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                  maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
+                 /* 常刷地图阶级：查单场基准掉落表用 */
+                 mapTier: (c.mapTier == null || c.mapTier === '') ? '' : String(c.mapTier),
                records:c.records || [], flags:c.flags || {},
                laborDays:c.laborDays || [],
                laborAll:c.laborAll || false, laborOff:c.laborOff || [] };
@@ -2200,6 +2613,7 @@ function loadLocal(){
       order: Number(s.order)||0,
       minTier: (s.minTier != null && s.minTier !== '') ? Number(s.minTier) : '',
       maxTier: (s.maxTier != null && s.maxTier !== '') ? Number(s.maxTier) : '',
+      mapTier: (s.mapTier != null && s.mapTier !== '') ? String(s.mapTier) : '',
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* 兼容旧记录：缺 time 补 00:00:00，缺 chaosCost 补 0。
            real 必须原样透传 —— 拷贝时漏掉它，归期会退化成「沿用 date」，
@@ -2207,13 +2621,26 @@ function loadLocal(){
            档位快照（wealth/tier/pct/level）同样必须透传 ——
            漏了它，历史记录就只剩「当前档位」，升档后整段历史会被错挂。 */
         return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
-                 gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
+                 gemsLeft:Number(r.gemsLeft)||0, gl:Number(r.gl)||0,
+                 daySold:Number(r.daySold)||0,
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0,
                  transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
                  /* 异界产出：dg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
                  dunGain:(Number(r.dg)===1) ? (Number(r.dunGain)||0) : null,
                  dg:Number(r.dg)||0,
+                 /* 场次：rg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
+                 runs:(Number(r.rg)===1) ? (Number(r.runs)||0) : null,
+                 rg:Number(r.rg)||0,
+                 /* 闭合三渠道（2026-11-11）：集市收入 / 打造消耗 / 转移收入。
+                    null = 未填（该渠道未知 → 收支方程不闭合，不能反推异界产出）
+                    0   = 确实没发生（方程闭合）
+                    —— 这三个字段是「闭合反推」能成立的前提。 */
+                 mkt:(r.mkt == null || r.mkt === '') ? null : Number(r.mkt)||0,
+                 craft:(r.craft == null || r.craft === '') ? null : Number(r.craft)||0,
+                 xferIn:(r.xferIn == null || r.xferIn === '') ? null : Number(r.xferIn)||0,
+                 /* 记录时的地图阶级（查单场基准掉落用） */
+                 mapTier:(r.mapTier == null || r.mapTier === '') ? '' : String(r.mapTier),
                  wealth:r.wealth != null ? Number(r.wealth) : null,
                  tier:r.tier != null ? Number(r.tier) : null,
                  pct:r.pct != null ? Number(r.pct) : null,
@@ -2304,6 +2731,8 @@ function serialize(){
                  initLeft:Number(c.initLeft)||0, order:Number(c.order)||0,
                  minTier: (c.minTier == null || c.minTier === '') ? '' : Number(c.minTier),
                  maxTier: (c.maxTier == null || c.maxTier === '') ? '' : Number(c.maxTier),
+                 /* 常刷地图阶级：查单场基准掉落表用 */
+                 mapTier: (c.mapTier == null || c.mapTier === '') ? '' : String(c.mapTier),
                records:c.records || [], flags:c.flags || {},
                laborDays:c.laborDays || [],
                laborAll:c.laborAll || false, laborOff:c.laborOff || [] };
@@ -2450,16 +2879,30 @@ function adopt(data){
       order: Number(s.order)||0,
       minTier: (s.minTier != null && s.minTier !== '') ? Number(s.minTier) : '',
       maxTier: (s.maxTier != null && s.maxTier !== '') ? Number(s.maxTier) : '',
+      mapTier: (s.mapTier != null && s.mapTier !== '') ? String(s.mapTier) : '',
       records: Array.isArray(s.records) ? s.records.map(function(r){
         /* real 同样必须透传（与 loadLocal 一致），否则云端数据一落地归期就错 */
         return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
-                 gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
+                 gemsLeft:Number(r.gemsLeft)||0, gl:Number(r.gl)||0,
+                 daySold:Number(r.daySold)||0,
                  dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                  chaosCost:Number(r.chaosCost)||0,
                  transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
                  /* 异界产出：dg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
                  dunGain:(Number(r.dg)===1) ? (Number(r.dunGain)||0) : null,
                  dg:Number(r.dg)||0,
+                 /* 场次：rg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
+                 runs:(Number(r.rg)===1) ? (Number(r.runs)||0) : null,
+                 rg:Number(r.rg)||0,
+                 /* 闭合三渠道（2026-11-11）：集市收入 / 打造消耗 / 转移收入。
+                    null = 未填（该渠道未知 → 收支方程不闭合，不能反推异界产出）
+                    0   = 确实没发生（方程闭合）
+                    —— 这三个字段是「闭合反推」能成立的前提。 */
+                 mkt:(r.mkt == null || r.mkt === '') ? null : Number(r.mkt)||0,
+                 craft:(r.craft == null || r.craft === '') ? null : Number(r.craft)||0,
+                 xferIn:(r.xferIn == null || r.xferIn === '') ? null : Number(r.xferIn)||0,
+                 /* 记录时的地图阶级（查单场基准掉落用） */
+                 mapTier:(r.mapTier == null || r.mapTier === '') ? '' : String(r.mapTier),
                  /* 档位快照随记录透传 —— 丢了它，账号升档后整段历史会被错挂 */
                  wealth:r.wealth != null ? Number(r.wealth) : null,
                  tier:r.tier != null ? Number(r.tier) : null,
@@ -2775,7 +3218,9 @@ function renderSummary(sum, animate){
      末尾 s-exp 是展开按钮的占位，无内容 —— 与 .colhead 结构一一对应 */
   const items = [
     { cls:'c-roles', slot:'s-roles', ico:'roles', key:'roles',      k:'角色数量',         v:num(sum.roles) },
-    { cls:'c-dun',   slot:'s-data',  ico:'gem',   key:'dungeonGain', k:'异界产出总量(纯口径)', v:sum.hasDun ? intNum(sum.dungeonGain) : '未记录' },
+    { cls:'c-dun',   slot:'s-data',  ico:'gem',   key:'dungeonGain', k:'异界产出总量(纯口径)', v:sum.hasDun ? intNum(sum.dungeonGain) : '未记录',
+      tip:'纯净口径：只含打异界掉落的晶石。来源：' + (dungeonSourceLabel(sum) || '未记录')
+        + '（手填 = 抄游戏画面；场次推算 = 场次 × 单场基准掉落 × 档位加成%）。累计打图 ' + intNum(sum.dunRuns) + ' 场' },
     { cls:'c-left',  slot:'s-data',  ico:'gem',   key:'gemsLeft',   k:'剩余晶石总量',     v:intNum(sum.gemsLeft) },
     { cls:'c-gain',  slot:'s-data',  ico:'gain',  key:'gained',     k:'累计获取(含集市)',   v:num(sum.gained) },
     { cls:'c-sold',  slot:'s-data',  ico:'box',   key:'gemsSold',   k:'出售晶石总量',     v:intNum(sum.gemsSold) },
@@ -2805,7 +3250,8 @@ function renderSummary(sum, animate){
   document.getElementById('summary').innerHTML = items.map(function(i){
     return '<div class="sm panel ' + i.cls + ' ' + i.slot + '">'
       + '<span class="k">' + ico(i.ico) + i.k + '</span>'
-      + '<span class="v" data-sum="' + i.key + '">' + i.v + '</span>'
+      + '<span class="v" data-sum="' + i.key + '"'
+      + (i.tip ? ' title="' + i.tip + '"' : '') + '>' + i.v + '</span>'
       + '</div>';
   }).join('') + extra + '<div class="sm s-exp" aria-hidden="true"></div>';
   /* 负值标红：已获取、净利润、秘境消耗都可能为负 */
@@ -2833,8 +3279,18 @@ function refreshNumbers(i){
     const g = gained(c);
     setV(row,'gained', g, 'hit');
     /* 累计异界产出：没记过就显示「未记录」（不是 0）——
-       0 和"没记"含义完全不同，混起来会让档位分析把未记录当成没产出。 */
-    setV(row,'dungeonGain', t.hasDun ? intNum(t.dungeonGain) : '未记录', 'hit');
+       0 和"没记"含义完全不同，混起来会让档位分析把未记录当成没产出。
+       来源标注：手填（抄游戏画面）还是场次推算（场次 × 单场基准 × 档位加成%）。 */
+    const dunSrc = dungeonSourceLabel(t);
+    const dunIsEst = (dunSrc === '场次推算' || dunSrc === '闭合+场次' || dunSrc === '闭合反推');
+    setV(row,'dungeonGain',
+      t.hasDun ? (intNum(t.dungeonGain) + (dunIsEst ? '（推算）' : '')) : '未记录', 'hit');
+    const dunEl = row.querySelector('[data-v="dungeonGain"]');
+    if(dunEl) dunEl.title = '来源：' + (dunSrc || '未记录')
+      + '　｜　手填 = 直接抄游戏画面上的异界产出'
+      + '；闭合反推 = 由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程算出来'
+      + '；场次推算 = 今日打图场次 × 单场基准掉落(地图阶级) × 档位加成%'
+      + '　｜　累计打图 ' + intNum(t.dunRuns) + ' 场';
     setV(row,'gemsSold',  intNum(t.gemsSold), 'hit');
     setV(row,'soldValue', money(t.soldValue), 'hit');
     setV(row,'laborCost', money(t.laborCost), 'hit');
@@ -2944,12 +3400,30 @@ function detailHTML(i){
     const xferAmt = p.xfer;
     const xfer  = xferAmt > 0;
     const xferTag = xfer ? '<i class="xfer" title="内部转移：晶石转给陌尘，不计收入">→陌尘</i>' : '';
-    /* 「异界产出」= 该条记录填写的纯净异界掉落；没填的显示「—」而不是 0 */
-    const dg = dungeonGainOf(r);
-    const dgCell = (dg == null)
-      ? '<td class="n dun none" title="这条记录没有填「异界产出」（旧记录或当天未录入）">—</td>'
-      : '<td class="n dun' + z(dg) + '" title="纯净口径：本次打异界掉落的晶石">'
-        + intNum(dg) + '</td>';
+    /* 「异界产出」= 有效异界产出：手填值优先，没有则用场次法反推。
+       来源不同的，title 里标清楚（手填 / 场次推算）。 */
+    const dgE = dungeonGainEffective(r, c);
+    const runsN = (Number(r.rg) === 1) ? (Number(r.runs) || 0) : null;
+    const runsCell = (runsN == null)
+      ? '<td class="n none" title="没填「今日打图场次」">—</td>'
+      : '<td class="n' + z(runsN) + '" title="今天打了几张异界图（代练数得出来的量）">'
+        + intNum(runsN) + '</td>';
+    const dgCell = (dgE.v == null)
+      ? '<td class="n dun none" title="'
+        + (closureWhyOf(r, c)
+            ? '闭合不可算：' + closureWhyOf(r, c)
+            : '这条记录既没填「异界产出」，也没有场次可反推')
+        + '">—</td>'
+      : '<td class="n dun' + z(dgE.v) + '" title="'
+        + (dgE.src === 'manual'
+            ? '纯净口径：本次打异界掉落的晶石（手工填写）'
+            : dgE.src === 'closure'
+              ? '纯净口径：由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程反推得出'
+              : '纯净口径：由「场次 × 单场基准掉落 × 档位加成%」反推得出')
+        + '">' + intNum(dgE.v)
+        + (dgE.src === 'runs' ? '<i class="est" title="由场次反推，非手工填写">推</i>' : '')
+        + (dgE.src === 'closure' ? '<i class="est" title="由收支闭合方程反推，非手工填写">闭</i>' : '')
+        + '</td>';
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + xferTag + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + wee + '</td>'
@@ -2967,7 +3441,7 @@ function detailHTML(i){
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
-  }).join('') : '<tr><td colspan="13"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
+  }).join('') : '<tr><td colspan="14"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
 
   /* 合计行：把「逐条之和」与「日级归集值」的差额摆出来。
      日级口径下，某天若整体净增为负（典型情况：当天卖出/消耗没记全），
@@ -2979,20 +3453,27 @@ function detailHTML(i){
     const daySum = Object.keys(dm).reduce(function(a, d){ return a + dm[d].gain; }, 0);
     const rowSum = deltas.reduce(function(a, b){ return a + b; }, 0);
     const gap = daySum - rowSum;
-    /* 异界产出合计：只累加真正记了的记录 */
+    /* 异界产出合计：有效值（手填优先，场次法兜底）；只累加真正有的 */
     const dunSum = recs.reduce(function(a, r){
-      const v = dungeonGainOf(r);
-      return a + (v == null ? 0 : v);
+      const e = dungeonGainEffective(r, c);
+      return a + (e.v == null ? 0 : e.v);
     }, 0);
-    const dunHas = recs.some(function(r){ return dungeonGainOf(r) != null; });
+    const dunHas = recs.some(function(r){ return dungeonGainEffective(r, c).v != null; });
+    /* 场次合计 */
+    const runsSum = recs.reduce(function(a, r){
+      return a + (Number(r.rg) === 1 ? (Number(r.runs) || 0) : 0);
+    }, 0);
+    const runsHas = recs.some(function(r){ return Number(r.rg) === 1; });
     if(!recs.length) return '';
     return '<tr class="sumrow">'
       + '<td colspan="4" class="sumlab">合计 · 日级口径 ' + num(daySum) + '</td>'
       + '<td class="n' + (rowSum ? ' inc' : ' zero') + '" title="各条真实增量之和">'
         + num(rowSum) + '</td>'
-      + '<td class="n dun' + (dunHas ? '' : ' none') + '" title="已填写的「异界产出」之和（纯净口径）">'
+      + '<td class="n dun' + (dunHas ? '' : ' none') + '" title="有效异界产出之和（纯净口径：手填 + 闭合反推 + 场次反推）">'
         + (dunHas ? intNum(dunSum) : '—') + '</td>'
-      + '<td colspan="7" class="sumgap' + (gap ? ' warn' : '') + '" title="'
+      + '<td class="n' + (runsHas ? '' : ' none') + '" title="打图场次之和（异界产出的自变量）">'
+        + (runsHas ? intNum(runsSum) : '—') + '</td>'
+      + '<td colspan="6" class="sumgap' + (gap ? ' warn' : '') + '" title="'
         + (gap ? ('有 ' + num(gap) + ' 晶石差額：某些日子当天净增为负（多半是卖出或秘境消耗没记全），'
                  + '日级口径记 0，不计入真实产出')
                : '逐条之和与日级口径一致')
@@ -3011,10 +3492,11 @@ function detailHTML(i){
     + '<colgroup><col class="c-date" /><col class="c-time" /><col class="c-tier" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
-    +   '<col class="c-num" /><col class="c-act" /></colgroup>'
+    +   '<col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
     + '<thead><tr>'
     +   '<th>日期</th><th>时间</th><th>档位</th><th>剩余晶石</th><th>本次获取晶石</th>'
-    +   '<th title="纯净口径：打异界实际掉落的晶石。做「档位 → 产出」分析用这一列，不要用「本次获取晶石」">异界产出</th>'
+    +   '<th title="纯净口径：打异界实际掉落的晶石（手填，或由场次反推）。做「档位 → 产出」分析用这一列，不要用「本次获取晶石」">异界产出</th>'
+    +   '<th title="今天打了几张异界图。代练报不出异界产出，但一定数得出场次 —— 场次 × 单场基准掉落 × 档位加成% = 真实异界产出">打图场次</th>'
     +   '<th>秘境消耗</th>'
     +   '<th>已出售晶石</th><th>转移晶石</th><th>收入</th><th>人工费用</th><th>净利润</th><th></th>'
     + '</tr></thead>'
@@ -3302,9 +3784,9 @@ function cardHTML(c, i, disp, gc){
   /* 「累计异界产出」= 纯净的「打异界掉落的晶石」，2026-11-10 新增。
      做「档位 → 每日产出」分析必须用这个数，不能用下面那个混合口径。 */
   +       '<div class="st"><div class="k">累计异界产出</div><span class="v dun" data-v="dungeonGain" '
-  +         'title="纯净口径：录入时填写的「异界产出」之和，只含打异界掉落的晶石。'
+  +         'title="纯净口径：只含打异界掉落的晶石。来源：手填 / 闭合反推（由剩余晶石 + 集市收入 + 打造消耗 + 转移收入解方程算出）/ 场次推算。'
   +         '做「财富值档位 → 每日产出」分析请用这个数">'
-  +         (t.hasDun ? intNum(t.dungeonGain) : '未记录') + '</span></div>'
+  +         (t.hasDun ? (intNum(t.dungeonGain) + (dungeonSourceLabel(t) === '场次推算' || dungeonSourceLabel(t) === '闭合反推' || dungeonSourceLabel(t) === '闭合+场次' ? '（推算）' : '')) : '未记录') + '</span></div>'
   +       '<div class="st"><div class="k">累计获取(含集市)</div><span class="v plain" data-v="gained" '
   +         'title="混合口径：每个结算日取「末条剩余 − 首条之前余额 + 当日卖出 + 当日秘境消耗」，'
   +         '当天净增为负记 0。这个数里混着集市买入、任务奖励等非异界来源（实测约占 62%），'
@@ -3342,6 +3824,26 @@ function cardHTML(c, i, disp, gc){
   +   '</div>'
   +   '<div class="ir dunrow"><div class="k">异界产出</div>'
   +     numInput('dunGain','打异界掉落的晶石') + '</div>'
+  +   '<div class="ir runsrow"><div class="k">今日打图场次</div>'
+  +     numInput('dunRuns','今天打了几张图') + '</div>'
+  /* 「闭合三件套」行：集市收入 / 打造消耗 / 转移收入
+     —— 这三项 + 剩余晶石（+ 秘境消耗 + 本次出售 + 转移晶石）把余额方程的未知量
+        收缩到只剩「异界产出」一个，于是异界产出可以被**自动反推**出来，
+        不需要代练报、也不需要手填。
+     语义（关键）：留空 = 这个渠道未知（方程不闭合，不给数）；
+                   填 0 = 确实没发生（方程闭合）。
+     所以这三个框是「每天都填一下」的成本，换来异界产出自动化。 */
+  +   '<div class="ir closrow">'
+  +     '<div class="cg market"><div class="k">集市收入</div>'
+  +       numInput('mkt','在集市卖/买的晶石') + '</div>'
+  +     '<div class="cg craft"><div class="k">打造消耗</div>'
+  +       numInput('craft','打造花掉的晶石') + '</div>'
+  +     '<div class="cg xferin"><div class="k">转移收入</div>'
+  +       numInput('xferIn','转入本号的晶石') + '</div>'
+  +   '</div>'
+  +   '<div class="closhint">这三项 + 剩余晶石 = 收支闭合，异界产出可自动反推：'
+  +     '<b>留空 = 这个渠道未知（不闭合，不给数）</b>，<b>填 0 = 确实没发生（闭合）</b>。'
+  +     '代练只报「剩余晶石」即可，其余三项由你补。</div>'
   +   '<div class="ir gemsrow"><div class="k">剩余晶石</div>' + numInput('gemsLeft','现有多少填多少') + '</div>'
     +   '<div class="vc-foot">'
     +     '<button class="btn-detail" type="button" data-toggle="' + i + '" title="展开每日明细" aria-expanded="false">'
@@ -3376,7 +3878,8 @@ const DAILY_FOLD_KEY = 'gem-ledger-day-fold-';
 function daySummarize(date){
   const acc = { roles:0, records:0, gained:0, gemsSold:0,
                 soldValue:0, laborCost:0, profit:0, chaosCost:0,
-                dungeonGain:0, hasDun:false, otherGain:0 };
+                dungeonGain:0, hasDun:false, otherGain:0,
+              dunManual:false, dunFromRuns:false, dunFromClosure:false, dunRuns:0 };
   ACCOUNTS.forEach(function(c){
     const dayRecs = groupRecordsByDate(c)[date];
     if(!dayRecs || !dayRecs.length) return;
@@ -3390,7 +3893,13 @@ function daySummarize(date){
     acc.profit    += t.profit;
     acc.chaosCost += t.chaosCost;
     /* 异界产出：只累加当天确实记了的；一个角色都没记 → hasDun=false */
-    if(t.hasDun){ acc.dungeonGain += t.dungeonGain; acc.hasDun = true; }
+    if(t.hasDun){
+      acc.dungeonGain += t.dungeonGain; acc.hasDun = true;
+      if(t.dunManual) acc.dunManual = true;
+      if(t.dunFromRuns) acc.dunFromRuns = true;
+      if(t.dunFromClosure) acc.dunFromClosure = true;
+    }
+    acc.dunRuns += t.dunRuns;
     acc.otherGain += t.otherGain;
   });
   /* 内部转入主号、当天从主号获取里扣掉的量（用于当天面板的「转移」）。
@@ -3417,7 +3926,9 @@ function daySectHTML(d, isToday){
   const s = daySummarize(d);
   const items = [
     { cls:'c-roles', ico:'roles', k:'录入角色',         v:num(s.roles),       raw:s.roles },
-    { cls:'c-dun',   ico:'gem',   k:'当日异界产出',     v:s.hasDun ? intNum(s.dungeonGain) : '未记录', raw:s.hasDun ? s.dungeonGain : 0 },
+    { cls:'c-dun',   ico:'gem',   k:'当日异界产出',     v:s.hasDun ? (intNum(s.dungeonGain) + (dungeonSourceLabel(s) === '场次推算' ? '（推算）' : '')) : '未记录', raw:s.hasDun ? s.dungeonGain : 0,
+      tip:'纯净口径：当天所有角色异界产出之和。来源：' + (dungeonSourceLabel(s) || '未记录')
+        + '（手填 = 抄游戏画面；闭合反推 = 由「剩余晶石 + 集市收入 + 打造消耗 + 转移收入」解收支方程算出来；场次推算 = 场次 × 单场基准掉落 × 档位加成%）。当天打图 ' + intNum(s.dunRuns) + ' 场' },
     { cls:'c-gain',  ico:'gain',  k:'当日累计获取(含集市)', v:num(s.gained),  raw:s.gained },
     { cls:'c-sold',  ico:'box',   k:'当日出售晶石',     v:intNum(s.gemsSold), raw:s.gemsSold },
     { cls:'c-money', ico:'money', k:'当日收入',         v:money(s.soldValue), raw:s.soldValue },
@@ -3429,7 +3940,8 @@ function daySectHTML(d, isToday){
   const body = items.map(function(i){
     return '<div class="sm panel ' + i.cls + '">'
       + '<span class="k">' + ico(i.ico) + i.k + '</span>'
-      + '<span class="v' + (i.raw < 0 ? ' neg' : '') + '">' + i.v + '</span></div>';
+      + '<span class="v' + (i.raw < 0 ? ' neg' : '') + '"'
+      + (i.tip ? ' title="' + i.tip + '"' : '') + '>' + i.v + '</span></div>';
   }).join('');
   const dateLabel = shortDate(d) + (isToday ? ' <span class="today-tag">今天</span>' : '');
   /* 标题行摘要：角色数 · 异界产出 · 累计获取 · 收入 · 支出 · 转移
@@ -3438,7 +3950,9 @@ function daySectHTML(d, isToday){
      转移 = 当天小号「卖出>0、收入=0」转给陌尘的晶石量（已从陌尘当日获取中扣除，不计收入）。
      恒显示（含 0），避免有/无转移时标题长度跳动；0 时走 .zero 弱化。 */
   const sXfer = Number(s.transferIn) || 0;
-  const dunTxt = s.hasDun ? ('<b class="dunv">' + intNum(s.dungeonGain) + '</b>')
+  const dunTxt = s.hasDun ? ('<b class="dunv"' + (dungeonSourceLabel(s) === '场次推算'
+                    ? ' title="由「今日打图场次 × 单场基准掉落 × 档位加成%」反推，非手工填写"' : '') + '>'
+                    + intNum(s.dungeonGain) + '</b>')
                           : ('<b class="dunv none">未记录</b>');
   const sumLabel = s.roles + ' 个角色 · 异界产出 ' + dunTxt
     + ' · 累计获取 <b>' + num(s.gained) + '</b> · 收入 <b>' + money(s.soldValue) + '</b> · 支出 <b>' + money(s.laborCost) + '</b>'
@@ -3649,6 +4163,8 @@ function collectRow(i){
   const v = {};
   let anyFilled = false, leftFilled = false, filledCount = 0;
   let dunFilled = false, dunVal = 0;
+  let runsFilled = false, runsVal = 0;
+  const chanSet = { mkt:false, craft:false, xferIn:false };
   Array.prototype.forEach.call(ins, function(el){
     const raw = el.value == null ? '' : String(el.value).trim();
     const n = parseFloat(raw);
@@ -3667,11 +4183,38 @@ function collectRow(i){
       v.dunGain = 0;
       return;
     }
+    /* 「今日打图场次」：填 0 也是有效信息（今天一张图没打），
+       和「异界产出」同样按「产出类」处理 —— 0 有明确含义
+       （今天没打图 → 异界产出 0），不能与「没填」混为一谈。 */
+    if(el.dataset.f === 'dunRuns'){
+      if(ok){ runsFilled = true; runsVal = n; anyFilled = true; filledCount++; }
+      v.dunRuns = 0;
+      return;
+    }
+    /* 「闭合三件套」：集市收入 / 打造消耗 / 转移收入
+       —— 这三项决定余额方程能不能闭合，必须区分「没填」与「填 0」：
+          留空 = 该渠道未知（null）→ 方程不闭合 → 不给异界产出
+          填 0 = 确实没发生        → 方程闭合
+       所以：raw 为空 → v[f] = null；raw 有内容（哪怕是 0）→ v[f] = n。
+       触发提交方面：这三项单独填 0 不算「有内容」（避免点一下就产生空记录），
+       但会记下 chanSet 标记，随余额一起录入时正确落成 0。 */
+    if(el.dataset.f === 'mkt' || el.dataset.f === 'craft' || el.dataset.f === 'xferIn'){
+      if(ok){
+        v[el.dataset.f] = n;
+        chanSet[el.dataset.f] = true;
+        if(n !== 0){ anyFilled = true; filledCount++; }
+      } else {
+        v[el.dataset.f] = null;
+      }
+      return;
+    }
     v[el.dataset.f] = ok ? n : 0;
   });
   if(!anyFilled) return null;
   return { ins:ins, v:v, leftFilled:leftFilled, filledCount:filledCount,
-           dunFilled:dunFilled, dunVal:dunVal };
+           dunFilled:dunFilled, dunVal:dunVal,
+           runsFilled:runsFilled, runsVal:runsVal,
+           chanSet:chanSet };
 }
 
 /* 把收集到的值落成一条记录 */
@@ -3690,6 +4233,10 @@ function pushRec(i, got){
   const rec = {
     date: nowDate(), time: nowTime(), real: 1,
     gemsLeft:  got.leftFilled ? got.v.gemsLeft : curLeft,
+    /* gl=1 表示这条的剩余晶石是「本次实填」的；gl=0 = 沿用了旧值。
+       闭合反推必须知道期末余额是哪条真正填出来的 ——
+       否则当天多条记录里，末尾几条沿用值会把期末余额污染掉，方程算出假数。 */
+    gl:        got.leftFilled ? 1 : 0,
     daySold:   got.v.gemsSold  || 0,
     dayValue:  got.v.soldValue || 0,
     dayLabor:  got.v.laborCost || 0,
@@ -3707,6 +4254,21 @@ function pushRec(i, got){
           实测约占总增量的 62%，直接拿它做「档位→产出」分析会严重失真。 */
     dunGain:   got.dunFilled ? (got.dunVal || 0) : null,
     dg:        got.dunFilled ? 1 : 0,
+    /* 今日打图场次（2026-11-10 新增）：代练唯一需要多报的数。
+       代练报不出「异界产出」，但一定数得出「今天打了几张图」——
+       场次 × 单场基准(地图阶级) × 档位加成% = 该日真实异界产出。
+       rg=1 表示这条带有效的场次数据（哪怕是 0）。 */
+    runs:      got.runsFilled ? (got.runsVal || 0) : null,
+    rg:        got.runsFilled ? 1 : 0,
+    /* 地图阶级快照：用于查单场基准掉落表（档位变化时基准不变，但记录下来更稳） */
+    mapTier:   (ACCOUNTS[i].mapTier || ''),
+    /* 闭合三渠道（2026-11-11）：集市收入 / 打造消耗 / 转移收入。
+       null = 未填（渠道未知 → 收支方程不闭合，异界产出不可反推）
+       0   = 确实没发生（方程闭合）
+       —— 有这三项 + 剩余晶石，异界产出就是余额方程里剩下的唯一未知数。 */
+    mkt:      got.chanSet.mkt    ? (got.v.mkt    || 0) : null,
+    craft:    got.chanSet.craft  ? (got.v.craft  || 0) : null,
+    xferIn:   got.chanSet.xferIn ? (got.v.xferIn || 0) : null,
     wealth:    wv,
     tier:      tier,
     pct:       WEALTH_TIERS[tier - 1][1],
@@ -4148,6 +4710,8 @@ function openModal(mode, idx){
   fMinTier.value = c ? (c.minTier != null && c.minTier !== '' ? String(c.minTier) : '') : '';
   /* 最高T级：回填独立数值 */
   fMaxTier.value = c ? (c.maxTier != null && c.maxTier !== '' ? String(c.maxTier) : '') : '';
+  /* 常刷地图阶级：查单场基准掉落表用 */
+  fMapTier.value = c ? (c.mapTier != null && c.mapTier !== '' ? String(c.mapTier) : '') : '';
   /* 代练人：从名册下拉选择；若名册为空（旧数据）则用卡片现有值临时补一项 */
   const opts = brokerSorted();
   const curB = normalizeBroker(c ? c.broker : '');
@@ -4163,7 +4727,7 @@ function openModal(mode, idx){
   }
   fBroker.innerHTML = html;
   fBroker.value = curB;
-  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fBroker].forEach(function(el){
+  [fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fMapTier, fBroker].forEach(function(el){
     el.classList.remove('bad');
     el.closest('.field').classList.remove('bad');
   });
@@ -4188,6 +4752,7 @@ function modalOk(){
   const oRaw    = fOrder.value.trim();
   const tRaw    = fMinTier.value.trim();
   const mxRaw   = fMaxTier.value.trim();
+  const mtRaw   = fMapTier.value.trim();
 
   /* 账号必填 */
   let bad = false;
@@ -4217,6 +4782,10 @@ function modalOk(){
   if(mxRaw !== '' && !/^\d{1,2}$/.test(mxRaw)){
     fMaxTier.classList.add('bad'); fMaxTier.closest('.field').classList.add('bad'); bad = true;
   } else { fMaxTier.classList.remove('bad'); fMaxTier.closest('.field').classList.remove('bad'); }
+  /* 常刷地图阶级：数字（可留空）；只接受数字形式，'T14' 会在保存时归一 */
+  if(mtRaw !== '' && !/^\d{1,2}$/.test(mtRaw)){
+    fMapTier.classList.add('bad'); fMapTier.closest('.field').classList.add('bad'); bad = true;
+  } else { fMapTier.classList.remove('bad'); fMapTier.closest('.field').classList.remove('bad'); }
   if(bad){
     (fAccount.classList.contains('bad') ? fAccount
       : fLevel.classList.contains('bad') ? fLevel
@@ -4224,6 +4793,7 @@ function modalOk(){
       : fInitLeft.classList.contains('bad') ? fInitLeft
       : fOrder.classList.contains('bad') ? fOrder
       : fMaxTier.classList.contains('bad') ? fMaxTier
+      : fMapTier.classList.contains('bad') ? fMapTier
       : fMinTier).focus();
     return;
   }
@@ -4239,6 +4809,8 @@ function modalOk(){
   const minTierVal = (tRaw === '') ? '' : Number(tRaw);
   /* 最高T级：同上 */
   const maxTierVal = (mxRaw === '') ? '' : Number(mxRaw);
+  /* 常刷地图阶级：留空 = 未设置（场次法不可用）；存数字形式 */
+  const mapTierVal = (mtRaw === '') ? '' : Number(mtRaw);
   /* 代练人：纯文本，去首尾空格；留空 = 未分组（卡牌归入最后一组） */
   const brokerVal = fBroker.value.trim();
 
@@ -4250,6 +4822,7 @@ function modalOk(){
     c.order = orderVal;
     c.minTier = minTierVal;
     c.maxTier = maxTierVal;
+    c.mapTier = mapTierVal;
     c.broker = brokerVal;
     /* 同步更新已展开明细的标题 */
     const tt = document.querySelector('.row[data-i="' + modalIdx + '"] .ttl2');
@@ -4262,6 +4835,7 @@ function modalOk(){
       id:'a' + Date.now(), account:account, name:name, job:job, level:level,
       gemsLeft:0, gemsSold:0, soldValue:0, laborCost:0, chaosCost:0,
       wealth: wealthVal, initLeft: initLeftVal, order: orderVal, minTier: minTierVal, maxTier: maxTierVal,
+      mapTier: mapTierVal,
       broker: brokerVal,
       records:[], flags:{}
     });
@@ -4322,7 +4896,7 @@ document.getElementById('mdDel').addEventListener('click', function(){
   toast('已删除该角色');
 });
 mask.addEventListener('click', function(e){ if(e.target === mask) closeModal(); });
-[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fBroker].forEach(function(el){
+[fAccount, fName, fJob, fLevel, fWealth, fInitLeft, fOrder, fMinTier, fMaxTier, fMapTier, fBroker].forEach(function(el){
   el.addEventListener('input', function(){
     el.classList.remove('bad'); el.closest('.field').classList.remove('bad');
   });
@@ -4620,15 +5194,29 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           wealth: Number(s.wealth)||0,
           initLeft: Number(s.initLeft)||0,
           order: Number(s.order)||0,
+          mapTier: (s.mapTier != null && s.mapTier !== '') ? String(s.mapTier) : '',
           records: Array.isArray(s.records) ? s.records.map(function(r){
             return { date:r.date || '', time:r.time || '00:00:00', real: r.real ? 1 : 0,
-                     gemsLeft:Number(r.gemsLeft)||0, daySold:Number(r.daySold)||0,
+                     gemsLeft:Number(r.gemsLeft)||0, gl:Number(r.gl)||0,
+                 daySold:Number(r.daySold)||0,
                      dayValue:Number(r.dayValue)||0, dayLabor:Number(r.dayLabor)||0,
                      chaosCost:Number(r.chaosCost)||0,
                      transfer:Number(r.transfer)||0, xf:Number(r.xf)||0,
                  /* 异界产出：dg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
                  dunGain:(Number(r.dg)===1) ? (Number(r.dunGain)||0) : null,
                  dg:Number(r.dg)||0,
+                 /* 场次：rg=1 才是有效值；缺失一律存 null，绝不静默当 0 */
+                 runs:(Number(r.rg)===1) ? (Number(r.runs)||0) : null,
+                 rg:Number(r.rg)||0,
+                 /* 闭合三渠道（2026-11-11）：集市收入 / 打造消耗 / 转移收入。
+                    null = 未填（该渠道未知 → 收支方程不闭合，不能反推异界产出）
+                    0   = 确实没发生（方程闭合）
+                    —— 这三个字段是「闭合反推」能成立的前提。 */
+                 mkt:(r.mkt == null || r.mkt === '') ? null : Number(r.mkt)||0,
+                 craft:(r.craft == null || r.craft === '') ? null : Number(r.craft)||0,
+                 xferIn:(r.xferIn == null || r.xferIn === '') ? null : Number(r.xferIn)||0,
+                 /* 记录时的地图阶级（查单场基准掉落用） */
+                 mapTier:(r.mapTier == null || r.mapTier === '') ? '' : String(r.mapTier),
                      wealth:r.wealth != null ? Number(r.wealth) : null,
                      tier:r.tier != null ? Number(r.tier) : null,
                      pct:r.pct != null ? Number(r.pct) : null,
