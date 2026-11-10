@@ -1,6 +1,6 @@
 {
   "v": 3,
-  "savedAt": "2026-11-10T16:09:34.890Z",
+  "savedAt": "2026-11-10T16:12:29.315Z",
   "updatedBy": "设备-q5gen",
   "node": {
     "id": "node1",
@@ -284,7 +284,7 @@
   "snapshots": {
     "2026-11-10": {
       "date": "2026-11-10",
-      "generatedAt": "2026-11-10T16:09:33.678Z",
+      "generatedAt": "2026-11-10T16:12:08.259Z",
       "device": "设备-q5gen",
       "accounts": [
         {
@@ -485,14 +485,14 @@
           "name": "黑色星期天",
           "level": 76,
           "job": "电法",
-          "gemsLeft": 0,
-          "gained": 0,
+          "gemsLeft": 4807,
+          "gained": 4807,
           "gemsSold": 0,
           "soldValue": 0,
           "laborCost": 10,
           "profit": -10,
           "chaosCost": 0,
-          "recordCount": 1,
+          "recordCount": 2,
           "blank": false
         },
         {
@@ -706,14 +706,14 @@
       ],
       "total": {
         "roles": 26,
-        "gemsLeft": 285255,
-        "gained": 29086,
+        "gemsLeft": 290062,
+        "gained": 33893,
         "gemsSold": 0,
         "soldValue": 0,
         "laborCost": 190,
         "profit": -190,
         "chaosCost": 12000,
-        "recordCount": 33
+        "recordCount": 34
       }
     }
   },
@@ -996,19 +996,24 @@
           "real": 1,
           "gemsLeft": 40144,
           "gl": 1,
+          "dsrc": "mkt",
           "daySold": 0,
           "dayValue": 0,
           "dayLabor": 0,
           "chaosCost": 0,
           "transfer": 0,
-          "xferTo": "",
           "xf": 1,
+          "dunGain": null,
+          "dg": 0,
+          "mkt": null,
+          "craft": null,
+          "xferTo": "",
           "mapTier": "",
-          "dsrc": "mkt",
           "wealth": 1674,
           "tier": 15,
           "pct": 575,
-          "level": 85
+          "level": 85,
+          "bl": 0
         }
       ],
       "flags": {
@@ -1763,6 +1768,26 @@
           "pct": 200,
           "level": 76,
           "bl": 1
+        },
+        {
+          "date": "2026-11-11",
+          "time": "00:12:19",
+          "real": 1,
+          "gemsLeft": 4807,
+          "gl": 1,
+          "daySold": 0,
+          "dayValue": 0,
+          "dayLabor": 0,
+          "chaosCost": 0,
+          "transfer": 0,
+          "xferTo": "",
+          "xf": 1,
+          "mapTier": "",
+          "dsrc": "dun",
+          "wealth": 5,
+          "tier": 2,
+          "pct": 200,
+          "level": 76
         }
       ],
       "flags": {
