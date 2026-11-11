@@ -819,8 +819,11 @@
          1920 → 5 列 350px（不变）   2048 → 5 列 390px（+68，修好折行）
          2560 → 7 列 348px（不变）   2400 → 6 列 381px（+56，修好折行）
          3440 → 9 列 350px（不变）   3840 → 10 列 368px（+35，修好折行） */
-  #cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:30px 12px;padding-top:12px}
-  .row{display:contents}
+  #cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:30px 12px;padding-top:12px;
+    align-items:start}   /* 未展开明细的卡片不被同排拉高 */
+  /* 一张卡片 + 它自己的明细 = 一个 grid 格子。
+     明细只占本卡那一列，右侧卡片留在原排，可逐个点「详细」、也可多张同时展开。 */
+  .row{display:block;min-width:0}
   .empty-tip{grid-column:1/-1}
 
   /* ---------- 代练人分组：组间窄长条分隔 ----------
@@ -861,7 +864,8 @@
   /* 末条下方也不留空隙，避免整块底部多出一段空白 */
   #cards>.gbar:last-child{margin-bottom:0}
   .vcard{position:relative;
-    background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
+    /* A 版「深空霓虹」：卡片底改为纯色近黑，底块再压深一档，层次靠亮度差 */
+    background:#111827;
     border:1px solid var(--line,#2a3244);border-radius:12px;
     display:flex;flex-direction:column;gap:6px;padding:10px 0 0;
     box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;transition:box-shadow .2s}
@@ -1155,17 +1159,17 @@
   .plate .nm{font-size:17px;font-weight:800;letter-spacing:.2px;line-height:1.3;display:block}
   .plate .nm.today{color:var(--ok,#3fb950);text-shadow:0 0 8px #3fb95055}
   .plate .tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-  .tag{border-radius:5px;padding:1px 6px;font-size:10px;background:#252b38;
+  .tag{border-radius:5px;padding:1px 6px;font-size:10px;background:#0a0e16;
     border:1px solid #39445a;color:#c3cddd;line-height:16px}
   .tag.lv{background:#1a2c3d;border-color:#2f5674;color:#9fd0f0;font-weight:700}
-  .tierbox{border-radius:5px;background:#0f1420cc;padding:0 4px;line-height:16px}
+  .tierbox{border-radius:5px;background:#0a0e16;padding:0 4px;line-height:16px}
   .tierbox .tb{font-size:10px;line-height:14px}
 
   /* ---- 开关行：自然宽度左对齐，代练靠右 ---- */
   .switches{display:flex;align-items:center;justify-content:flex-start;gap:5px;
     padding:0 10px;flex-wrap:wrap}
   .switches .sw{flex:0 0 auto;padding:2px 7px;font-size:10px;border-radius:5px;line-height:1.7}
-  .switches .sw.wtag{color:#8b97a8;border-color:#2b3444;background:#141922;
+  .switches .sw.wtag{color:#8b97a8;border-color:#2b3444;background:#0a0e16;
     font-weight:700;font-variant-numeric:tabular-nums}
   .switches .sw.wtag.filled{color:var(--gold,#ffcf6b);border-color:#5a4a24;background:#2a2313}
   .switches .sw.ttag{font-weight:700;font-variant-numeric:tabular-nums}
@@ -1173,7 +1177,7 @@
   .switches .sw.dlb{margin-left:auto;padding:3px 12px;font-size:11px;font-weight:700;
     border-color:#2f8f5f;background:#14452c;color:#7cf0b4;
     box-shadow:0 0 8px rgba(94,214,160,.22);white-space:nowrap}
-  .switches .sw.dlb:not(.on){border-color:#2b3444;background:#141922;color:#7f8b9c;
+  .switches .sw.dlb:not(.on){border-color:#2b3444;background:#0a0e16;color:#7f8b9c;
     font-weight:400;box-shadow:none}
 
   /* ---- 账号横幅 ---- */
@@ -1201,7 +1205,7 @@
 
   /* ---- 统计区：3 列 × 2 行 ---- */
   .stats3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px;margin-bottom:6px}
-  .stats3 .st{border-radius:7px;padding:4px 4px 5px;text-align:center;background:#171c26;
+  .stats3 .st{border-radius:7px;padding:4px 4px 5px;text-align:center;background:#0a0e16;
     border:1px solid #232b39;min-width:0}
   .stats3 .st .k{font-size:10px;font-weight:700;letter-spacing:0;color:#8b97a8;
     white-space:nowrap;line-height:1.35}
@@ -1233,7 +1237,7 @@
 
   /* ---- 录入区：无描边统一底色 + 语义色标签 + 虚线下划线 ---- */
   .inputrow{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 10px;margin-bottom:6px}
-  .ir{background:#0c1119;border:none;border-radius:7px;padding:6px 8px 8px;text-align:center;min-width:0}
+  .ir{background:#0a0e16;border:none;border-radius:7px;padding:6px 8px 8px;text-align:center;min-width:0}
   .ir .k{font-size:10px;font-weight:700;letter-spacing:0;margin-bottom:3px;text-align:center}
   .ir input{font-weight:400;border-bottom:1px dashed #3d4a5e;padding:1px 1px 4px;margin-top:0}
   .ir.sell .k{color:#b48cff}
@@ -1250,7 +1254,7 @@
   .gemsrow .k{font-size:10px;font-weight:700;color:#93a0b2;text-align:left;margin-bottom:0;
     white-space:nowrap}
   .gemsrow input{width:100%;max-width:110px;min-width:0;margin:0 auto;text-align:center}
-  .ir .dgbtn{margin-top:0;border:1px solid #3a4458;background:#181d27;color:#93a0b2;
+  .ir .dgbtn{margin-top:0;border:1px solid #3a4458;background:#0a0e16;color:#93a0b2;
     border-radius:6px;padding:4px 12px;font-size:11px;white-space:nowrap}
   .ir .dgbtn.on{border-color:#2f6b4a;color:#6fd39a;background:#15291f}
   .ir .xferpick{display:block;text-align:center;width:100%;font-size:10.5px;color:#b3a3d8;
@@ -1262,7 +1266,7 @@
   .vc-foot .btn-detail,.vc-foot .btn-edit,.vc-foot .btn-commit{
     flex:1;justify-content:center;border-radius:7px;padding:7px 0;font-size:12px;
     width:auto;height:auto;min-width:0}
-  .vc-foot .btn-detail,.vc-foot .btn-edit{background:#1a1f29;border:1px solid #2c3546;
+  .vc-foot .btn-detail,.vc-foot .btn-edit{background:#0a0e16;border:1px solid #2c3546;
     color:#a7b3c3}
   .vc-foot .btn-edit{border-color:#3a3350;color:#b9a6e0}
   .vc-foot .btn-detail:hover,.vc-foot .btn-edit:hover{color:#e6ebf2;border-color:#4a5468}
@@ -1270,14 +1274,15 @@
     color:#6fd39a;font-weight:700;box-shadow:none;border-radius:7px}
   .vc-foot .btn-commit:hover{border-color:#6fd39a}
 
-  /* 每日明细抽屉：卡片网格**上方**的独立容器，不参与 #cards 的 grid 布局。
-     旧版 .fulldetail 是 grid 项且跨整行，一展开就把同排右侧卡片全挤到下面。 */
-  .detail-dock{margin:0 0 14px;overflow-x:auto;
-    background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
-    border:1px solid color-mix(in srgb, var(--el) 35%, var(--line,#2a3244));
-    border-radius:12px;padding:12px 16px;box-shadow:0 4px 18px #0009}
-  .detail-dock[hidden]{display:none}
-  .detail-dock .detail-inner{background:transparent;border:none;padding:0;box-shadow:none}
+  /* 每日明细：跟在**本卡正下方**，宽度只占这一列。
+     ★ 明细表本身保持原样（15 列宽表、合计行、悬停说明一个不动），
+       只是容器变窄 → 加横向滚动；表格 min-width 保证列不被压扁。 */
+  .fulldetail{display:none;margin-top:6px;overflow-x:auto;
+    background:#0d1521;border:1px solid #2b4a6b;
+    border-radius:12px;padding:10px 0;box-shadow:0 4px 18px #0009}
+  .row.open .fulldetail{display:block}
+  .fulldetail .detail-inner{background:transparent;border:none;padding:0 12px;box-shadow:none}
+  .fulldetail table.dt{min-width:1180px;width:100%}
   /* 当前正在看明细的卡片：按钮高亮，箭头翻转（只改外观，不动布局） */
   .row.open .btn-detail{border-color:var(--el);color:var(--el)}
 </style>
@@ -1350,12 +1355,7 @@
     <div class="h-exp"></div>
   </div>
 
-  <!-- ========== 每日明细抽屉（2026-11-11 重构） ==========
-       独立于卡片网格：展开明细时所有卡片保持原位，同排右侧卡片不会被挤走，
-       可以逐个点「详细」切换查看；明细表仍横向铺满。 -->
-  <section id="detailDock" class="detail-dock" hidden></section>
-
-  <!-- ========== 角色卡片 ========== -->
+  <!-- ========== 角色卡片（明细跟在各自卡片正下方） ========== -->
   <main id="cards"></main>
 
   <!-- ========== 历史每日信息（过去结算日，倒序；无历史则隐藏） ========== -->
@@ -4639,59 +4639,68 @@ function detailHTML(i){
 }
 
 /* ============================================================
- * 每日明细抽屉（2026-11-11 重构）
+ * 每日明细：跟在每张卡片正下方（2026-11-11 定稿）
  * ------------------------------------------------------------
- * 旧版把 .fulldetail 作为 #cards 的 grid 项、grid-column:1/-1，
- * 一展开就独占整行，把同排右侧的卡片全挤到明细表下方 ——
- * 用户没法继续逐个点其它卡片的「详细」。
- * 现在明细统一渲染到卡片网格**上方**的独立抽屉：
- *   · 卡片网格完全不参与明细布局 → 所有卡片永远在原位
- *   · 手风琴：一次只开一张，点同一张再点一次即收起，点别张即切换
- *   · 明细表仍横向铺满，15 列都放得下
+ * 演进：① 早期 .fulldetail 跨整行 → 展开挤走右侧卡片；
+ *       ② 改成网格上方统一抽屉 → 右侧卡片保住了，但明细离卡片远；
+ *       ③ 现在 .row 是独立 grid 格子，每张卡自带 .fulldetail，
+ *          只占本卡那一列：右侧卡片留在原排，可逐个点，也能多张同时展开。
+ * 明细表本体（15 列 / 合计行 / 悬停说明）保持原样，容器窄时横向滚动。
  * ============================================================ */
-let _detailOpen = -1;                 /* 当前展开的卡片下标；-1 = 全部收起 */
+const _detailOpen = {};               /* { cardIndex: true } 允许多张同时展开 */
 
-function detailDock(){ return document.getElementById('detailDock'); }
+function detailPane(i){ return document.getElementById('detail-' + i); }
 
-/* 卡片上的「详细」按钮外观与实际展开者保持同步（render 重建 DOM 后也要调） */
+/* 卡片「详细」按钮外观与展开状态同步（render 重建 DOM 后也要调） */
 function syncDetailBtns(){
   Array.prototype.forEach.call(document.querySelectorAll('.row[data-i]'), function(row){
-    const on = Number(row.dataset.i) === _detailOpen;
+    const on = !!_detailOpen[Number(row.dataset.i)];
     row.classList.toggle('open', on);
     const b = row.querySelector('.btn-detail');
     if(b) b.setAttribute('aria-expanded', on ? 'true' : 'false');
   });
 }
 function openDetail(i){
-  if(_detailOpen === i){ closeDetail(); return; }     /* 再点一次 = 收起 */
-  _detailOpen = i;
-  const dock = detailDock();
-  if(dock){
-    dock.innerHTML = detailHTML(i);
-    dock.hidden = false;
+  const willOpen = !_detailOpen[i];
+  const el = detailPane(i);
+  if(willOpen){
+    _detailOpen[i] = true;
+    if(el) el.innerHTML = detailHTML(i);       /* 惰性渲染 */
+  }else{
+    delete _detailOpen[i];
+    if(el) el.innerHTML = '';
   }
-  syncDetailBtns();       /* 只改按钮外观，卡片网格不重排 */
-  /* 老版卡片按像素对齐列宽；v12 卡片里 syncDetailCols 会自行 no-op */
-  setTimeout(function(){ syncDetailCols(i); }, 0);
+  syncDetailBtns();
+  if(willOpen) setTimeout(function(){ syncDetailCols(i); }, 0);
 }
-function closeDetail(){
-  _detailOpen = -1;
-  const dock = detailDock();
-  if(dock){ dock.hidden = true; dock.innerHTML = ''; }
+/* 不传 i = 全部收起（删除角色、下标整体前移时用） */
+function closeDetail(i){
+  if(i == null){
+    Object.keys(_detailOpen).forEach(function(k){ delete _detailOpen[k]; });
+  }else{
+    delete _detailOpen[i];
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.row[data-i]'), function(row){
+    const idx = Number(row.dataset.i);
+    if(!_detailOpen[idx]){
+      const el = detailPane(idx);
+      if(el) el.innerHTML = '';
+    }
+  });
   syncDetailBtns();
 }
-/* 数据变更后只重渲染「当前正展开」的那一张，其余卡片一律不动 */
+/* 数据变更后只重渲染「正展开」的那些卡片 */
 function refreshDetail(i){
-  if(_detailOpen !== i) return;
-  refreshOpenDetail();
+  if(!_detailOpen[i]) return;
+  const el = detailPane(i);
+  if(el) el.innerHTML = detailHTML(i);
 }
-/* 兜底：任何数据落地都刷新当前抽屉。
-   典型场景：正看着 B 的明细，同时在 A 卡录了一笔转给 B 的转账 ——
-   B 的「市集收入（已扣转入）」会变，抽屉必须跟着变。 */
 function refreshOpenDetail(){
-  if(_detailOpen < 0) return;
-  const dock = detailDock();
-  if(dock && !dock.hidden) dock.innerHTML = detailHTML(_detailOpen);
+  Object.keys(_detailOpen).forEach(function(k){
+    const i = Number(k);
+    const el = detailPane(i);
+    if(el) el.innerHTML = detailHTML(i);
+  });
 }
 
 /* 明细表列宽按上方卡片实际像素对齐
@@ -5079,7 +5088,8 @@ function cardHTML(c, i, disp, gc){
     +       'title="录入本卡填写的数值，并自动保存">录入</button>'
     +   '</div>'
     + '</article>'
-    /* 明细不再挂在卡片里 —— 统一渲染到 #detailDock，展开时不挤走右侧卡片 */
+    /* 明细跟在本卡正下方：初始留空，点「详细」时才惰性渲染 */
+    + '<div class="fulldetail" id="detail-' + i + '"></div>'
     + '</div>';
 }
 
@@ -5326,7 +5336,8 @@ function render(){
   syncCommitAll();
   syncSettleBtn();
   syncArchiveBtn();
-  syncDetailBtns();   /* render 重建了卡片 DOM，重新标出当前展开的那张 */
+  syncDetailBtns();   /* render 重建了卡片 DOM，重新标出展开中的卡片 */
+  refreshOpenDetail();/* 新建出来的 .fulldetail 是空的，把展开中的明细填回去 */
 }
 
 /* 代练人分组分隔条（窄长条）—— 全部信息左对齐
@@ -6278,7 +6289,7 @@ document.addEventListener('click', function(e){
   /* 关闭详情：只收起抽屉，**不动任何数据**。
      之前这里放的是「清空明细」，一键就抹掉整段历史，误点代价太高。 */
   const cd = e.target.closest('[data-closedetail]');
-  if(cd){ closeDetail(); return; }
+  if(cd){ closeDetail(Number(cd.dataset.closedetail)); return; }
   /* 清空该角色明细（破坏性操作，底部按钮 + 二次确认） */
   const cl = e.target.closest('[data-clear]');
   if(cl){
