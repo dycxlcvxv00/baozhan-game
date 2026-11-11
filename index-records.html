@@ -1890,7 +1890,14 @@ function refreshXferInRows(){
  * 录入卡片「剩余晶石」行右边有一个「异界」按钮（.dgbtn）。
  *   · 点亮  → 本次收入来自异界（落库 dsrc='dun'）
  *   · 不亮  → 本次收入来自市集或转入（落库 dsrc='mkt'，金额走残差自动算）
- * 状态存在 _dgPick 里，按卡片下标索引；卡片重绘后仍然保留。
+ * 状态存在 _dgPick 里，按卡片下标索引；卡片重绘后仍然保留
+ * （点亮了还没录入、中途展开明细/改设置，状态不丢）。
+ *
+ * ★ 但**每次成功录入后必须复位为灰色**（2026-11-11 用户更正）：
+ *   按钮是「本次录入」的来源声明，不是「这个号」的长期开关。
+ *   若录完还亮着，接着录第二次剩余晶石（本该是市集收入）时，
+ *   第二次也会被标成 dsrc='dun' → 市集收入被错算成异界产出。
+ *   复位后下一次默认 mkt，要记异界得重新点亮一次。
  * ============================================================ */
 const _dgPick = {};                  /* { cardIndex: true } */
 
@@ -1899,6 +1906,16 @@ function dgPickOn(i){
 }
 function dgPickSet(i, on){
   _dgPick[i] = !!on;
+}
+/* 单次录入完成 → 状态与卡片上的按钮一起复位（UI 与状态不脱节） */
+function resetDgPick(i){
+  dgPickSet(i, false);
+  const row = document.querySelector('.row[data-i="' + i + '"]');
+  const btn = row && row.querySelector('.dgbtn');
+  if(btn){
+    btn.classList.remove('on');
+    btn.setAttribute('aria-pressed', 'false');
+  }
 }
 
 /* 「转移收入」自动带出行：本号**今天**收到的转入（已扣 5% 手续费）
@@ -4929,14 +4946,18 @@ function cardHTML(c, i, disp, gc){
   +   '</div>'
   /* 「剩余晶石」整行（v12）：标签靠左 · 数字居中 · 「异界」按钮靠右。
      点亮 = 本次收入来自异界；不亮 = 来自市集或转入。
-     按钮状态存在 _dgPick（按卡片下标），刷新页面后仍保留。
+     按钮状态存在 _dgPick（按卡片下标），重绘后仍保留；
+     ★ 但每次「录入」成功后自动复位为灰色 —— 它声明的是「本次」来源，
+       不是这个号的长期开关（见 resetDgPick）。
      注：录入区原来的「转移收入（自动）」行按 v12 版式撤掉了 ——
-     转移收支已单独一行铺满整行显示（转移支出 | 转移收入），不再重复占录入区的位置。 */
+     转移收支已单独一行铺满整行显示（转移支出 | 转移收入），不再重复占录入区的位置。
+     转移收入由别的号的「转移晶石 + 转给谁」自动推导，并在闭合反推的
+     物理时间窗口里从残差中扣除，不会污染异界/市集两个收入桶。 */
   +   '<div class="ir wide"><div class="gemsrow">'
   +     '<div class="k">剩余晶石</div>'
   +     numInput('gemsLeft','现有多少填多少')
   +     '<button class="dgbtn' + (dgPickOn(i) ? ' on' : '') + '" type="button" data-dgbtn="' + i + '"'
-  +       ' title="点亮 = 本次收入来自异界；不亮 = 来自市集或转入。状态按这个号保留，录完不会自动关 —— 要记市集/转入就先把它按灭。"'
+  +       ' title="点亮 = 本次收入来自异界；不亮 = 来自市集或转入。每次录入后自动复位为灰色，下一次要记异界请重新点亮。"'
   +       ' aria-pressed="' + (dgPickOn(i) ? 'true' : 'false') + '">'
   +       '<span class="dot"></span>异界</button>'
   +   '</div></div>'
@@ -5339,6 +5360,10 @@ function pushRec(i, got){
   };
   ACCOUNTS[i].records.push(rec);
   bumpDataVer();                    /* 别的号可能转给本号 → 全局缓存都要重算 */
+  /* ★ 来源按钮是「本次录入」的声明，落库后立即复位为灰色。
+     不复位的话，接着录第二次剩余晶石（市集收入）会沿用上一次的 dun 标记，
+     把市集收入错算进异界产出。复位后下一次默认 mkt，要记异界需重新点亮。 */
+  resetDgPick(i);
   Array.prototype.forEach.call(got.ins, function(el){ el.value = ''; });
   return rec;
 }
