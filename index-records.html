@@ -1238,13 +1238,18 @@
   .ir.cash .k{color:#e8c46a}
   .ir.chaos .k{color:#ff8f8f}
   .ir.xferrow .k{color:#c77bff}
-  .ir.wide{grid-column:1/-1}
-  .gemsrow{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
+  /* 「剩余晶石」整行是挂在 .inputrow 之外的独立块，必须自己补左右 10px 留白。
+     否则它比上面两行录入格（.inputrow 有 padding:0 10px）左右各宽 10px，
+     深色底块会贴到卡片边框、看起来像溢出（2026-11-11 修正）。 */
+  .ir.wide{grid-column:1/-1;margin:0 10px 6px;min-width:0}
+  /* 中列用 minmax(0,1fr)：窄卡片时允许输入框收缩，不让 auto 列把它顶出边界 */
+  .gemsrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;gap:8px;min-width:0}
   .gemsrow .k{font-size:10px;font-weight:700;color:#93a0b2;text-align:left;margin-bottom:0;
     white-space:nowrap}
-  .gemsrow input{width:100%;max-width:110px;margin:0 auto;text-align:center}
+  .gemsrow input{width:100%;max-width:110px;min-width:0;margin:0 auto;text-align:center}
   .ir .dgbtn{margin-top:0;border:1px solid #3a4458;background:#181d27;color:#93a0b2;
-    border-radius:6px;padding:4px 12px;font-size:11px}
+    border-radius:6px;padding:4px 12px;font-size:11px;white-space:nowrap}
   .ir .dgbtn.on{border-color:#2f6b4a;color:#6fd39a;background:#15291f}
   .ir .xferpick{display:block;text-align:center;width:100%;font-size:10.5px;color:#b3a3d8;
     border:1px solid #3d2f63;background:#1d1630;border-radius:6px;padding:4px 0;margin-top:5px}
