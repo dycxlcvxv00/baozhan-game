@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>卡牌配色 / 边框 重做模板（仅预览，未实装）</title>
+<style>
+  :root{ --bg:#06080d; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:#cfd6e0;
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    padding:26px 22px 60px;}
+  h1{font-size:17px;font-weight:700;margin:0 0 4px;letter-spacing:.5px}
+  .sub{font-size:12.5px;color:#7a8595;margin:0 0 22px;line-height:1.6}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 24px;font-size:11.5px;color:#8b95a4}
+  .legend b{color:#cdd5e0}
+  .row{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .col{flex:1 1 320px;min-width:300px;max-width:380px}
+  .col h2{font-size:13px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+  .col .desc{font-size:11px;color:#7a8595;line-height:1.55;margin:0 0 14px;min-height:46px}
+  .swatch{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid #ffffff22}
+
+  /* ============ 通用卡牌骨架（与 index-records.html 完全一致的结构） ============ */
+  .vcard{position:relative;border-radius:12px;display:flex;flex-direction:column;gap:6px;
+    padding:10px 0 0;box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d;overflow:hidden}
+  .plate{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin:0 10px;padding:2px 10px 8px;border-bottom:1px solid var(--plate-sep)}
+  .plate .nm{font-size:17px;font-weight:800;letter-spacing:.2px;line-height:1.3}
+  .plate .tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+  .tag{border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}
+  .tag.lv{font-weight:700}
+  .tierbox{border-radius:5px;padding:0 4px;line-height:16px;font-size:10px}
+  .switches{display:flex;align-items:center;justify-content:flex-start;gap:5px;padding:0 10px;flex-wrap:wrap}
+  .switches .sw{flex:0 0 auto;padding:2px 7px;font-size:10px;border-radius:5px;line-height:1.7}
+  .switches .sw.dlb{margin-left:auto;padding:3px 12px;font-size:11px;font-weight:700}
+  .acct-banner{margin:0 10px;padding:5px 8px;border-radius:5px;font-size:11px;letter-spacing:1px;text-align:center}
+  .gemsbar{position:relative;display:flex;align-items:center;justify-content:center;
+    border-radius:7px;padding:5px 10px;margin:0 10px 8px}
+  .gemsbar .k{position:absolute;left:10px;font-size:11px;font-weight:700}
+  .gemsbar .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+  .srcrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 10px;margin-bottom:8px}
+  .srcrow .st{border-radius:7px;padding:5px 4px 6px;text-align:center}
+  .srcrow .st .k{font-size:10.5px;font-weight:700;margin-bottom:1px;white-space:nowrap}
+  .srcrow .st .v{font-size:16px;font-weight:800;line-height:1.3;font-variant-numeric:tabular-nums}
+  .stats3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 10px;margin-bottom:6px}
+  .stats3 .st{border-radius:7px;padding:4px 4px 5px;text-align:center;min-width:0}
+  .stats3 .st .k{font-size:10px;font-weight:700;white-space:nowrap;line-height:1.35}
+  .stats3 .st .v{font-size:15px;font-weight:800;line-height:1.25;display:block;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .xfrow{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 10px;margin-bottom:8px}
+  .xfrow .st{border-radius:7px;padding:4px 4px 5px;text-align:center;min-width:0}
+  .xfrow .st .k{font-size:10px;font-weight:700;white-space:nowrap;line-height:1.35}
+  .xfrow .st .v{font-size:15px;font-weight:800;line-height:1.25;display:block;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .inputrow{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 10px;margin-bottom:6px}
+  .ir{border-radius:7px;padding:6px 8px 8px;text-align:center;min-width:0}
+  .ir .k{font-size:10px;font-weight:700;margin-bottom:3px}
+  .ir input{width:100%;background:transparent;border:none;outline:none;font-size:14px;font-weight:700;
+    text-align:center;border-bottom:1px dashed var(--dash);padding:1px 1px 4px;color:var(--txt)}
+  .ir input::placeholder{color:var(--ph);font-weight:400;font-size:11px}
+  .ir .xferpick{display:block;text-align:center;width:100%;font-size:10.5px;border-radius:6px;padding:4px 0;margin-top:5px}
+  .ir.wide{margin:0 10px 6px}
+  .gemsrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-width:0}
+  .gemsrow .k{font-size:10px;font-weight:700;white-space:nowrap}
+  .gemsrow input{width:100%;max-width:110px;margin:0 auto;text-align:center}
+  .ir .dgbtn{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:4px 12px;font-size:11px;white-space:nowrap}
+  .ir .dgbtn .dot{width:7px;height:7px;border-radius:50%;background:var(--dot-off)}
+  .vc-foot{display:flex;align-items:stretch;gap:6px;padding:2px 10px 10px}
+  .vc-foot button{flex:1;justify-content:center;border-radius:7px;padding:7px 0;font-size:12px;
+    border:1px solid transparent;cursor:pointer;font-family:inherit}
+  /* 铭牌对比用的小卡 */
+  .cmp{display:flex;gap:18px;flex-wrap:wrap;margin:30px 0 6px}
+  .cmp .box{flex:1 1 300px;max-width:380px}
+  .cmp h3{font-size:12.5px;font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:7px}
+  .cmp .bad{color:#e0937a} .cmp .good{color:#8fd6bd}
+  .cmp .mini{--block-bg:#100c07;background:#15110b;border:1px solid rgba(226,184,116,.24);border-radius:12px;padding:14px 14px 16px;box-shadow:0 2px 12px #0008, inset 0 1px 0 #ffffff0d}
+  .cmp .mini .plate{margin:0;padding:2px 0 10px}
+  .cmp .mini.wrong .tag.lv{color:#f0d39a;border-color:rgba(232,196,106,.32)}
+  .cmp .mini.wrong .tierbox{background:var(--block-bg);border:1px solid rgba(232,196,106,.32);color:#f0d39a}
+  .cmp .mini.right .tag.lv{color:#f0d39a;border-color:rgba(232,196,106,.32)}
+  .cmp .mini.right .tierbox{background:var(--block-bg);border:1px solid rgba(224,147,122,.34);color:#e0937a}
+  .cmp .note{font-size:11px;color:#7a8595;line-height:1.5;margin:8px 0 0}
+  .vc-foot .btn-commit{background:var(--commit-bg);border-color:var(--commit-bd);color:var(--commit-tx);font-weight:700}
+
+  /* ============ 主题① 墨玉（冷调单色，全框同色系淡边） ============ */
+  .t-a{ --card-bg:#0d141a; --block-bg:#0a1014;
+    --line:rgba(122,201,176,.14); --line-strong:rgba(122,201,176,.22); --plate-sep:rgba(122,201,176,.20);
+    --txt:#d8e3e1; --mute:#7c8a8e; --ph:#3f4e4c;
+    --accent:#5fd6a8; --cost:#e98b86; --dun:#6cc4d6; --gold:#e8c46a;
+    --tp:#b79ade; --tp2:#e0a6c4; --dash:#2c4a44; --dot-off:#3a4f4b;
+    --btn-bg:#0d141a; --btn-bd:#243a35; --btn-tx:#aabcb8;
+    --commit-bg:#102a22; --commit-bd:#2f6b4a; --commit-tx:#6fd39a;
+    --gems-bg:rgba(95,214,168,.09); --gems-bd:rgba(95,214,168,.24);
+    --row-tint:rgba(122,201,176,.04);
+  }
+  .t-a .vcard{background:var(--card-bg);border:1px solid var(--line-strong)}
+  .t-a .tag{background:var(--block-bg);border:1px solid var(--line);color:var(--txt)}
+  .t-a .tag.lv{color:#9fe0c8;border-color:rgba(95,214,168,.30)}
+  /* 档位框：与 Lv 的玉青区分，改用雾蓝（冷调里的第二色） */
+  .t-a .tierbox{background:var(--block-bg);border:1px solid rgba(159,184,224,.34);color:#9fb8e0}
+  .t-a .switches .sw{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-a .switches .sw.dlb{background:#143029;border-color:#2f6b4a;color:#7ce0b6}
+  .t-a .acct-banner{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-a .gemsbar{background:var(--gems-bg);border:1px solid var(--gems-bd)}
+  .t-a .gemsbar .k{color:#9fe0c8} .t-a .gemsbar .v{color:var(--accent)}
+  .t-a .srcrow .st,.t-a .stats3 .st,.t-a .xfrow .st{background:var(--block-bg);border:1px solid var(--line)}
+  .t-a .srcrow .st .k,.t-a .stats3 .st .k,.t-a .xfrow .st .k{color:var(--mute)}
+  .t-a .st.src.dun{background:rgba(108,196,214,.07);border-color:rgba(108,196,214,.22)} .t-a .st.src.dun .k{color:#8fd0dd} .t-a .st.src.dun .v{color:var(--dun)}
+  .t-a .st.src.mkt{background:rgba(150,170,210,.06);border-color:rgba(150,170,210,.20)} .t-a .st.src.mkt .k{color:#a9b8d6} .t-a .st.src.mkt .v{color:#adc2ec}
+  .t-a .st.src.net{background:rgba(95,214,168,.07);border-color:rgba(95,214,168,.22)} .t-a .st.src.net .k{color:#8fd6bd} .t-a .st.src.net .v{color:var(--accent)}
+  .t-a .st .v{color:var(--txt)}
+  .t-a .vcraft{color:var(--tp)} .t-a .vchaos{color:var(--cost)} .t-a .vsold{color:#b79ade}
+  .t-a .vlabor{color:var(--cost)} .t-a .vcash{color:var(--gold)} .t-a .vprofit{color:var(--accent)} .t-a .vprofit.neg{color:var(--cost)}
+  .t-a .xfout{background:rgba(183,154,222,.06);border-color:rgba(183,154,222,.20)} .t-a .xfout .k{color:#b3a0d6} .t-a .xfout .v{color:#bda6e6}
+  .t-a .xfin{background:rgba(224,166,196,.05);border-color:rgba(224,166,196,.18)} .t-a .xfin .k{color:#cda6bc} .t-a .xfin .v{color:#e0a6c4}
+  .t-a .ir{background:var(--block-bg);border:1px solid var(--line)}
+  .t-a .ir.sell .k{color:#b79ade} .t-a .ir.cash .k{color:var(--gold)} .t-a .ir.chaos .k{color:var(--cost)} .t-a .ir.xferrow .k{color:#bda6e6}
+  .t-a .gemsrow .k{color:var(--mute)}
+  .t-a .ir .dgbtn{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-a .ir .dgbtn.on{border-color:rgba(95,214,168,.40);color:#7fe0bf;background:rgba(95,214,168,.08)}
+  .t-a .ir .dgbtn.on .dot{background:var(--accent)}
+  .t-a .ir .xferpick{background:rgba(183,154,222,.10);border:1px solid rgba(183,154,222,.30);color:#bda6e6}
+  .t-a .ir .xferpick b{color:#c9b2ec}
+
+  /* ============ 主题② 暖墨（暖调单色，全框同色系淡边） ============ */
+  .t-b{ --card-bg:#15110b; --block-bg:#100c07;
+    --line:rgba(226,184,116,.15); --line-strong:rgba(226,184,116,.24); --plate-sep:rgba(226,184,116,.22);
+    --txt:#ece1cf; --mute:#9a8c76; --ph:#473e2c;
+    --accent:#e8c46a; --cost:#dd8a78; --dun:#a9c79a; --gold:#e8c46a;
+    --tp:#c8a6d8; --tp2:#e0b0a0; --dash:#473e2c; --dot-off:#4a4030;
+    --btn-bg:#15110b; --btn-bd:#3a3122; --btn-tx:#c2b39a;
+    --commit-bg:#2a2113; --commit-bd:#6b5424; --commit-tx:#e8c46a;
+    --gems-bg:rgba(232,196,106,.08); --gems-bd:rgba(232,196,106,.24);
+    --row-tint:rgba(226,184,116,.04);
+  }
+  .t-b .vcard{background:var(--card-bg);border:1px solid var(--line-strong)}
+  .t-b .tag{background:var(--block-bg);border:1px solid var(--line);color:var(--txt)}
+  .t-b .tag.lv{color:#f0d39a;border-color:rgba(232,196,106,.32)}
+  /* 档位框：与 Lv 的暖金区分，改用陶土橙（暖调里的第二色） */
+  .t-b .tierbox{background:var(--block-bg);border:1px solid rgba(224,147,122,.34);color:#e0937a}
+  .t-b .switches .sw{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-b .switches .sw.dlb{background:#2e2412;border-color:#6b5424;color:#f0d39a}
+  .t-b .acct-banner{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-b .gemsbar{background:var(--gems-bg);border:1px solid var(--gems-bd)}
+  .t-b .gemsbar .k{color:#f0d39a} .t-b .gemsbar .v{color:var(--accent)}
+  .t-b .srcrow .st,.t-b .stats3 .st,.t-b .xfrow .st{background:var(--block-bg);border:1px solid var(--line)}
+  .t-b .srcrow .st .k,.t-b .stats3 .st .k,.t-b .xfrow .st .k{color:var(--mute)}
+  .t-b .st.src.dun{background:rgba(169,199,154,.07);border-color:rgba(169,199,154,.20)} .t-b .st.src.dun .k{color:#bcd6af} .t-b .st.src.dun .v{color:var(--dun)}
+  .t-b .st.src.mkt{background:rgba(210,190,150,.06);border-color:rgba(210,190,150,.18)} .t-b .st.src.mkt .k{color:#d2c09a} .t-b .st.src.mkt .v{color:#e3d2a8}
+  .t-b .st.src.net{background:rgba(232,196,106,.07);border-color:rgba(232,196,106,.20)} .t-b .st.src.net .k{color:#e0c98f} .t-b .st.src.net .v{color:var(--accent)}
+  .t-b .st .v{color:var(--txt)}
+  .t-b .vcraft{color:var(--tp)} .t-b .vchaos{color:var(--cost)} .t-b .vsold{color:#c8a6d8}
+  .t-b .vlabor{color:var(--cost)} .t-b .vcash{color:var(--gold)} .t-b .vprofit{color:var(--accent)} .t-b .vprofit.neg{color:var(--cost)}
+  .t-b .xfout{background:rgba(200,166,216,.06);border-color:rgba(200,166,216,.18)} .t-b .xfout .k{color:#c2a6d0} .t-b .xfout .v{color:#cdb0e0}
+  .t-b .xfin{background:rgba(224,176,160,.05);border-color:rgba(224,176,160,.18)} .t-b .xfin .k{color:#d2b2a4} .t-b .xfin .v{color:#e0b0a0}
+  .t-b .ir{background:var(--block-bg);border:1px solid var(--line)}
+  .t-b .ir.sell .k{color:#c8a6d8} .t-b .ir.cash .k{color:var(--gold)} .t-b .ir.chaos .k{color:var(--cost)} .t-b .ir.xferrow .k{color:#cdb0e0}
+  .t-b .gemsrow .k{color:var(--mute)}
+  .t-b .ir .dgbtn{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-b .ir .dgbtn.on{border-color:rgba(232,196,106,.38);color:#f0d39a;background:rgba(232,196,106,.08)}
+  .t-b .ir .dgbtn.on .dot{background:var(--accent)}
+  .t-b .ir .xferpick{background:rgba(200,166,216,.10);border:1px solid rgba(200,166,216,.28);color:#cdb0e0}
+  .t-b .ir .xferpick b{color:#d8c0e6}
+
+  /* ============ 主题③ 靛蓝分区（冷底 + 克制语义淡彩，全框同色系淡边） ============ */
+  .t-c{ --card-bg:#0c1120; --block-bg:#0a0e1c;
+    --line:rgba(132,152,200,.12); --line-strong:rgba(132,152,200,.20); --plate-sep:rgba(132,152,200,.18);
+    --txt:#dde4f2; --mute:#7e8aa3; --ph:#3a4458;
+    --accent:#5fd6a0; --cost:#ef8a8a; --dun:#5fc6dc; --gold:#e8c46a;
+    --tp:#b79ade; --tp2:#e0a6c4; --dash:#36405a; --dot-off:#3a4660;
+    --btn-bg:#0c1120; --btn-bd:#28334a; --btn-tx:#aab4c8;
+    --commit-bg:#13261f; --commit-bd:#2f6b4a; --commit-tx:#6fd39a;
+    --gems-bg:rgba(95,214,160,.08); --gems-bd:rgba(95,214,160,.22);
+    --row-tint:rgba(132,152,200,.04);
+  }
+  .t-c .vcard{background:var(--card-bg);border:1px solid var(--line-strong)}
+  .t-c .tag{background:var(--block-bg);border:1px solid var(--line);color:var(--txt)}
+  .t-c .tag.lv{color:#9fd0f0;border-color:rgba(120,180,220,.30)}
+  /* 档位框：与 Lv 的冰蓝区分，改用紫罗兰（冷调里的第二色） */
+  .t-c .tierbox{background:var(--block-bg);border:1px solid rgba(183,154,222,.32);color:#b79ade}
+  .t-c .switches .sw{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-c .switches .sw.dlb{background:#143029;border-color:#2f6b4a;color:#7ce0b6}
+  .t-c .acct-banner{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-c .gemsbar{background:var(--gems-bg);border:1px solid var(--gems-bd)}
+  .t-c .gemsbar .k{color:#9fe0c8} .t-c .gemsbar .v{color:var(--accent)}
+  .t-c .srcrow .st,.t-c .stats3 .st,.t-c .xfrow .st{background:var(--block-bg);border:1px solid var(--line)}
+  .t-c .srcrow .st .k,.t-c .stats3 .st .k,.t-c .xfrow .st .k{color:var(--mute)}
+  .t-c .st.src.dun{background:rgba(95,198,220,.07);border-color:rgba(95,198,220,.20)} .t-c .st.src.dun .k{color:#8fd4e6} .t-c .st.src.dun .v{color:var(--dun)}
+  .t-c .st.src.mkt{background:rgba(150,170,220,.06);border-color:rgba(150,170,220,.18)} .t-c .st.src.mkt .k{color:#a9b8e2} .t-c .st.src.mkt .v{color:#aec2f2}
+  .t-c .st.src.net{background:rgba(95,214,160,.07);border-color:rgba(95,214,160,.20)} .t-c .st.src.net .k{color:#8fd6bd} .t-c .st.src.net .v{color:var(--accent)}
+  .t-c .st .v{color:var(--txt)}
+  .t-c .vcraft{color:var(--tp)} .t-c .vchaos{color:var(--cost)} .t-c .vsold{color:#b79ade}
+  .t-c .vlabor{color:var(--cost)} .t-c .vcash{color:var(--gold)} .t-c .vprofit{color:var(--accent)} .t-c .vprofit.neg{color:var(--cost)}
+  .t-c .xfout{background:rgba(183,154,222,.06);border-color:rgba(183,154,222,.18)} .t-c .xfout .k{color:#b3a0d6} .t-c .xfout .v{color:#bda6e6}
+  .t-c .xfin{background:rgba(224,166,196,.05);border-color:rgba(224,166,196,.16)} .t-c .xfin .k{color:#cda6bc} .t-c .xfin .v{color:#e0a6c4}
+  .t-c .ir{background:var(--block-bg);border:1px solid var(--line)}
+  .t-c .ir.sell .k{color:#b79ade} .t-c .ir.cash .k{color:var(--gold)} .t-c .ir.chaos .k{color:var(--cost)} .t-c .ir.xferrow .k{color:#bda6e6}
+  .t-c .gemsrow .k{color:var(--mute)}
+  .t-c .ir .dgbtn{background:var(--block-bg);border:1px solid var(--line);color:var(--mute)}
+  .t-c .ir .dgbtn.on{border-color:rgba(95,214,160,.38);color:#7fe0bf;background:rgba(95,214,160,.08)}
+  .t-c .ir .dgbtn.on .dot{background:var(--accent)}
+  .t-c .ir .xferpick{background:rgba(183,154,222,.10);border:1px solid rgba(183,154,222,.28);color:#bda6e6}
+  .t-c .ir .xferpick b{color:#c9b2ec}
+</style>
+</head>
+<body>
+  <h1>卡牌配色 / 边框 重做模板</h1>
+  <p class="sub">仅预览，未实装任何代码。结构（铭牌 → 开关 → 账号横幅 → 剩余晶石 → 来源三格 → 统计 3×2 → 转移两格 → 录入四格 → 剩余晶石整行 → 底部三按钮）与线上完全一致，只换了颜色和边框。</p>
+  <div class="legend">
+    <span><span class="swatch" style="background:#5fd6a8"></span> <b>净流入/净值</b> 绿</span>
+    <span><span class="swatch" style="background:#e8c46a"></span> <b>现金/金币</b> 金</span>
+    <span><span class="swatch" style="background:#ef8a8a"></span> <b>消耗/费用</b> 红</span>
+    <span><span class="swatch" style="background:#5fc6dc"></span> <b>异界产出</b> 青</span>
+    <span><span class="swatch" style="background:#b79ade"></span> <b>出售/转出</b> 紫</span>
+    <span><span class="swatch" style="background:#e0a6c4"></span> <b>转入</b> 粉</span>
+  </div>
+
+  <div class="row">
+    <!-- 主题① -->
+    <div class="col">
+      <h2><span class="swatch" style="background:#0d141a;border-color:#5fd6a8"></span>① 墨玉（冷调单色）</h2>
+      <p class="desc">所有框统一用「玉青淡边」一种，不再七彩边框。语义色只做文字与极淡底色，整体最克制、最不花。</p>
+      <div class="vcard t-a">
+        <div class="plate"><span class="nm">陌尘</span><span class="tags"><span class="tag lv">Lv.80</span><span class="tag">术士</span><span class="tierbox">7档 +45%</span></span></div>
+        <div class="switches"><span class="sw">财富 125.0万</span><span class="sw">7档 +45%</span><span class="sw">背包</span><span class="sw">市集</span><span class="sw">宠物</span><span class="sw dlb">代练</span></div>
+        <div class="acct-banner">主号 · 微信区</div>
+        <div class="gemsbar"><div class="k">剩余晶石</div><span class="v">2,450,000</span></div>
+        <div class="srcrow">
+          <div class="st src dun"><div class="k">异界产出</div><span class="v">850,000</span></div>
+          <div class="st src mkt"><div class="k">市集收入</div><span class="v">120,000</span></div>
+          <div class="st src net"><div class="k">晶石净值</div><span class="v">970,000</span></div>
+        </div>
+        <div class="stats3">
+          <div class="st"><div class="k">装备打造</div><span class="v vcraft">320,000</span></div>
+          <div class="st"><div class="k">秘境消耗</div><span class="v vchaos">410,000</span></div>
+          <div class="st"><div class="k">出售晶石</div><span class="v vsold">680,000</span></div>
+          <div class="st"><div class="k">人工费用</div><span class="v vlabor">¥2,400</span></div>
+          <div class="st"><div class="k">现金收入</div><span class="v vcash">¥8,600</span></div>
+          <div class="st"><div class="k">净利润</div><span class="v vprofit">¥6,200</span></div>
+        </div>
+        <div class="xfrow">
+          <div class="st xfout"><div class="k">转移支出</div><span class="v">50,000</span></div>
+          <div class="st xfin"><div class="k">转移收入</div><span class="v">47,000</span></div>
+        </div>
+        <div class="inputrow">
+          <div class="ir sell"><div class="k">出售晶石</div><input placeholder="卖掉的晶石"></div>
+          <div class="ir cash"><div class="k">现金收入</div><input placeholder="卖晶石收到的钱"></div>
+          <div class="ir chaos"><div class="k">秘境消耗</div><input placeholder="进秘境花掉的晶石"></div>
+          <div class="ir xferrow"><div class="k">转移晶石</div><input placeholder="转给别的号的晶石"><button class="xferpick">转给 <b>小号A</b> ▾</button></div>
+        </div>
+        <div class="ir wide"><div class="gemsrow"><div class="k">剩余晶石</div><input placeholder="现有多少填多少"><button class="dgbtn"><span class="dot"></span>异界</button></div></div>
+        <div class="vc-foot"><button class="btn-detail">详细 ▼</button><button class="btn-edit">修改</button><button class="btn-commit">录入</button></div>
+      </div>
+    </div>
+
+    <!-- 主题② -->
+    <div class="col">
+      <h2><span class="swatch" style="background:#15110b;border-color:#e8c46a"></span>② 暖墨（暖调单色）· 顶部标签已修正</h2>
+      <p class="desc">整张卡换到暖色家族，边框统一「琥珀淡边」。顶部标签恢复区分：Lv=暖金、档位=陶土橙、职业=中性灰，三者不再同色。异界改用柔橄榄绿与金区分。</p>
+      <div class="vcard t-b">
+        <div class="plate"><span class="nm">陌尘</span><span class="tags"><span class="tag lv">Lv.80</span><span class="tag">术士</span><span class="tierbox">7档 +45%</span></span></div>
+        <div class="switches"><span class="sw">财富 125.0万</span><span class="sw">7档 +45%</span><span class="sw">背包</span><span class="sw">市集</span><span class="sw">宠物</span><span class="sw dlb">代练</span></div>
+        <div class="acct-banner">主号 · 微信区</div>
+        <div class="gemsbar"><div class="k">剩余晶石</div><span class="v">2,450,000</span></div>
+        <div class="srcrow">
+          <div class="st src dun"><div class="k">异界产出</div><span class="v">850,000</span></div>
+          <div class="st src mkt"><div class="k">市集收入</div><span class="v">120,000</span></div>
+          <div class="st src net"><div class="k">晶石净值</div><span class="v">970,000</span></div>
+        </div>
+        <div class="stats3">
+          <div class="st"><div class="k">装备打造</div><span class="v vcraft">320,000</span></div>
+          <div class="st"><div class="k">秘境消耗</div><span class="v vchaos">410,000</span></div>
+          <div class="st"><div class="k">出售晶石</div><span class="v vsold">680,000</span></div>
+          <div class="st"><div class="k">人工费用</div><span class="v vlabor">¥2,400</span></div>
+          <div class="st"><div class="k">现金收入</div><span class="v vcash">¥8,600</span></div>
+          <div class="st"><div class="k">净利润</div><span class="v vprofit">¥6,200</span></div>
+        </div>
+        <div class="xfrow">
+          <div class="st xfout"><div class="k">转移支出</div><span class="v">50,000</span></div>
+          <div class="st xfin"><div class="k">转移收入</div><span class="v">47,000</span></div>
+        </div>
+        <div class="inputrow">
+          <div class="ir sell"><div class="k">出售晶石</div><input placeholder="卖掉的晶石"></div>
+          <div class="ir cash"><div class="k">现金收入</div><input placeholder="卖晶石收到的钱"></div>
+          <div class="ir chaos"><div class="k">秘境消耗</div><input placeholder="进秘境花掉的晶石"></div>
+          <div class="ir xferrow"><div class="k">转移晶石</div><input placeholder="转给别的号的晶石"><button class="xferpick">转给 <b>小号A</b> ▾</button></div>
+        </div>
+        <div class="ir wide"><div class="gemsrow"><div class="k">剩余晶石</div><input placeholder="现有多少填多少"><button class="dgbtn"><span class="dot"></span>异界</button></div></div>
+        <div class="vc-foot"><button class="btn-detail">详细 ▼</button><button class="btn-edit">修改</button><button class="btn-commit">录入</button></div>
+      </div>
+    </div>
+
+    <!-- 主题③ -->
+    <div class="col">
+      <h2><span class="swatch" style="background:#0c1120;border-color:#5fc6dc"></span>③ 靛蓝分区（冷底+克制淡彩）</h2>
+      <p class="desc">冷底 + 统一靛灰淡边，保留语义色但压到「文字+极淡底」，来源/转移/录入按行轻微分区，既不花又有辨识度。</p>
+      <div class="vcard t-c">
+        <div class="plate"><span class="nm">陌尘</span><span class="tags"><span class="tag lv">Lv.80</span><span class="tag">术士</span><span class="tierbox">7档 +45%</span></span></div>
+        <div class="switches"><span class="sw">财富 125.0万</span><span class="sw">7档 +45%</span><span class="sw">背包</span><span class="sw">市集</span><span class="sw">宠物</span><span class="sw dlb">代练</span></div>
+        <div class="acct-banner">主号 · 微信区</div>
+        <div class="gemsbar"><div class="k">剩余晶石</div><span class="v">2,450,000</span></div>
+        <div class="srcrow">
+          <div class="st src dun"><div class="k">异界产出</div><span class="v">850,000</span></div>
+          <div class="st src mkt"><div class="k">市集收入</div><span class="v">120,000</span></div>
+          <div class="st src net"><div class="k">晶石净值</div><span class="v">970,000</span></div>
+        </div>
+        <div class="stats3">
+          <div class="st"><div class="k">装备打造</div><span class="v vcraft">320,000</span></div>
+          <div class="st"><div class="k">秘境消耗</div><span class="v vchaos">410,000</span></div>
+          <div class="st"><div class="k">出售晶石</div><span class="v vsold">680,000</span></div>
+          <div class="st"><div class="k">人工费用</div><span class="v vlabor">¥2,400</span></div>
+          <div class="st"><div class="k">现金收入</div><span class="v vcash">¥8,600</span></div>
+          <div class="st"><div class="k">净利润</div><span class="v vprofit">¥6,200</span></div>
+        </div>
+        <div class="xfrow">
+          <div class="st xfout"><div class="k">转移支出</div><span class="v">50,000</span></div>
+          <div class="st xfin"><div class="k">转移收入</div><span class="v">47,000</span></div>
+        </div>
+        <div class="inputrow">
+          <div class="ir sell"><div class="k">出售晶石</div><input placeholder="卖掉的晶石"></div>
+          <div class="ir cash"><div class="k">现金收入</div><input placeholder="卖晶石收到的钱"></div>
+          <div class="ir chaos"><div class="k">秘境消耗</div><input placeholder="进秘境花掉的晶石"></div>
+          <div class="ir xferrow"><div class="k">转移晶石</div><input placeholder="转给别的号的晶石"><button class="xferpick">转给 <b>小号A</b> ▾</button></div>
+        </div>
+        <div class="ir wide"><div class="gemsrow"><div class="k">剩余晶石</div><input placeholder="现有多少填多少"><button class="dgbtn"><span class="dot"></span>异界</button></div></div>
+        <div class="vc-foot"><button class="btn-detail">详细 ▼</button><button class="btn-edit">修改</button><button class="btn-commit">录入</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 顶部标签：统一(错) vs 区分(对) 对比 -->
+  <div class="cmp">
+    <div class="box">
+      <h3 class="bad">✗ 之前（统一成同色，不对）</h3>
+      <div class="mini wrong">
+        <div class="plate"><span class="nm">陌尘</span><span class="tags"><span class="tag lv">Lv.80</span><span class="tag">术士</span><span class="tierbox">7档 +45%</span></span></div>
+      </div>
+      <p class="note">Lv 与档位框都是同一种金 → 顶部三个标签失去区分，看着像被「统一」了。</p>
+    </div>
+    <div class="box">
+      <h3 class="good">✓ 修正后（区分开）</h3>
+      <div class="mini right">
+        <div class="plate"><span class="nm">陌尘</span><span class="tags"><span class="tag lv">Lv.80</span><span class="tag">术士</span><span class="tierbox">7档 +45%</span></span></div>
+      </div>
+      <p class="note">Lv=暖金、档位框=陶土橙（暖调里的第二色）、职业=中性灰，三者各拿一种暖色，恢复区分，仍属同一暖家族。</p>
+    </div>
+  </div>
+</body>
+</html>
