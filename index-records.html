@@ -1303,6 +1303,90 @@
   #cards .vcard .vc-foot .btn-detail,
   #cards .vcard .vc-foot .btn-edit,
   #cards .vcard .vc-foot .btn-commit{border:none}
+
+  /* ================= v13 卡牌样式重构（2026-11-11）=================
+     用户确认的最终版。全部改动集中在这一块，回退只需删除本块。
+     只改 CSS，**不动任何 JS / 统计口径 / 字段结构**。
+
+     ① 统一内框间距：各子块 margin-bottom 归零，间距**只**由 .vcard gap 决定。
+        实测改前间距序列 = 6,6,6,6,14,14,12,14,12,12（gap 叠加各块 margin-bottom）
+        改后 = 6,6,6,6,6,6,6,6,6 —— 完全相同。卡片高 641 → 603px。
+        （340px 卡宽实测 26 张卡零折行，最紧的陌尘仍余 41px：
+          box-sizing:border-box 让加描边不改变标签宽度，所以加框不会撑破开关行。）
+     ② 全面框：内部分区块统一淡冷调描边 rgba(125,165,225,·)。
+        描边承担「这里是可填区/独立信息块」的语义，不再只靠底色分区。
+        强度分层：录入区 .17 / 异界按钮 .20 / 顶部标签·开关·底部按钮 .15 /
+                 档位框 .22 / 账号条 .13 / 数据块 .12。
+        ★ 例外：.gemsbar（剩余晶石）**保持生产原样** —— 纯色底 #0e2a1e、
+          无描边、字号 19px，用户明确要求不动。
+     ③ 轻反光：角色名绿光 8px→2px/.33→.10；开关文字辉光全去、外辉 6px→2px；
+        代练 8px→2px。状态区分改由**底色**承担（见 ④），不靠光晕。
+     ④ 三态底色：未录入 #111827 / 已录入 #101a16 / 主号 #141426。
+        .licheng 必须排在 .graded 之后 —— 陌尘同时带 licheng+graded 两个类，
+        同特异性下靠后者胜，故主号保持紫底、不会变成绿底。
+     ⑤ 来源三格标题改粗灰 #8b97a8（与下方统计区一致），
+        数值仍保留青/靛/绿语义色 —— 认口径靠数值色，不靠标题色。
+     ⑥ 铭牌留白放宽：padding-bottom 8→12px（角色名到分隔线 9→13px）。
+     ⑦ 三按钮字体统一：.vc-foot .btn-commit(1273行) 自带 font-weight:700，
+        且 button 未重置字体族 → 「录入」700+中文栈、另两个 400+Arial。
+        三者统一 font-family:inherit + font-weight:600。
+        ★ 本块必须位于 1273 行之后（同特异性，后者胜），否则被其覆盖。
+     ⑧ 异界按钮：框 + 圆点 + 文本（HTML 里 .dot 早已存在，只是描边被抹掉了）。
+        点放大 7→8px；点亮=绿点带柔光。
+     ⑨ 详细按钮 ▼ 箭头加灰、加间距（原箭头早已存在，仅提可见度）。 */
+  #cards .vcard{gap:6px}
+  #cards .vcard > .gemsbar,
+  #cards .vcard > .srcrow,
+  #cards .vcard > .stats3,
+  #cards .vcard > .xfrow,
+  #cards .vcard > .inputrow,
+  #cards .vcard > .ir.wide{margin-bottom:0}
+
+  /* ④ 三态底色（.licheng 在后，主号保持紫底） */
+  #cards .vcard{background:#111827}
+  #cards .vcard.graded{background:#101a16}
+  #cards .vcard.licheng{background:#141426}
+
+  /* ⑥ 铭牌留白 */
+  #cards .vcard > .plate{padding-bottom:12px}
+
+  /* ② 全面框（.gemsbar 刻意不在此列 —— 保持生产原样） */
+  #cards .vcard .ir,
+  #cards .vcard .switches .sw,
+  #cards .vcard .tag,
+  #cards .vcard .vc-foot .btn-detail,
+  #cards .vcard .vc-foot .btn-edit,
+  #cards .vcard .vc-foot .btn-commit{border:1px solid rgba(125,165,225,.15)}
+  #cards .vcard .ir .dgbtn{border:1px solid rgba(125,165,225,.20)}
+  #cards .vcard .ir .xferpick{border:1px solid rgba(125,165,225,.15)}
+  #cards .vcard .tierbox{border:1px solid rgba(125,165,225,.22)}
+  #cards .vcard .acct-banner{border:1px solid rgba(125,165,225,.13)}
+  #cards .vcard .srcrow .st,
+  #cards .vcard .stats3 .st,
+  #cards .vcard .xfrow .st{border:1px solid rgba(125,165,225,.12)}
+
+  /* ③ 轻反光 */
+  #cards .vcard .plate .nm.today{text-shadow:0 0 2px rgba(63,185,80,.10)}
+  #cards .vcard .switches .sw.on{box-shadow:0 0 2px rgba(63,185,80,.08);text-shadow:none}
+  #cards .vcard .switches .sw.dlb{box-shadow:0 0 2px rgba(94,214,160,.07)}
+  #cards .vcard .switches .sw.dlb.on{box-shadow:0 0 2px rgba(63,185,80,.14);text-shadow:none}
+
+  /* ⑤ 来源三格标题 = 粗灰（同统计区） */
+  #cards .vcard .srcrow .st .k{color:#8b97a8;font-weight:700}
+
+  /* ⑦ 三按钮字体统一（须在 1273 行之后） */
+  #cards .vcard .vc-foot .btn-detail,
+  #cards .vcard .vc-foot .btn-edit,
+  #cards .vcard .vc-foot .btn-commit,
+  #cards .vcard .vc-foot .btn-detail .t{font-family:inherit;font-weight:600}
+
+  /* ⑧ 异界按钮：框 + 点 + 文本 */
+  #cards .vcard .ir .dgbtn{display:inline-flex;align-items:center;gap:6px}
+  #cards .vcard .ir .dgbtn .dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#3a4459;box-shadow:none}
+  #cards .vcard .ir .dgbtn.on .dot{background:#3fb950;box-shadow:0 0 5px rgba(63,185,80,.55)}
+
+  /* ⑨ 详细按钮 ▼ 箭头 */
+  #cards .vcard .vc-foot .btn-detail .arw{color:#8b97a8}
 </style>
 </head>
 <body>
