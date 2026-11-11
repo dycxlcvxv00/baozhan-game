@@ -74,6 +74,14 @@
     background:linear-gradient(90deg,#fff,var(--accent));
     -webkit-background-clip:text;background-clip:text;color:transparent;
   }
+  /* 版本徽标：确认当前加载的是哪一版（静态页有 10 分钟 CDN 缓存，改版后浏览器
+     可能仍显示旧样式）。字号小但颜色醒目，一眼可辨。 */
+  #topbar .ver{
+    font-size:10px;font-weight:700;letter-spacing:.5px;white-space:nowrap;
+    color:#8fe3b4;background:#3fb9501f;border:1px solid #3fb95055;
+    border-radius:5px;padding:1px 6px;margin-right:2px;
+    font-variant-numeric:tabular-nums;
+  }
   #topbar .sep{width:1px;height:22px;background:var(--line)}
   #topbar .right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .chip{
@@ -1426,6 +1434,11 @@
   <!-- ========== 顶部栏 ========== -->
   <header id="topbar" class="panel">
     <span class="brand">角色晶石台账</span>
+    <!-- 版本标记（2026-11-11）：静态页有 10 分钟 CDN 缓存（cache-control: max-age=600），
+         改版后浏览器可能还显示旧样式。这个小徽标直接印在页面右上角，
+         一眼就能确认当前浏览器加载的是哪一版 —— 不必再靠刷新碰运气。
+         改动样式时同步更新这里的版本号。 -->
+    <span class="ver" id="verStamp" title="当前页面版本（用于确认是否已加载到最新样式）">v13.1</span>
     <button class="chip commitall" id="btnCommitAll" type="button"
             title="一次性记录所有卡片里填写了数值的内容">
       <span class="tick">✓</span>记录全部
