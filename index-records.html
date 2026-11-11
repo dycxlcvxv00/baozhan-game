@@ -1284,6 +1284,25 @@
   .fulldetail table.dt{width:100%}
   /* 当前正在看明细的卡片：按钮高亮，箭头翻转（只改外观，不动布局） */
   .row.open .btn-detail{border-color:var(--el);color:var(--el)}
+
+  /* A 版收尾（2026-11-11）：卡片**内部**小框一律取消描边线。
+     之前每个格子各有青/紫/粉/金等不同色的边框，叠在近黑底上显得花。
+     现在只靠底色分区：卡片底 #111827、内部块 #0a0e16、功能块各自色底。
+     ★ 保留：卡片外框(.vcard)、明细面板外框(.fulldetail)、
+             铭牌下划分隔线(.plate)、录入框虚线(.ir input)。
+     用一条统一的高特异性规则覆盖，便于回退，也不动任何原有声明。 */
+  #cards .vcard .tag,
+  #cards .vcard .tierbox,
+  #cards .vcard .switches .sw,
+  #cards .vcard .gemsbar,
+  #cards .vcard .srcrow .st,
+  #cards .vcard .stats3 .st,
+  #cards .vcard .xfrow .st,
+  #cards .vcard .ir .dgbtn,
+  #cards .vcard .ir .xferpick,
+  #cards .vcard .vc-foot .btn-detail,
+  #cards .vcard .vc-foot .btn-edit,
+  #cards .vcard .vc-foot .btn-commit{border:none}
 </style>
 </head>
 <body>
