@@ -1387,6 +1387,37 @@
 
   /* ⑨ 详细按钮 ▼ 箭头 */
   #cards .vcard .vc-foot .btn-detail .arw{color:#8b97a8}
+
+  /* ================= v13.1 标签字号统一（2026-11-11）=================
+     用户要求：「等级和职业、财富值标签太小，统一到和档位一样大」。
+
+     实测根因（真实云端数据 + Chromium 计算样式）：
+       铭牌 Lv  .tag.lv      10px / 700 / 高 20px
+       铭牌 职业 .tag        10px / 400 / 高 20px   ← 字重还和 Lv 不一致
+       铭牌 档位 .tierbox    14px / 400 / 高 22px   ← **不是字号设定，是继承**：
+         tierBadge() 生成的是纯文本（无 .tb 包裹），.tierbox 外层没有 font-size，
+         所以直接继承 .vcard 的 14px —— 这就是「档位看起来大」的真正原因。
+       开关 财富值 .sw.wtag   10px / 700 / 高 23px
+       开关 档位   .sw.ttag   10px / 700 / 高 23px
+
+     修法：
+       铭牌区（Lv / 职业 / 档位框）统一 12px / 700，档位框改为**显式**设字号，
+         不再依赖继承；职业字重 400→700，与 Lv 对齐。
+       开关行（财富值 / 档位）提到 11px。
+     ★ 为什么开关行不是 12px（340px 卡宽实测 26 张真实卡）：
+         10px → 折行 0/26，余量 29px
+         11px → 折行 1/26，余量 20px
+         12px → 折行 2/26，余量仅 10px   ← 违反「开关行不折行」红线
+       故开关行取 11px，并同时压缩 padding（7→5px / 代练 12→9px）与 gap（5→4px），
+       把余量从 29px 补到 **39px**（比改前还宽），实测 340px 下 26 张卡零折行。
+     本块须位于 1171 行 .switches .sw{font-size:10px} 之后（同特异性，后者胜）。 */
+  #cards .vcard .plate .tags .tag{font-size:12px;font-weight:700;line-height:18px;padding:1px 7px}
+  #cards .vcard .plate .tags .tierbox{font-size:12px;font-weight:700;line-height:18px;padding:0 5px}
+  #cards .vcard .plate .tags .tierbox .dash{font-size:11px}
+  #cards .vcard .switches{gap:4px}
+  #cards .vcard .switches .sw.wtag,
+  #cards .vcard .switches .sw.ttag{font-size:11px;padding:2px 5px}
+  #cards .vcard .switches .sw.dlb{padding:3px 9px}
 </style>
 </head>
 <body>
