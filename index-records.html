@@ -166,6 +166,28 @@
   }
   .chip.settle.done .cnt{background:rgba(125,165,225,0.16);color:var(--dim)}
   .chip.settle.done:hover{transform:none}
+  /* 批量归档：把当前结算日 08:00 后录入的记录归到上一结算日。蓝色系，与青/紫/金区分 */
+  .chip.archive{
+    color:#9fc0ff;border-color:rgba(125,165,225,0.55);
+    background:linear-gradient(180deg,rgba(125,165,225,0.16),rgba(125,165,225,0.07));
+    font-weight:700;padding:0 14px;
+  }
+  .chip.archive .tick{font-size:14px;line-height:1;font-weight:900;margin-top:-1px}
+  .chip.archive .cnt{
+    min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:rgba(125,165,225,0.24);color:#9fc0ff;
+    font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+  }
+  /* 有待归档的上午补录 → 金色高亮 + 呼吸 */
+  .chip.archive.on{
+    color:var(--gold);border-color:rgba(255,207,107,0.62);
+    background:linear-gradient(180deg,rgba(255,207,107,0.22),rgba(255,207,107,0.10));
+    animation:pulse 1.7s ease-in-out infinite;
+  }
+  .chip.archive.on .cnt{background:rgba(255,207,107,0.3);color:var(--gold)}
+  .chip.archive:hover{transform:translateY(-1px)}
+  .chip.archive:active{transform:translateY(0) scale(0.97)}
   /* 全屏按钮：图标随状态切换 */
   .chip.iconbtn{padding:0 10px;font-size:15px;line-height:1}
   .chip.iconbtn .fs-off{display:none}
@@ -1264,6 +1286,11 @@
             title="把还没结算的日期按明细补齐">
       <span class="tick">✓</span><span id="settleTxt">今日结算</span>
       <span class="cnt" id="settleCnt">0</span>
+    </button>
+    <button class="chip archive" id="btnArchiveDay" type="button"
+            title="把当前结算日 08:00 后录入的记录批量归档到上一结算日（只前移录入时刻，不改日期）">
+      <span class="tick">⇤</span>归档昨日
+      <span class="cnt" id="archiveCnt">0</span>
     </button>
     <span class="sep"></span>
     <span class="chip on" id="tbCount">0 个角色</span>
@@ -3957,15 +3984,65 @@ async function fetchRepoSnapshot(){
   if(!d || !Array.isArray(d.accounts)) throw new Error('快照格式不对');
   return d;
 }
+/* 记录指纹：只用 adopt() 前后都不会变形的字段，避免因字段归一化误报。
+   用来比出「本机有、仓库快照没有」的记录 —— 这是旧快照覆盖导致丢数据的信号。 */
+function recFingerprint(c, r){
+  return [c.id || c.name, r.date || '', r.time || '00:00:00', Number(r.gemsLeft) || 0].join('|');
+}
+function localOnlyRecords(snap){
+  const pool = {};
+  (snap.accounts || []).forEach(function(s){
+    (s.records || []).forEach(function(r){
+      const k = recFingerprint(s, r);
+      pool[k] = (pool[k] || 0) + 1;
+    });
+  });
+  const out = [];
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      const k = recFingerprint(c, r);
+      if(pool[k]){ pool[k]--; return; }
+      out.push({ name:c.name, date:r.date, time:r.time });
+    });
+  });
+  return out;
+}
+
 async function restoreFromRepo(silent){
   try{
     const d = await fetchRepoSnapshot();
+
+    /* ★ 数据丢失护栏（2026-11-11）：仓库快照是静态文件，可能滞后于云端。
+       旧快照覆盖本机后，saveLocal() 会自动推送，连带把云端也打回旧版本 ——
+       早间新录的记录会整批消失。这里先比出「本机独有」记录并强警告。 */
+    if(!silent){
+      const only = localOnlyRecords(d);
+      if(only.length){
+        const sample = only.slice(0, 6).map(function(x){
+          return x.name + ' ' + x.date + ' ' + x.time;
+        }).join('\n  ');
+        if(!confirm('⚠ 仓库快照比本机少 ' + only.length + ' 条记录\n\n'
+            + '本机有、快照里没有的（最多列 6 条）：\n  ' + sample
+            + (only.length > 6 ? '\n  …' : '') + '\n\n'
+            + '继续恢复会覆盖本机，随后自动推送会把云端一起打回旧版本，'
+            + '这些记录可能永久丢失。\n\n'
+            + '建议先取消：刷新页面让云端较新的数据自动同步下来，'
+            + '或先点「导出备份」留一份。\n'
+            + '确定仍要用这份旧快照覆盖本机吗？')) return false;
+        /* 用户坚持 → 自动落地一份本机备份，留条后路 */
+        downloadLocalBackup('gem-ledger-仓库恢复前备份-' + today() + '.json');
+      }
+    }
+
+    const before = (ACCOUNTS || []).reduce(function(n, c){ return n + (c.records || []).length; }, 0);
     adopt(d);
     saveLocal();
     nodeGuardOn = false;      /* 已切到仓库快照的节点 → 解除守卫 */
     CLOUD_NODE = NODE;
     render();
-    toast('已从仓库快照恢复 ' + ACCOUNTS.length + ' 个角色');
+    const after = (ACCOUNTS || []).reduce(function(n, c){ return n + (c.records || []).length; }, 0);
+    toast('已从仓库快照恢复 ' + ACCOUNTS.length + ' 个角色'
+          + (before !== after ? '（记录 ' + before + ' → ' + after + ' 条）' : ''));
     return true;
   }catch(e){
     if(!silent) toast('仓库快照读取失败：' + (e && e.message ? e.message : e));
@@ -3973,7 +4050,8 @@ async function restoreFromRepo(silent){
   }
 }
 document.getElementById('btnRepo').addEventListener('click', function(){
-  if(confirm('将用仓库快照 data.json 覆盖本机数据，确定继续？\n（不确定时可先点「导出备份」留一份）')) restoreFromRepo(false);
+  if(confirm('将用仓库快照 data.json 覆盖本机数据，确定继续？\n'
+             + '（若快照比本机旧会二次警告并自动留一份备份）')) restoreFromRepo(false);
 });
 
 /* 打开页面：拉云端 → 比时间戳决定用哪份；然后挂上自动推送 */
@@ -5115,6 +5193,7 @@ function render(){
   document.getElementById('tbCount').textContent = ACCOUNTS.length + ' 个角色';
   syncCommitAll();
   syncSettleBtn();
+  syncArchiveBtn();
 }
 
 /* 代练人分组分隔条（窄长条）—— 全部信息左对齐
@@ -5380,6 +5459,113 @@ function commitAll(){
         + (pending.length ? weeNote({ date: today() }) : ''));
 }
 
+/* ============================================================
+ * 批量归档到上一结算日（2026-11-11）
+ * ------------------------------------------------------------
+ * 场景：每天上午补录的是「昨天打完后的剩余晶石」，页面按实际时刻记成
+ *       09:5x，归期会落到今天；需要把这批记录统一归到上一结算日。
+ *
+ * 做法：只把 time 前移到 08:00 之前，date 一律不动。
+ *   ★ 不能只改 date —— recStamp() 的「08:00 前/后」前缀是排序的一部分，
+ *     改 date 后记录带着「08:00 之后」前缀会排到当天基线之前，闭合区间
+ *     起点被跳过，异界产出会被算没（实测 13 个角色里 3 个归零、丢 30,680）。
+ *     把 time 移到 08:00 前，前缀自动变 '1'（等同次日凌晨录入），记录
+ *     正确排在当天基线之后，闭合链完整、总产出守恒。
+ *   ★ date 不动 = 实际录入自然日与物理时间窗口（recTimeMs，转移收支用）
+ *     保持不变，只调整归期口径。
+ *
+ * 幂等：改完 time < 08:00 且归期已前移，再点一次不会再命中。
+ * ============================================================ */
+function archiveCandidates(day){
+  const out = [];
+  (ACCOUNTS || []).forEach(function(c){
+    (c.records || []).forEach(function(r){
+      if(!r.real) return;                                  /* 老记录口径不动 */
+      const tm = String(r.time || '00:00:00');
+      if(tm < '08:00:00') return;                          /* 已在凌晨窗口 = 已归档 */
+      if(settleDateOf(r) !== day) return;
+      out.push({ c:c, r:r, time:tm, mins:Number(tm.slice(0,2)) * 60 + Number(tm.slice(3,5)) });
+    });
+  });
+  return out;
+}
+
+/* 归档的「源归期」恒为当前结算日。
+   ★ 不做「隔天回退到最近一个有记录的日子」——历史结算日里同样有大量
+     08:00 后录入的正常记录，猜错会把它们整批误归档到更早的日子
+     （实测第二次点击就会把 11-10 的 32 条正常记录挪到 11-09）。
+     宁可隔天点提示「没有需要归档的」，也不能动历史。 */
+function archiveSourceDay(){
+  return today();
+}
+
+/* 统一偏移量：所有候选记录线性平移，保证相对顺序不变，且全部落到 08:00 前。
+   至少前移 3 小时（与仓库侧 archive_to_prev_day.py 口径一致）。 */
+function archiveShift(cand){
+  let maxMins = 0;
+  cand.forEach(function(x){ if(x.mins > maxMins) maxMins = x.mins; });
+  return Math.max(180, maxMins - (8 * 60 - 1));
+}
+function shiftBeforeEight(t, shift){
+  const p = String(t || '00:00:00').split(':');
+  let total = (Number(p[0]) || 0) * 60 + (Number(p[1]) || 0) - shift;
+  if(total < 0) total = 0;
+  const hh = String(Math.floor(total / 60)).padStart(2, '0');
+  const mm = String(total % 60).padStart(2, '0');
+  const ss = (p[2] == null ? '00' : String(p[2]).padStart(2, '0'));
+  return hh + ':' + mm + ':' + ss;
+}
+
+function archiveToPrevSettleDay(){
+  const src = archiveSourceDay();
+  const cand = src ? archiveCandidates(src) : [];
+  if(!cand.length){
+    toast('没有需要归档的记录（' + (src || today()) + ' 结算日 08:00 后录入的实填记录为 0）');
+    return 0;
+  }
+  const to   = addDays(src, -1);
+  const who  = {}; cand.forEach(function(x){ who[x.c.name || x.c.account] = 1; });
+  const nWho = Object.keys(who).length;
+
+  /* 未提交的卡片数值会在 render() 后清掉，先拦一道 */
+  const pend = countPending();
+  if(pend && !confirm('还有 ' + pend + ' 张卡片填了值但没点「记录」，'
+        + '归档重绘页面后这些未提交数值会清掉。\n建议先点「记录全部」。\n\n仍要继续归档吗？')) return 0;
+
+  if(!confirm('批量归档到上一结算日\n\n'
+      + '源归期：' + src + '　→　目标归期：' + to + '\n'
+      + '记录：' + cand.length + ' 条 ／ 角色：' + nWho + ' 个\n\n'
+      + '做法：只把录入 time 前移到 08:00 之前（date 不变），'
+      + '归期随之前移；闭合反推链与总产出保持不变，'
+      + '转移收支的物理时间窗口也不受影响。\n'
+      + '已是凌晨时段的记录不会重复处理。\n\n确定继续？')) return 0;
+
+  const shift = archiveShift(cand);
+  cand.forEach(function(x){ x.r.time = shiftBeforeEight(x.time, shift); });
+  bumpDataVer();                 /* 清闭合反推缓存 + 转移扣减计划 */
+  autoSettle();                  /* 两个结算日的快照一起重算（幂等） */
+  saveLocal();                   /* 本地落地 + schedulePush，云端立即同步 */
+  render();                      /* 含 syncArchiveBtn() */
+  toast('已归档 ' + cand.length + ' 条 / ' + nWho + ' 个角色 → ' + to + '，正在同步云端');
+  return cand.length;
+}
+
+/* 归档按钮外观与待归档条数 */
+function syncArchiveBtn(){
+  const btn = document.getElementById('btnArchiveDay');
+  if(!btn) return;
+  const n = archiveCandidates(today()).length;
+  const cnt = document.getElementById('archiveCnt');
+  if(cnt){
+    cnt.textContent = String(n);
+    cnt.style.display = n ? '' : 'none';
+  }
+  btn.classList.toggle('on', n > 0);
+  btn.title = n
+    ? ('有 ' + n + ' 条上午补录还没归档到上一结算日（' + addDays(today(), -1) + '），点击批量归档')
+    : '把当前结算日 08:00 后录入的记录批量归档到上一结算日（只前移录入时刻，不改日期）';
+}
+
 /* 「记录」按钮高亮状态：有未提交内容时闪烁提示 */
 function markDirty(i, dirty){
   const row = document.querySelector('.row[data-i="' + i + '"]');
@@ -5627,6 +5813,7 @@ function doSettle(){
 }
 
 document.getElementById('btnSettle').addEventListener('click', doSettle);
+document.getElementById('btnArchiveDay').addEventListener('click', archiveToPrevSettleDay);
 document.getElementById('stClose').addEventListener('click', closeSettleModal);
 document.getElementById('settleMask').addEventListener('click', function(e){
   if(e.target === this) closeSettleModal();
@@ -6189,15 +6376,19 @@ document.getElementById('bkList').addEventListener('click', function(e){
 });
 
 /* 导出 / 导入 */
-document.getElementById('btnExport').addEventListener('click', function(){
+/* 导出本机当前数据为 JSON 备份（「导出备份」按钮 + 「仓库恢复」护栏共用） */
+function downloadLocalBackup(filename){
   const data = { v:2, exportedAt:new Date().toISOString(), node: NODE || null,
                  brokers:BROKERS, accounts:ACCOUNTS };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'gem-ledger-' + today() + '.json';
+  a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+}
+document.getElementById('btnExport').addEventListener('click', function(){
+  downloadLocalBackup('gem-ledger-' + today() + '.json');
   toast('已导出备份 JSON');
 });
 document.getElementById('btnImport').addEventListener('click', function(){
