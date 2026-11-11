@@ -572,8 +572,10 @@
   table.dt td.n{font-weight:800}
   table.dt td.n.ok{color:var(--ok)} table.dt td.n.purple{color:var(--accent2)}
   table.dt td.n.gold{color:var(--gold)} table.dt td.n.plain{color:var(--txt)}
-  table.dt td.n.xfer{color:#c77bff}         /* 转移晶石：转给陌尘，不计收入 */
+  table.dt td.n.xfer{color:#c77bff}         /* 转移晶石：转给别的号，不计收入 */
   table.dt td.n.dun{color:#4fc3d9}           /* 异界产出：纯净产出口径 */
+  table.dt td.n.mkt{color:#a9bdf0}           /* 市集收入：与卡面「市集收入」同色 */
+  table.dt td.n.craft{color:#e0b252}         /* 装备打造：琥珀，与卡面标签同色 */
   /* 负残差：这一段余额净减少（花掉的比记下来的多）—— 标红，别让它混在正数里看不出来 */
   table.dt td.n.neg{color:#ff8080}
   /* 来源角标：「闭」= 收支闭合方程反推 —— 不是手填，得标出来 */
@@ -1268,12 +1270,16 @@
     color:#6fd39a;font-weight:700;box-shadow:none;border-radius:7px}
   .vc-foot .btn-commit:hover{border-color:#6fd39a}
 
-  .fulldetail{display:none;grid-column:1/-1;
+  /* 每日明细抽屉：卡片网格**上方**的独立容器，不参与 #cards 的 grid 布局。
+     旧版 .fulldetail 是 grid 项且跨整行，一展开就把同排右侧卡片全挤到下面。 */
+  .detail-dock{margin:0 0 14px;overflow-x:auto;
     background:linear-gradient(180deg,var(--panel2,#1c2330),var(--panel,#161b22));
     border:1px solid color-mix(in srgb, var(--el) 35%, var(--line,#2a3244));
-    border-radius:12px;padding:12px 16px;box-shadow:0 4px 18px #0009;margin-top:6px}
-  .row.open .fulldetail{display:block}
-  .fulldetail .detail-inner{background:transparent;border:none;padding:0;box-shadow:none}
+    border-radius:12px;padding:12px 16px;box-shadow:0 4px 18px #0009}
+  .detail-dock[hidden]{display:none}
+  .detail-dock .detail-inner{background:transparent;border:none;padding:0;box-shadow:none}
+  /* 当前正在看明细的卡片：按钮高亮，箭头翻转（只改外观，不动布局） */
+  .row.open .btn-detail{border-color:var(--el);color:var(--el)}
 </style>
 </head>
 <body>
@@ -1343,6 +1349,11 @@
     </div>
     <div class="h-exp"></div>
   </div>
+
+  <!-- ========== 每日明细抽屉（2026-11-11 重构） ==========
+       独立于卡片网格：展开明细时所有卡片保持原位，同排右侧卡片不会被挤走，
+       可以逐个点「详细」切换查看；明细表仍横向铺满。 -->
+  <section id="detailDock" class="detail-dock" hidden></section>
 
   <!-- ========== 角色卡片 ========== -->
   <main id="cards"></main>
@@ -3432,6 +3443,8 @@ function saveLocal(){
     flashSaved();
     schedulePush();          /* 本地先落地，云端防抖合并推送 */
   }catch(e){}
+  /* 放在 try 外：抽屉渲染出任何问题都绝不能影响上面的存档/推送 */
+  refreshOpenDetail();
 }
 /* 老数据兼容（loadLocal / adopt / 导入备份共用）：laborDays === null 时，
    从「dayLabor>0 的历史记录」重建例外集合 —— 云端数据与备份文件都可能是迁移前格式。 */
@@ -4495,6 +4508,29 @@ function detailHTML(i){
         + (dgE.src === 'closure' ? '<i class="est" title="由收支闭合方程反推，非手工填写">闭</i>' : '')
         + (dgE.src === 'legacy' ? '<i class="est" title="历史记录无来源标记，按异界推定">推</i>' : '')
         + '</td>';
+    /* 市集收入：闭合残差里归到「市集/转入」桶的部分（**已自动扣除转入**）。
+       与异界产出互斥 —— 一段残差只会进其中一个桶。
+       v=null = 这条不是 mkt 段锚点 / 闭合不可算 / 本段是未记录支出。 */
+    const mktCell = (mgE.v == null)
+      ? '<td class="n mkt none" title="'
+        + (dgE.v != null ? '本次收入已归到异界产出，不计市集'
+            : (uo.amt > 0 ? '本段是未记录支出 ' + intNum(uo.amt) + '，不是收入'
+                : (closureWhyOf(r, c) ? '闭合不可算：' + closureWhyOf(r, c)
+                    : '这条记录没有可归因的市集收入')))
+        + '">—</td>'
+      : '<td class="n mkt' + z(mgE.v) + '" title="市集收入：该区间净增残差（已扣除转入，与异界产出分桶）">'
+        + intNum(mgE.v) + '<i class="est" title="由收支闭合方程反推，非手工填写">闭</i></td>';
+    /* 装备打造 = 历史手填 craft ＋ 负残差自动推断的打造消耗。
+       kind='other' 的未记录支出（区间里混了秘境/转出）不能算打造，只在 title 里提示。 */
+    const craftManual = (r.craft == null || r.craft === '') ? 0 : (Number(r.craft) || 0);
+    const craftInfer  = (uo.kind === 'craft') ? uo.amt : 0;
+    const craftVal    = craftManual + craftInfer;
+    const craftOther  = (uo.kind === 'other') ? uo.amt : 0;
+    const craftCell = '<td class="n craft' + z(craftVal) + '" title="装备打造：'
+      + (craftManual ? '手填 ' + intNum(craftManual) : '无手填值')
+      + (craftInfer ? ' ＋ 负残差推断 ' + intNum(craftInfer) + '（该区间无秘境消耗、无转出）' : '')
+      + (craftOther ? '；另有 ' + intNum(craftOther) + ' 未记录支出混了秘境/转出，未计入打造，需人工核对' : '')
+      + '">' + intNum(craftVal) + '</td>';
     return '<tr>'
       + '<td class="d">' + esc(r.date || '') + xferTag + blTag + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + wee + '</td>'
@@ -4502,7 +4538,9 @@ function detailHTML(i){
       + '<td class="n ok'+z(r.gemsLeft)+'">' + intNum(r.gemsLeft) + '</td>'
       + '<td class="n ' + gCls + '">' + num(gInc) + '</td>'
       + dgCell
+      + mktCell
       + '<td class="n chaos'+z(r.chaosCost)+'">' + intNum(r.chaosCost) + '</td>'
+      + craftCell
       + '<td class="n purple'+z(p.sold)+'">' + intNum(p.sold) + '</td>'
       + '<td class="n xfer'+z(xferAmt)+'">' + intNum(xferAmt) + '</td>'
       + '<td class="n gold'+z(p.value)+'">' + num(p.value) + '</td>'
@@ -4512,7 +4550,7 @@ function detailHTML(i){
       + '<td><button class="del" type="button" title="删除这条记录" '
       +   'data-del="' + i + '" data-ri="' + oi + '">✕</button></td>'
       + '</tr>';
-  }).join('') : '<tr><td colspan="13"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
+  }).join('') : '<tr><td colspan="15"><div class="dt-empty">暂无录入记录 —— 在上方输入框填入当前数据，回车即自动记一条</div></td></tr>';
 
   /* 合计行：把「逐条之和」与「日级归集值」的差额摆出来。
      日级口径下，某天若整体净增为负（典型情况：当天卖出/消耗没记全），
@@ -4536,16 +4574,27 @@ function detailHTML(i){
       return a + (e.v == null ? 0 : e.v);
     }, 0);
     const mktHas = recs.some(function(r){ return marketGainEffective(r, c).v != null; });
+    /* 秘境消耗 / 装备打造合计（与逐行口径一致：手填 craft + 负残差推断 craft） */
+    const chaosSum = recs.reduce(function(a, r){ return a + (Number(r.chaosCost) || 0); }, 0);
+    const craftSum = recs.reduce(function(a, r){
+      const manual = (r.craft == null || r.craft === '') ? 0 : (Number(r.craft) || 0);
+      const u = unrecordedOutOf(r, c);
+      return a + manual + (u.kind === 'craft' ? u.amt : 0);
+    }, 0);
     if(!recs.length) return '';
     return '<tr class="sumrow">'
       + '<td colspan="4" class="sumlab">合计 · 日级口径 ' + num(daySum) + '</td>'
       + '<td class="n' + (rowSum ? ' inc' : ' zero') + '" title="各条真实增量之和">'
         + num(rowSum) + '</td>'
       + '<td class="n dun' + (dunHas ? '' : ' none') + '" title="有效异界产出之和（纯净口径：闭合反推）'
-        + (mktHas ? ('；另有市集收入 ' + intNum(mktSum) + '（不计入异界产出）') : '')
+        + (mktHas ? ('；另有市集收入 ' + intNum(mktSum) + '（与异界分桶）') : '')
         + '">'
         + (dunHas ? intNum(dunSum) : '—') + '</td>'
-      + '<td colspan="7" class="sumgap' + (gap ? ' warn' : '') + '" title="'
+      + '<td class="n mkt' + (mktHas ? '' : ' none') + '" title="市集收入合计（已自动扣除转入，不计入异界产出）">'
+        + (mktHas ? intNum(mktSum) : '—') + '</td>'
+      + '<td class="n chaos" title="秘境消耗合计">' + intNum(chaosSum) + '</td>'
+      + '<td class="n craft" title="装备打造合计 = 历史手填 + 负残差推断">' + intNum(craftSum) + '</td>'
+      + '<td colspan="6" class="sumgap' + (gap ? ' warn' : '') + '" title="'
         + (gap ? ('有 ' + num(gap) + ' 晶石差額：某些日子当天净增为负（多半是卖出或秘境消耗没记全），'
                  + '日级口径记 0，不计入真实产出')
                : '逐条之和与日级口径一致')
@@ -4561,14 +4610,19 @@ function detailHTML(i){
     +   '<span class="right2"><button class="mini" type="button" data-closedetail="' + i + '" title="收起这张明细表（数据保留）">关闭详情</button></span>'
     + '</div>'
     + '<table class="dt">'
+    /* 15 列 = 日期/时间/档位 + 11 个数值列 + 操作。
+       数值列顺序：剩余 · 获取 · 异界 · 市集 · 秘境 · 打造 · 已出售 · 转移 · 收入 · 人工 · 净利润 */
     + '<colgroup><col class="c-date" /><col class="c-time" /><col class="c-tier" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
     +   '<col class="c-num" /><col class="c-num" /><col class="c-num" /><col class="c-num" />'
-    +   '<col class="c-num" /><col class="c-num" /><col class="c-act" /></colgroup>'
+    +   '<col class="c-num" /><col class="c-num" /><col class="c-num" />'
+    +   '<col class="c-act" /></colgroup>'
     + '<thead><tr>'
     +   '<th>日期</th><th>时间</th><th>档位</th><th>剩余晶石</th><th>本次获取晶石</th>'
     +   '<th title="纯净口径：打异界实际掉落的晶石（由「剩余晶石 + 秘境消耗 + 卖出 + 转出 − 转入」解收支方程反推，并按本次录入的来源标记归到异界桶）。做「档位 → 产出」分析用这一列，不要用「本次获取晶石」">异界产出</th>'
+    +   '<th title="市集收入：来源标记为「市集/转入」的区间净增残差，已自动扣除转入；与异界产出分桶，做档位分析时不计入">市集收入</th>'
     +   '<th>秘境消耗</th>'
+    +   '<th title="装备打造：历史手填的打造消耗 ＋ 负残差自动推断的打造消耗（该区间无秘境消耗、无转出时判定）；混了秘境/转出的未记录支出不计入，悬停里会提示">装备打造</th>'
     +   '<th>已出售晶石</th><th>转移晶石</th><th>收入</th><th>人工费用</th><th>净利润</th><th></th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
@@ -4582,6 +4636,62 @@ function detailHTML(i){
     +   '<button class="mini danger" type="button" data-clear="' + i + '">清空</button>'
     + '</div>'
     + '</div>';
+}
+
+/* ============================================================
+ * 每日明细抽屉（2026-11-11 重构）
+ * ------------------------------------------------------------
+ * 旧版把 .fulldetail 作为 #cards 的 grid 项、grid-column:1/-1，
+ * 一展开就独占整行，把同排右侧的卡片全挤到明细表下方 ——
+ * 用户没法继续逐个点其它卡片的「详细」。
+ * 现在明细统一渲染到卡片网格**上方**的独立抽屉：
+ *   · 卡片网格完全不参与明细布局 → 所有卡片永远在原位
+ *   · 手风琴：一次只开一张，点同一张再点一次即收起，点别张即切换
+ *   · 明细表仍横向铺满，15 列都放得下
+ * ============================================================ */
+let _detailOpen = -1;                 /* 当前展开的卡片下标；-1 = 全部收起 */
+
+function detailDock(){ return document.getElementById('detailDock'); }
+
+/* 卡片上的「详细」按钮外观与实际展开者保持同步（render 重建 DOM 后也要调） */
+function syncDetailBtns(){
+  Array.prototype.forEach.call(document.querySelectorAll('.row[data-i]'), function(row){
+    const on = Number(row.dataset.i) === _detailOpen;
+    row.classList.toggle('open', on);
+    const b = row.querySelector('.btn-detail');
+    if(b) b.setAttribute('aria-expanded', on ? 'true' : 'false');
+  });
+}
+function openDetail(i){
+  if(_detailOpen === i){ closeDetail(); return; }     /* 再点一次 = 收起 */
+  _detailOpen = i;
+  const dock = detailDock();
+  if(dock){
+    dock.innerHTML = detailHTML(i);
+    dock.hidden = false;
+  }
+  syncDetailBtns();       /* 只改按钮外观，卡片网格不重排 */
+  /* 老版卡片按像素对齐列宽；v12 卡片里 syncDetailCols 会自行 no-op */
+  setTimeout(function(){ syncDetailCols(i); }, 0);
+}
+function closeDetail(){
+  _detailOpen = -1;
+  const dock = detailDock();
+  if(dock){ dock.hidden = true; dock.innerHTML = ''; }
+  syncDetailBtns();
+}
+/* 数据变更后只重渲染「当前正展开」的那一张，其余卡片一律不动 */
+function refreshDetail(i){
+  if(_detailOpen !== i) return;
+  refreshOpenDetail();
+}
+/* 兜底：任何数据落地都刷新当前抽屉。
+   典型场景：正看着 B 的明细，同时在 A 卡录了一笔转给 B 的转账 ——
+   B 的「市集收入（已扣转入）」会变，抽屉必须跟着变。 */
+function refreshOpenDetail(){
+  if(_detailOpen < 0) return;
+  const dock = detailDock();
+  if(dock && !dock.hidden) dock.innerHTML = detailHTML(_detailOpen);
 }
 
 /* 明细表列宽按上方卡片实际像素对齐
@@ -4969,7 +5079,7 @@ function cardHTML(c, i, disp, gc){
     +       'title="录入本卡填写的数值，并自动保存">录入</button>'
     +   '</div>'
     + '</article>'
-    + '<div class="fulldetail" id="detail-' + i + '">' + detailHTML(i) + '</div>'
+    /* 明细不再挂在卡片里 —— 统一渲染到 #detailDock，展开时不挤走右侧卡片 */
     + '</div>';
 }
 
@@ -5139,11 +5249,7 @@ function toggleLabor(i, d, checked){
   saveLocal();                 /* 落本地 + 推送云端 */
   renderDaily();               /* 重建每日面板：指标与勾选态跟随（折叠态由 localStorage 记忆保留） */
   refreshNumbers(i);           /* 卡片累计人工 + 顶部总支出联动 */
-  /* 若明细已展开，立即重渲染，反映人工费勾选 */
-  const dEl = document.getElementById('detail-' + i);
-  if(dEl && dEl.closest('.row') && dEl.closest('.row').classList.contains('open')){
-    dEl.innerHTML = detailHTML(i);
-  }
+  refreshDetail(i);            /* 若明细正展开，立即重渲染反映人工费勾选 */
   const nm = c.name || '未命名';
   toast(checked ? (nm + ' ' + shortDate(d) + '：记代练（' + laborRate(d) + '）') : (nm + ' ' + shortDate(d) + '：自己打的（免单）'));
 }
@@ -5220,6 +5326,7 @@ function render(){
   syncCommitAll();
   syncSettleBtn();
   syncArchiveBtn();
+  syncDetailBtns();   /* render 重建了卡片 DOM，重新标出当前展开的那张 */
 }
 
 /* 代练人分组分隔条（窄长条）—— 全部信息左对齐
@@ -5384,12 +5491,7 @@ function afterCommit(i){
     vc.classList.toggle('graded', recordedToday(ACCOUNTS[i]));
     vc.classList.toggle('licheng', isMainChar(ACCOUNTS[i]));
   }
-  const d = document.getElementById('detail-' + i);
-  if(d){
-    const wasOpen = d.closest('.row') && d.closest('.row').classList.contains('open');
-    d.innerHTML = detailHTML(i);
-    if(wasOpen) syncDetailCols(i);
-  }
+  refreshDetail(i);            /* 只重渲染当前展开的那张明细 */
   /* 分栏色条上的「本日获取 / 本日角色平均」跟着变 —— 只重画色条，不动卡片，
      避免录入瞬间整屏重排（用户正在输入的框会被清掉） */
   refreshGbars();
@@ -6108,21 +6210,9 @@ document.addEventListener('click', function(e){
     dg.setAttribute('aria-pressed', dgPickOn(i) ? 'true' : 'false');
     return;
   }
-  /* 展开 / 收起 */
+  /* 展开 / 收起：统一交给抽屉（手风琴，点别张即切换，卡片不重排） */
   const tg = e.target.closest('[data-toggle]');
-  if(tg){
-    const row = tg.closest('.row');
-    const open = row.classList.toggle('open');
-    tg.setAttribute('aria-expanded', open ? 'true' : 'false');
-    if(open){
-      const i = Number(tg.dataset.toggle);
-      /* 展开时惰性重渲染明细，保证人工费勾选等数据变更即时反映 */
-      document.getElementById('detail-' + i).innerHTML = detailHTML(i);
-      /* 展开动画结束后再按实际宽度对齐明细列 */
-      setTimeout(function(){ syncDetailCols(i); }, 320);
-    }
-    return;
-  }
+  if(tg){ openDetail(Number(tg.dataset.toggle)); return; }
   /* 修改（弹窗编辑） */
   const ed = e.target.closest('[data-edit]');
   if(ed){ openModal('edit', Number(ed.dataset.edit)); return; }
@@ -6180,25 +6270,15 @@ document.addEventListener('click', function(e){
     ACCOUNTS[i].records.splice(ri, 1);
     bumpDataVer();
     refreshNumbers(i);
-    document.getElementById('detail-' + i).innerHTML = detailHTML(i);
-    syncDetailCols(i);
+    refreshDetail(i);
     saveLocal();
     toast('已删除该条记录');
     return;
   }
-  /* 关闭详情（2026-11-10）：只收起明细面板，**不动任何数据**。
+  /* 关闭详情：只收起抽屉，**不动任何数据**。
      之前这里放的是「清空明细」，一键就抹掉整段历史，误点代价太高。 */
   const cd = e.target.closest('[data-closedetail]');
-  if(cd){
-    const i = Number(cd.dataset.closedetail);
-    const row = cd.closest('.row');
-    if(row){
-      row.classList.remove('open');
-      const tg = row.querySelector('[data-toggle]');
-      if(tg) tg.setAttribute('aria-expanded', 'false');
-    }
-    return;
-  }
+  if(cd){ closeDetail(); return; }
   /* 清空该角色明细（破坏性操作，底部按钮 + 二次确认） */
   const cl = e.target.closest('[data-clear]');
   if(cl){
@@ -6209,8 +6289,7 @@ document.addEventListener('click', function(e){
     ACCOUNTS[i].records = [];
     bumpDataVer();
     refreshNumbers(i);
-    document.getElementById('detail-' + i).innerHTML = detailHTML(i);
-    syncDetailCols(i);
+    refreshDetail(i);
     saveLocal();
     toast('已清空 ' + n + ' 条明细');
     return;
@@ -6220,6 +6299,8 @@ document.addEventListener('click', function(e){
   if(rm){
     const i = Number(rm.dataset.rm);
     if(!confirm('确定删除该角色卡片？其所有明细将一并删除。')) return;
+    /* 下标会整体前移，抽屉里那张明细已对不上人 → 先收起再删 */
+    closeDetail();
     ACCOUNTS.splice(i, 1);
     bumpDataVer();
     render();
