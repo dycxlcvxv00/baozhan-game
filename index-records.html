@@ -1161,7 +1161,7 @@
   .plate .tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
   .tag{border-radius:5px;padding:1px 6px;font-size:10px;background:#0a0e16;
     border:1px solid #39445a;color:#c3cddd;line-height:16px}
-  .tag.lv{background:#1a2c3d;border-color:#2f5674;color:#9fd0f0;font-weight:700}
+  .tag.lv{background:#0a0e16;border-color:#2f5674;color:#9fd0f0;font-weight:700}
   .tierbox{border-radius:5px;background:#0a0e16;padding:0 4px;line-height:16px}
   .tierbox .tb{font-size:10px;line-height:14px}
 
@@ -1171,7 +1171,7 @@
   .switches .sw{flex:0 0 auto;padding:2px 7px;font-size:10px;border-radius:5px;line-height:1.7}
   .switches .sw.wtag{color:#8b97a8;border-color:#2b3444;background:#0a0e16;
     font-weight:700;font-variant-numeric:tabular-nums}
-  .switches .sw.wtag.filled{color:var(--gold,#ffcf6b);border-color:#5a4a24;background:#2a2313}
+  .switches .sw.wtag.filled{color:var(--gold,#ffcf6b);border-color:#5a4a24;background:#0a0e16}
   .switches .sw.ttag{font-weight:700;font-variant-numeric:tabular-nums}
   /* 代练：唯一会产生花钱的开关 —— 靠右 + 加深绿光晕 */
   .switches .sw.dlb{margin-left:auto;padding:3px 12px;font-size:11px;font-weight:700;
@@ -1230,9 +1230,9 @@
   .xfrow .st .k{font-size:10px;font-weight:700;letter-spacing:0;white-space:nowrap;line-height:1.35}
   .xfrow .st .v{font-size:15px;font-weight:800;line-height:1.25;display:block;
     font-variant-numeric:tabular-nums;white-space:nowrap}
-  .xfrow .st.xfout{background:#1c1526;border:1px solid #4a3068}
+  .xfrow .st.xfout{background:#0a0e16;border:1px solid #4a3068}
   .xfrow .st.xfout .k{color:#a98ad6} .xfrow .st.xfout .v{color:#c77bff}
-  .xfrow .st.xfin{background:#1b141d;border:1px solid #5c3a58}
+  .xfrow .st.xfin{background:#0a0e16;border:1px solid #5c3a58}
   .xfrow .st.xfin .k{color:#c79ab4} .xfrow .st.xfin .v{color:#f8a8cd}
 
   /* ---- 录入区：无描边统一底色 + 语义色标签 + 虚线下划线 ---- */
@@ -1266,7 +1266,7 @@
   .vc-foot .btn-detail,.vc-foot .btn-edit,.vc-foot .btn-commit{
     flex:1;justify-content:center;border-radius:7px;padding:7px 0;font-size:12px;
     width:auto;height:auto;min-width:0}
-  .vc-foot .btn-detail,.vc-foot .btn-edit{background:#0a0e16;border:1px solid #2c3546;
+  .vc-foot .btn-detail,.vc-foot .btn-edit{background:#111827;border:1px solid #2c3546;
     color:#a7b3c3}
   .vc-foot .btn-edit{border-color:#3a3350;color:#b9a6e0}
   .vc-foot .btn-detail:hover,.vc-foot .btn-edit:hover{color:#e6ebf2;border-color:#4a5468}
@@ -1274,15 +1274,14 @@
     color:#6fd39a;font-weight:700;box-shadow:none;border-radius:7px}
   .vc-foot .btn-commit:hover{border-color:#6fd39a}
 
-  /* 每日明细：跟在**本卡正下方**，宽度只占这一列。
-     ★ 明细表本身保持原样（15 列宽表、合计行、悬停说明一个不动），
-       只是容器变窄 → 加横向滚动；表格 min-width 保证列不被压扁。 */
-  .fulldetail{display:none;margin-top:6px;overflow-x:auto;
+  /* 每日明细：**全宽**（跨整行），由 JS 插到「被点卡片所在那一排」的末尾。
+     同排卡片全部留在原排（明细在它们下方），15 列宽表一屏铺满，不用横向滚动。 */
+  .fulldetail{display:none;grid-column:1/-1;margin:0;
     background:#0d1521;border:1px solid #2b4a6b;
-    border-radius:12px;padding:10px 0;box-shadow:0 4px 18px #0009}
-  .row.open .fulldetail{display:block}
-  .fulldetail .detail-inner{background:transparent;border:none;padding:0 12px;box-shadow:none}
-  .fulldetail table.dt{min-width:1180px;width:100%}
+    border-radius:12px;padding:10px 12px;box-shadow:0 4px 18px #0009}
+  .fulldetail.show{display:block}
+  .fulldetail .detail-inner{background:transparent;border:none;padding:0;box-shadow:none}
+  .fulldetail table.dt{width:100%}
   /* 当前正在看明细的卡片：按钮高亮，箭头翻转（只改外观，不动布局） */
   .row.open .btn-detail{border-color:var(--el);color:var(--el)}
 </style>
@@ -4639,68 +4638,84 @@ function detailHTML(i){
 }
 
 /* ============================================================
- * 每日明细：跟在每张卡片正下方（2026-11-11 定稿）
+ * 每日明细：全宽 + 跟在被点卡片所在那一排的下面（2026-11-11 定稿）
  * ------------------------------------------------------------
- * 演进：① 早期 .fulldetail 跨整行 → 展开挤走右侧卡片；
- *       ② 改成网格上方统一抽屉 → 右侧卡片保住了，但明细离卡片远；
- *       ③ 现在 .row 是独立 grid 格子，每张卡自带 .fulldetail，
- *          只占本卡那一列：右侧卡片留在原排，可逐个点，也能多张同时展开。
- * 明细表本体（15 列 / 合计行 / 悬停说明）保持原样，容器窄时横向滚动。
+ * 演进：① 跨整行但插在卡片之后 → 同排右侧卡片被挤走；
+ *       ② 网格上方统一抽屉 → 卡片保住了，明细离卡片远；
+ *       ③ 卡片内窄抽屉 → 位置对了，但 15 列表被压成横向滚动；
+ *       ④ 现在：唯一的**全宽**面板，用 placeDetail() 插到
+ *          「被点卡片所在那一排的最后一个 .row 之后」——
+ *          同排卡片全在明细上方（不消失、可逐个点），
+ *          明细在它们下面铺满整行，15 列一屏看完。
+ * 明细表本体（15 列 / 合计行 / 悬停说明）一个字段没改。
+ * 全宽面板独占一行，因此一次只展开一张（手风琴）。
  * ============================================================ */
-const _detailOpen = {};               /* { cardIndex: true } 允许多张同时展开 */
+let _detailOpen = -1;                 /* 当前展开的卡片下标；-1 = 收起 */
 
-function detailPane(i){ return document.getElementById('detail-' + i); }
+function detailPanel(){
+  let p = document.getElementById('detailPanel');
+  if(!p){
+    p = document.createElement('section');
+    p.id = 'detailPanel';
+    p.className = 'fulldetail';
+    const cards = document.getElementById('cards');
+    if(cards) cards.appendChild(p);
+  }
+  return p;
+}
+/* 把全宽面板插到「该卡片所在那一排」的末尾。
+   用 getBoundingClientRect().top 找同排最后一张卡片；
+   面板 grid-column:1/-1，落位后自动另起一整行。 */
+function placeDetail(i){
+  const p = detailPanel();
+  const target = document.querySelector('.row[data-i="' + i + '"]');
+  if(!target || !p.parentNode) return;
+  const rows = Array.prototype.slice.call(document.querySelectorAll('#cards .row[data-i]'));
+  const top = target.getBoundingClientRect().top;
+  let last = rows.indexOf(target);
+  rows.forEach(function(r, k){
+    if(k > last && Math.abs(r.getBoundingClientRect().top - top) < 4) last = k;
+  });
+  const lastRow = rows[last];
+  if(lastRow && lastRow.nextSibling !== p) lastRow.parentNode.insertBefore(p, lastRow.nextSibling);
+}
 
 /* 卡片「详细」按钮外观与展开状态同步（render 重建 DOM 后也要调） */
 function syncDetailBtns(){
   Array.prototype.forEach.call(document.querySelectorAll('.row[data-i]'), function(row){
-    const on = !!_detailOpen[Number(row.dataset.i)];
+    const on = Number(row.dataset.i) === _detailOpen;
     row.classList.toggle('open', on);
     const b = row.querySelector('.btn-detail');
     if(b) b.setAttribute('aria-expanded', on ? 'true' : 'false');
   });
 }
 function openDetail(i){
-  const willOpen = !_detailOpen[i];
-  const el = detailPane(i);
-  if(willOpen){
-    _detailOpen[i] = true;
-    if(el) el.innerHTML = detailHTML(i);       /* 惰性渲染 */
-  }else{
-    delete _detailOpen[i];
-    if(el) el.innerHTML = '';
-  }
-  syncDetailBtns();
-  if(willOpen) setTimeout(function(){ syncDetailCols(i); }, 0);
-}
-/* 不传 i = 全部收起（删除角色、下标整体前移时用） */
-function closeDetail(i){
-  if(i == null){
-    Object.keys(_detailOpen).forEach(function(k){ delete _detailOpen[k]; });
-  }else{
-    delete _detailOpen[i];
-  }
-  Array.prototype.forEach.call(document.querySelectorAll('.row[data-i]'), function(row){
-    const idx = Number(row.dataset.i);
-    if(!_detailOpen[idx]){
-      const el = detailPane(idx);
-      if(el) el.innerHTML = '';
-    }
-  });
+  if(_detailOpen === i){ closeDetail(); return; }   /* 再点一次 = 收起 */
+  _detailOpen = i;
+  const p = detailPanel();
+  p.innerHTML = detailHTML(i);
+  p.classList.add('show');
+  placeDetail(i);
   syncDetailBtns();
 }
-/* 数据变更后只重渲染「正展开」的那些卡片 */
+function closeDetail(){
+  _detailOpen = -1;
+  const p = document.getElementById('detailPanel');
+  if(p){ p.classList.remove('show'); p.innerHTML = ''; }
+  syncDetailBtns();
+}
+/* 数据变更后只重渲染「正展开」的那张卡片 */
 function refreshDetail(i){
-  if(!_detailOpen[i]) return;
-  const el = detailPane(i);
-  if(el) el.innerHTML = detailHTML(i);
+  if(_detailOpen !== i) return;
+  refreshOpenDetail();
 }
 function refreshOpenDetail(){
-  Object.keys(_detailOpen).forEach(function(k){
-    const i = Number(k);
-    const el = detailPane(i);
-    if(el) el.innerHTML = detailHTML(i);
-  });
+  if(_detailOpen < 0) return;
+  /* render() 会用 innerHTML 重建 #cards，面板可能被清掉 → detailPanel() 负责重建 */
+  const p = detailPanel();
+  p.innerHTML = detailHTML(_detailOpen);
+  p.classList.add('show');
+  placeDetail(_detailOpen);
 }
 
 /* 明细表列宽按上方卡片实际像素对齐
@@ -5088,9 +5103,7 @@ function cardHTML(c, i, disp, gc){
     +       'title="录入本卡填写的数值，并自动保存">录入</button>'
     +   '</div>'
     + '</article>'
-    /* 明细跟在本卡正下方：初始留空，点「详细」时才惰性渲染 */
-    + '<div class="fulldetail" id="detail-' + i + '"></div>'
-    + '</div>';
+    + '</div>';   /* 明细是全宽独立面板，不挂在卡片里（见 placeDetail） */
 }
 
 /* ============================================================
@@ -6289,7 +6302,7 @@ document.addEventListener('click', function(e){
   /* 关闭详情：只收起抽屉，**不动任何数据**。
      之前这里放的是「清空明细」，一键就抹掉整段历史，误点代价太高。 */
   const cd = e.target.closest('[data-closedetail]');
-  if(cd){ closeDetail(Number(cd.dataset.closedetail)); return; }
+  if(cd){ closeDetail(); return; }
   /* 清空该角色明细（破坏性操作，底部按钮 + 二次确认） */
   const cl = e.target.closest('[data-clear]');
   if(cl){
