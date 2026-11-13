@@ -539,7 +539,9 @@
   /* 列宽：日期/时间/档位/操作固定，其余 7 个数值列平分剩余宽度
      （档位列 2026-11 新增：记录录入当刻的档位快照） */
   table.dt col.c-date{width:120px}
-  table.dt col.c-time{width:104px}
+  /* v13.3：104px 装不下「横排时间 + 右侧绝对定位的凌晨角标」（会盖住秒位），
+     加宽到 116px；固定列只多占 12px，11 个数值列各少约 1px，对齐不受影响。 */
+  table.dt col.c-time{width:116px}
   table.dt col.c-tier{width:138px}
   table.dt col.c-act{width:46px}
   /* 档位单元格：T 级标签 + 加成百分比 +（旧记录）估算标记 */
@@ -1426,6 +1428,28 @@
   #cards .vcard .switches .sw.wtag,
   #cards .vcard .switches .sw.ttag{font-size:11px;padding:2px 5px}
   #cards .vcard .switches .sw.dlb{padding:3px 9px}
+
+  /* ---------- v13.3：每日明细 —— 异界产出行加深 + 角标不挤占数字 ----------
+     1) 有异界产出的整行铺一层淡青底，与「异界产出」列的 #4fc3d9 同色系；
+        hover 再深一档。选择器与通用的 tbody tr:hover 同特异性，靠后书写生效。
+     2) 「凌晨」「闭」「推」这类角标原本是 inline 跟在数字后面：td 是
+        text-align:center，浏览器把「数字+角标」当一整段一起居中，数字就被
+        挤到偏左。改为绝对定位贴单元格右侧、脱离文档流后，数字独占内容区、
+        精确居中，角标只在右侧露出来。
+        td 需 position:relative 作定位参照；td 自带 overflow:hidden，故 right
+        取 2px、字号压到 9.5px，并给角标不透明底色，避免被裁切或与数字糊在一起。 */
+  table.dt tbody tr.hasdgn{background:rgba(79,195,217,0.09)}
+  table.dt tbody tr.hasdgn:hover{background:rgba(79,195,217,0.15)}
+  table.dt td.t,
+  table.dt td.n{position:relative}
+  table.dt td.t .wee,
+  table.dt td.n i.est{
+    position:absolute;right:2px;top:50%;transform:translateY(-50%);
+    margin-left:0;font-size:9.5px;line-height:1.2;white-space:nowrap;
+    vertical-align:baseline;opacity:1;
+  }
+  table.dt td.t .wee{padding:1px 3px;background:#241c3b}
+  table.dt td.n i.est{background:#101923}
 </style>
 </head>
 <body>
@@ -1438,7 +1462,7 @@
          改版后浏览器可能还显示旧样式。这个小徽标直接印在页面右上角，
          一眼就能确认当前浏览器加载的是哪一版 —— 不必再靠刷新碰运气。
          改动样式时同步更新这里的版本号。 -->
-    <span class="ver" id="verStamp" title="当前页面版本（用于确认是否已加载到最新样式/口径）">v13.2</span>
+    <span class="ver" id="verStamp" title="当前页面版本（用于确认是否已加载到最新样式/口径）">v13.3</span>
     <button class="chip commitall" id="btnCommitAll" type="button"
             title="一次性记录所有卡片里填写了数值的内容">
       <span class="tick">✓</span>记录全部
@@ -4690,7 +4714,9 @@ function detailHTML(i){
       + (craftInfer ? ' ＋ 余额负增长推断 ' + intNum(craftInfer) + '（扣除秘境消耗与转移后的余额，全部算打造花费）' : '')
       + (craftOther ? '；另有 ' + intNum(craftOther) + ' 无法归因的支出，需人工核对' : '')
       + '">' + intNum(craftVal) + '</td>';
-    return '<tr>'
+    /* v13.3：本条有异界产出 → 整行加深。只认正数产出；未归因(—)、0、负值都不算 */
+    const hasDgn = (dgE.v != null && Number(dgE.v) > 0) ? ' class="hasdgn"' : '';
+    return '<tr' + hasDgn + '>'
       + '<td class="d">' + esc(r.date || '') + xferTag + blTag + '</td>'
       + '<td class="t">' + esc(r.time || '--:--:--') + wee + '</td>'
       + recTierCell(c, r)
